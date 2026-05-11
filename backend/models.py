@@ -66,6 +66,7 @@ class Producto(Base):
     movimientos = relationship("MovimientoInventario", back_populates="producto")
     detalles_venta = relationship("DetalleVenta", back_populates="producto")
     detalles_compra = relationship("DetalleCompra", back_populates="producto")
+    salidas = relationship("Salida", back_populates="producto")
 
 
 class TasaCambio(Base):
@@ -260,3 +261,20 @@ class MovimientoInventario(Base):
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
 
     producto = relationship("Producto", back_populates="movimientos")
+
+
+class Salida(Base):
+    __tablename__ = "salidas"
+    __table_args__ = (
+        CheckConstraint("cantidad > 0", name="ck_salida_cantidad"),
+        CheckConstraint("valor_oro >= 0", name="ck_salida_valor_oro"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False, index=True)
+    cantidad = Column(Float, nullable=False)
+    valor_oro = Column(Float, nullable=False)
+    motivo = Column(String(50), nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    producto = relationship("Producto", back_populates="salidas")
