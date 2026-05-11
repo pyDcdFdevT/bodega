@@ -76,10 +76,7 @@ def reporte_inventario(db: Session = Depends(get_db)):
 
 
 @router.get("/ventas")
-def reporte_ventas(
-    dias: int = Query(default=7, ge=1, le=90),
-    db: Session = Depends(get_db),
-):
+def reporte_ventas(dias: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
     desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
     ventas = db.query(Venta).filter(Venta.fecha >= desde).order_by(Venta.fecha.desc()).all()
     total_oro = sum(venta.total_oro for venta in ventas)
@@ -94,10 +91,7 @@ def reporte_ventas(
 
 
 @router.get("/compras")
-def reporte_compras(
-    dias: int = Query(default=7, ge=1, le=90),
-    db: Session = Depends(get_db),
-):
+def reporte_compras(dias: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
     desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
     compras = db.query(Compra).filter(Compra.fecha >= desde).order_by(Compra.fecha.desc()).all()
     total_oro = sum(compra.total_oro for compra in compras)
@@ -112,10 +106,7 @@ def reporte_compras(
 
 
 @router.get("/movimientos")
-def reporte_movimientos(
-    limit: int = Query(default=100, ge=1, le=500),
-    db: Session = Depends(get_db),
-):
+def reporte_movimientos(limit: int = Query(default=100, ge=1, le=500), db: Session = Depends(get_db)):
     movimientos = (
         db.query(MovimientoInventario)
         .options(joinedload(MovimientoInventario.producto))
@@ -140,10 +131,7 @@ def reporte_movimientos(
 
 
 @router.get("/tasas")
-def reporte_tasas(
-    limit: int = Query(default=30, ge=1, le=200),
-    db: Session = Depends(get_db),
-):
+def reporte_tasas(limit: int = Query(default=30, ge=1, le=200), db: Session = Depends(get_db)):
     return (
         db.query(LogTasaCambio)
         .order_by(LogTasaCambio.fecha_cambio.desc(), LogTasaCambio.id.desc())

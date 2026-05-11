@@ -12,7 +12,6 @@ import { initVentas, loadVentas } from "./ventas.js";
 function initTabs() {
   const tabs = [...document.querySelectorAll(".tab")];
   const panels = [...document.querySelectorAll(".panel")];
-
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       tabs.forEach((item) => item.classList.remove("active"));
@@ -28,12 +27,8 @@ async function refreshAll() {
     await Promise.all([loadInventario(), loadTasas()]);
     await loadProductoOptions(["venta-producto", "compra-producto", "salida-producto"]);
     await Promise.all([
-      loadVentas(),
-      loadCompras(),
-      loadSalidas(),
-      loadGasolina(),
-      loadComprasOro(),
-      loadReportes(),
+      loadVentas(), loadCompras(), loadSalidas(), loadGasolina(),
+      loadComprasOro(), loadReportes(),
     ]);
   } catch (error) {
     showToast(error.message, "error");
@@ -58,14 +53,10 @@ async function init() {
   initComprasOro();
   initTasas();
   registerServiceWorker();
-
   document.addEventListener("bodega:refresh", refreshAll);
   document.addEventListener("bodega:unlocked", refreshAll);
-
   const autenticado = await initAuth();
-  if (autenticado) {
-    refreshAll();
-  }
+  if (autenticado) refreshAll();
 }
 
 document.addEventListener("DOMContentLoaded", init);
