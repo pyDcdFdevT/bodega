@@ -3,11 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
-from backend.models import LogTasaCambio
-from backend.schemas import TasaRequest, TasaUpdateRequest
-from backend.services.calculos import CalculosMonetarios
-from backend.services.gestor_tasas import GestorTasas
+from database import get_db
+from models import LogTasaCambio
+from schemas import TasaRequest, TasaUpdateRequest
+from services.calculos import CalculosMonetarios
+from services.gestor_tasas import GestorTasas
 
 
 router = APIRouter(prefix="/tasas", tags=["Tasas"])

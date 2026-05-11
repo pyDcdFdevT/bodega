@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from backend.database import get_db
-from backend.models import DetalleVenta, MovimientoInventario, Producto, Venta
-from backend.schemas import VentaCreate
-from backend.services.calculos import CalculosMonetarios
-from backend.services.validaciones import ValidacionesSistema
+from database import get_db
+from models import DetalleVenta, MovimientoInventario, Producto, Venta
+from schemas import VentaCreate
+from services.calculos import CalculosMonetarios
+from services.validaciones import ValidacionesSistema
 
 
 router = APIRouter(prefix="/ventas", tags=["Ventas"])

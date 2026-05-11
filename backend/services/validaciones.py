@@ -4,8 +4,8 @@ from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
-from backend.models import Gasolina, Producto, TasaCambio
-from backend.services.calculos import CalculosMonetarios
+from models import Gasolina, Producto, TasaCambio
+from services.calculos import CalculosMonetarios
 
 
 class ValidacionesSistema:
