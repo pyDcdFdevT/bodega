@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
-from backend.database import get_db
-from backend.models import Categoria, MovimientoInventario, Producto
-from backend.schemas import ProductoCreate, ProductoUpdate
+from database import get_db
+from models import Categoria, MovimientoInventario, Producto
+from schemas import ProductoCreate, ProductoUpdate
 
 
 router = APIRouter(prefix="/productos", tags=["Productos"])

@@ -4,7 +4,7 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
-from backend.models import TasaCambio
+from models import TasaCambio
 
 
 class CalculosMonetarios:

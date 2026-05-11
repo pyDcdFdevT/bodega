@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from backend.database import get_db
-from backend.models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Venta, VentaGasolina
-from backend.routers.productos import serializar_producto
+from database import get_db
+from models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Venta, VentaGasolina
+from routers.productos import serializar_producto
 
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])

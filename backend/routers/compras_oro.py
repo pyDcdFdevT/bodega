@@ -3,11 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
-from backend.models import CompraOro
-from backend.schemas import CompraOroCreate
-from backend.services.calculos import CalculosMonetarios
-from backend.services.validaciones import ValidacionesSistema
+from database import get_db
+from models import CompraOro
+from schemas import CompraOroCreate
+from services.calculos import CalculosMonetarios
+from services.validaciones import ValidacionesSistema
 
 
 router = APIRouter(prefix="/compras-oro", tags=["Compra de Oro"])

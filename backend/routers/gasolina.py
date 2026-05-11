@@ -3,11 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
-from backend.database import get_db
-from backend.models import Gasolina, VentaGasolina
-from backend.schemas import GasolinaConfigUpdate, GasolinaVenta
-from backend.services.calculos import CalculosMonetarios
-from backend.services.validaciones import ValidacionesSistema
+from database import get_db
+from models import Gasolina, VentaGasolina
+from schemas import GasolinaConfigUpdate, GasolinaVenta
+from services.calculos import CalculosMonetarios
+from services.validaciones import ValidacionesSistema
 
 
 router = APIRouter(prefix="/gasolina", tags=["Gasolina"])

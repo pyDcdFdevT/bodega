@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from backend.models import LogTasaCambio, TasaCambio
-from backend.services.calculos import CalculosMonetarios
+from models import LogTasaCambio, TasaCambio
+from services.calculos import CalculosMonetarios
 
 
 class GestorTasas:
