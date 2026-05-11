@@ -17,6 +17,12 @@ def _texto_requerido(valor: str) -> str:
     return limpio
 
 
+class PinVerifyRequest(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=4)
+
+    _pin = field_validator("pin")(_texto_requerido)
+
+
 class TasasConfigUpdate(BaseModel):
     araparita: float = Field(..., gt=0)
     uruman: float = Field(..., gt=0)
@@ -142,4 +148,21 @@ class CompraOroOut(ORMModel):
     gramos: float
     tasa_compra_reales: float
     total_reales: float
+    fecha: datetime
+
+
+class SalidaCreate(BaseModel):
+    producto_id: int = Field(..., gt=0)
+    cantidad: float = Field(..., gt=0)
+    motivo: str = Field(..., min_length=3, max_length=50)
+
+    _motivo = field_validator("motivo")(_texto_requerido)
+
+
+class SalidaOut(ORMModel):
+    id: int
+    producto_id: int
+    cantidad: float
+    valor_oro: float
+    motivo: str
     fecha: datetime
