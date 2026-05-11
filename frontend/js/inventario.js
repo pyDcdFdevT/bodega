@@ -118,7 +118,7 @@ function editarProducto(id) {
 }
 
 async function eliminarProducto(id, nombre) {
-  const confirmado = window.confirm(`Deseas eliminar el producto "${nombre}"?`);
+  const confirmado = window.confirm(`¿Deseas eliminar el producto "${nombre}"?`);
   if (!confirmado) {
     return;
   }
