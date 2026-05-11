@@ -1,63 +1,125 @@
-import { api, formatDate, renderEmptyRow, showToast } from "./api.js";
+import { api, formatDate, formatRate, renderEmptyRow, showToast } from "./api.js";
+
+export const RATE_ORDER = [
+  "araparita",
+  "uruman",
+  "santa_elena_minero",
+  "santa_elena_fundido",
+];
+
+export const RATE_LABELS = {
+  araparita: "Araparita",
+  uruman: "Uruman",
+  santa_elena_minero: "Santa Elena Minero",
+  santa_elena_fundido: "Santa Elena Fundido",
+};
+
+let tasasCache = [];
+
+export function getTasasCache() {
+  return tasasCache;
+}
+
+export function getRateLabel(nombre) {
+  return RATE_LABELS[nombre] || nombre;
+}
+
+export function findTasaById(id) {
+  return tasasCache.find((tasa) => tasa.id === Number(id));
+}
+
+export function findTasaByNombre(nombre) {
+  return tasasCache.find((tasa) => tasa.nombre === nombre);
+}
+
+export async function ensureTasas() {
+  if (tasasCache.length === RATE_ORDER.length) {
+    return tasasCache;
+  }
+  return loadTasas();
+}
+
+export function fillTasaSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) {
+    return;
+  }
+  const previousValue = select.value;
+  select.innerHTML = `
+    <option value="">Seleccione una tasa...</option>
+    ${tasasCache
+      .map(
+        (tasa) =>
+          `<option value="${tasa.id}">${getRateLabel(tasa.nombre)} | R$ ${formatRate(tasa.tasa_reales)}</option>`
+      )
+      .join("")}
+  `;
+  if ([...select.options].some((option) => option.value === previousValue)) {
+    select.value = previousValue;
+  } else if (select.options.length > 1) {
+    select.selectedIndex = 1;
+  }
+}
 
 export async function loadTasas() {
-  const [actual, historial] = await Promise.all([api.get("/tasas/actual"), api.get("/tasas/historial")]);
+  tasasCache = await api.get("/tasas");
+
   const pill = document.getElementById("tasa-actual-pill");
-  if (!actual.configurado) {
-    pill.textContent = "Sin configurar";
-  } else {
-    pill.textContent = `R$ ${Number(actual.tasa).toFixed(2)} / g`;
+  if (pill) {
+    pill.textContent = `${tasasCache.length} tasas activas`;
+  }
+
+  const form = document.getElementById("form-tasas");
+  if (form) {
+    RATE_ORDER.forEach((nombre) => {
+      const input = form.elements[nombre];
+      const tasa = findTasaByNombre(nombre);
+      if (input && tasa) {
+        input.value = formatRate(tasa.tasa_reales);
+      }
+    });
   }
 
   const tbody = document.getElementById("tabla-tasas");
-  if (!historial.length) {
-    tbody.innerHTML = renderEmptyRow(5, "No hay cambios de tasa registrados.");
-    return;
+  if (tbody) {
+    if (!tasasCache.length) {
+      tbody.innerHTML = renderEmptyRow(3, "No hay tasas configuradas.");
+    } else {
+      tbody.innerHTML = tasasCache
+        .map(
+          (tasa) => `
+            <tr>
+              <td>${getRateLabel(tasa.nombre)}</td>
+              <td>R$ ${formatRate(tasa.tasa_reales)}</td>
+              <td>${formatDate(tasa.actualizado_en)}</td>
+            </tr>
+          `
+        )
+        .join("");
+    }
   }
 
-  tbody.innerHTML = historial
-    .map(
-      (item) => `
-        <tr>
-          <td>${formatDate(item.fecha_cambio)}</td>
-          <td>${item.tasa_anterior ?? "-"}</td>
-          <td>${item.tasa_nueva}</td>
-          <td>${item.variacion_porcentaje ?? "-"}%</td>
-          <td>${item.motivo || "-"}</td>
-        </tr>
-      `
-    )
-    .join("");
+  return tasasCache;
 }
 
 export function initTasas() {
-  const formInicial = document.getElementById("form-tasa-inicial");
-  const formActualizar = document.getElementById("form-tasa-actualizar");
+  const form = document.getElementById("form-tasas");
+  if (!form) {
+    return;
+  }
 
-  formInicial.addEventListener("submit", async (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const formData = new FormData(formInicial);
-    try {
-      await api.post("/tasas/iniciar-dia", {
-        tasa_reales: Number(formData.get("tasa_reales")),
-        motivo: formData.get("motivo"),
-      });
-      showToast("Tasa configurada correctamente", "success");
-      document.dispatchEvent(new CustomEvent("bodega:refresh"));
-    } catch (error) {
-      showToast(error.message, "error");
-    }
-  });
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
 
-  formActualizar.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const formData = new FormData(formActualizar);
+    RATE_ORDER.forEach((nombre) => {
+      payload[nombre] = Number(payload[nombre]);
+    });
+
     try {
-      await api.put("/tasas/actualizar", {
-        tasa_reales: Number(formData.get("tasa_reales")),
-        motivo: formData.get("motivo"),
-      });
-      showToast("Tasa actualizada correctamente", "success");
+      await api.put("/tasas", payload);
+      showToast("Tasas actualizadas correctamente", "success");
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");

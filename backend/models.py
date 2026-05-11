@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
-    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -17,7 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from database import Base
+from backend.database import Base
 
 
 def utc_now() -> datetime:
@@ -72,22 +71,24 @@ class Producto(Base):
 class TasaCambio(Base):
     __tablename__ = "tasas_cambio"
     __table_args__ = (
-        CheckConstraint("tasa_reales > 0", name="ck_tasa_reales_positiva"),
+        UniqueConstraint("nombre", name="uq_tasa_cambio_nombre"),
+        CheckConstraint("tasa_reales > 0", name="ck_tasa_cambio_reales"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    fecha = Column(Date, nullable=False, index=True)
+    nombre = Column(String(50), nullable=False, unique=True, index=True)
     tasa_reales = Column(Float, nullable=False)
-    activo = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=utc_now, nullable=False)
+    actualizado_en = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     ventas = relationship("Venta", back_populates="tasa_cambio")
+    ventas_gasolina = relationship("VentaGasolina", back_populates="tasa_cambio")
 
 
 class LogTasaCambio(Base):
     __tablename__ = "log_tasas_cambio"
 
     id = Column(Integer, primary_key=True, index=True)
+    nombre_tasa = Column(String(50), nullable=False)
     fecha_cambio = Column(DateTime, default=utc_now, nullable=False)
     tasa_anterior = Column(Float)
     tasa_nueva = Column(Float, nullable=False)
@@ -190,17 +191,13 @@ class Gasolina(Base):
     __tablename__ = "gasolina"
     __table_args__ = (
         CheckConstraint("litros_disponibles >= 0", name="ck_gasolina_litros"),
-        CheckConstraint("kg_disponibles >= 0", name="ck_gasolina_kg"),
         CheckConstraint("precio_por_litro_oro >= 0", name="ck_gasolina_precio_litro"),
-        CheckConstraint("precio_por_kg_oro >= 0", name="ck_gasolina_precio_kg"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     tipo = Column(String(50), default="Gasolina", nullable=False)
     litros_disponibles = Column(Float, default=0, nullable=False)
-    kg_disponibles = Column(Float, default=0, nullable=False)
     precio_por_litro_oro = Column(Float, default=0, nullable=False)
-    precio_por_kg_oro = Column(Float, default=0, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     ventas = relationship("VentaGasolina", back_populates="gasolina")
@@ -216,9 +213,9 @@ class VentaGasolina(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     gasolina_id = Column(Integer, ForeignKey("gasolina.id"), nullable=False)
+    tasa_cambio_id = Column(Integer, ForeignKey("tasas_cambio.id"), nullable=False)
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
     litros = Column(Float, nullable=False)
-    kg_estimados = Column(Float, nullable=False)
     total_oro = Column(Float, nullable=False)
     total_reales = Column(Float, nullable=False)
     tipo_pago = Column(String(20), nullable=False)
@@ -228,6 +225,23 @@ class VentaGasolina(Base):
     vuelto_reales = Column(Float, default=0, nullable=False)
 
     gasolina = relationship("Gasolina", back_populates="ventas")
+    tasa_cambio = relationship("TasaCambio", back_populates="ventas_gasolina")
+
+
+class CompraOro(Base):
+    __tablename__ = "compras_oro"
+    __table_args__ = (
+        CheckConstraint("gramos > 0", name="ck_compra_oro_gramos"),
+        CheckConstraint("tasa_compra_reales > 0", name="ck_compra_oro_tasa"),
+        CheckConstraint("total_reales >= 0", name="ck_compra_oro_total"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo_oro = Column(String(50), nullable=False, index=True)
+    gramos = Column(Float, nullable=False)
+    tasa_compra_reales = Column(Float, nullable=False)
+    total_reales = Column(Float, nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
 
 
 class MovimientoInventario(Base):

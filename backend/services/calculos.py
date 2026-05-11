@@ -4,11 +4,24 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
-from models import TasaCambio
+from backend.models import TasaCambio
 
 
 class CalculosMonetarios:
     ROUND_DIGITS = 3
+    TASA_REFERENCIA_COMPRAS = "araparita"
+    TASAS_PREDEFINIDAS = {
+        "araparita": 37.000,
+        "uruman": 38.000,
+        "santa_elena_minero": 35.000,
+        "santa_elena_fundido": 39.000,
+    }
+    ETIQUETAS_TASAS = {
+        "araparita": "Araparita",
+        "uruman": "Uruman",
+        "santa_elena_minero": "Santa Elena Minero",
+        "santa_elena_fundido": "Santa Elena Fundido",
+    }
 
     @staticmethod
     def redondear(valor: float, decimales: int | None = None) -> float:
@@ -16,27 +29,81 @@ class CalculosMonetarios:
         return round(float(valor), precision)
 
     @staticmethod
-    def obtener_tasa_actual(db: Session) -> TasaCambio | None:
-        return (
-            db.query(TasaCambio)
-            .filter(TasaCambio.activo.is_(True))
-            .order_by(TasaCambio.created_at.desc(), TasaCambio.id.desc())
-            .first()
-        )
+    def ordenar_tasas(tasas: list[TasaCambio]) -> list[TasaCambio]:
+        orden = list(CalculosMonetarios.TASAS_PREDEFINIDAS.keys())
+        indice = {nombre: posicion for posicion, nombre in enumerate(orden)}
+        return sorted(tasas, key=lambda tasa: indice.get(tasa.nombre, 999))
 
     @staticmethod
-    def reales_a_oro(reales: float, db: Session) -> float:
-        tasa = CalculosMonetarios.obtener_tasa_actual(db)
-        if not tasa:
-            raise ValueError("No hay tasa de cambio configurada")
-        return CalculosMonetarios.redondear(reales / tasa.tasa_reales)
+    def asegurar_tasas_predefinidas(db: Session) -> list[TasaCambio]:
+        existentes = {tasa.nombre: tasa for tasa in db.query(TasaCambio).all()}
+        for nombre, valor in CalculosMonetarios.TASAS_PREDEFINIDAS.items():
+            if nombre not in existentes:
+                nueva = TasaCambio(nombre=nombre, tasa_reales=valor)
+                db.add(nueva)
+                existentes[nombre] = nueva
+        db.flush()
+        return CalculosMonetarios.ordenar_tasas(list(existentes.values()))
 
     @staticmethod
-    def oro_a_reales(oro: float, db: Session) -> float:
-        tasa = CalculosMonetarios.obtener_tasa_actual(db)
-        if not tasa:
-            raise ValueError("No hay tasa de cambio configurada")
-        return CalculosMonetarios.redondear(oro * tasa.tasa_reales, 2)
+    def listar_tasas(db: Session) -> list[TasaCambio]:
+        return CalculosMonetarios.asegurar_tasas_predefinidas(db)
+
+    @staticmethod
+    def obtener_tasa_por_id(db: Session, tasa_id: int) -> TasaCambio | None:
+        return db.query(TasaCambio).filter(TasaCambio.id == tasa_id).first()
+
+    @staticmethod
+    def obtener_tasa_por_nombre(db: Session, nombre: str) -> TasaCambio | None:
+        return db.query(TasaCambio).filter(TasaCambio.nombre == nombre).first()
+
+    @staticmethod
+    def obtener_tasa_referencia(db: Session) -> TasaCambio:
+        tasa = CalculosMonetarios.obtener_tasa_por_nombre(db, CalculosMonetarios.TASA_REFERENCIA_COMPRAS)
+        if tasa:
+            return tasa
+        tasas = CalculosMonetarios.listar_tasas(db)
+        if not tasas:
+            raise ValueError("No hay tasas de cambio configuradas")
+        return tasas[0]
+
+    @staticmethod
+    def reales_a_oro(
+        reales: float,
+        db: Session,
+        tasa_id: int | None = None,
+        tasa_nombre: str | None = None,
+        tasa: TasaCambio | None = None,
+    ) -> float:
+        tasa_obj = tasa
+        if tasa_obj is None and tasa_id is not None:
+            tasa_obj = CalculosMonetarios.obtener_tasa_por_id(db, tasa_id)
+        if tasa_obj is None and tasa_nombre is not None:
+            tasa_obj = CalculosMonetarios.obtener_tasa_por_nombre(db, tasa_nombre)
+        if tasa_obj is None:
+            tasa_obj = CalculosMonetarios.obtener_tasa_referencia(db)
+        if tasa_obj.tasa_reales <= 0:
+            raise ValueError("La tasa de cambio es invalida")
+        return CalculosMonetarios.redondear(reales / tasa_obj.tasa_reales)
+
+    @staticmethod
+    def oro_a_reales(
+        oro: float,
+        db: Session,
+        tasa_id: int | None = None,
+        tasa_nombre: str | None = None,
+        tasa: TasaCambio | None = None,
+    ) -> float:
+        tasa_obj = tasa
+        if tasa_obj is None and tasa_id is not None:
+            tasa_obj = CalculosMonetarios.obtener_tasa_por_id(db, tasa_id)
+        if tasa_obj is None and tasa_nombre is not None:
+            tasa_obj = CalculosMonetarios.obtener_tasa_por_nombre(db, tasa_nombre)
+        if tasa_obj is None:
+            tasa_obj = CalculosMonetarios.obtener_tasa_referencia(db)
+        if tasa_obj.tasa_reales <= 0:
+            raise ValueError("La tasa de cambio es invalida")
+        return CalculosMonetarios.redondear(oro * tasa_obj.tasa_reales, 2)
 
     @staticmethod
     def calcular_costo_unitario(precio_reales_total: float, unidades: float, db: Session) -> float:

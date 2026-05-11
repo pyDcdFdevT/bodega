@@ -1,93 +1,71 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import LogTasaCambio
-from schemas import TasaRequest, TasaUpdateRequest
-from services.calculos import CalculosMonetarios
-from services.gestor_tasas import GestorTasas
+from backend.database import get_db
+from backend.models import LogTasaCambio, TasaCambio
+from backend.schemas import TasasConfigUpdate
+from backend.services.calculos import CalculosMonetarios
 
 
 router = APIRouter(prefix="/tasas", tags=["Tasas"])
 
 
-@router.post("/iniciar-dia")
-def iniciar_tasa(tasa: TasaRequest, db: Session = Depends(get_db)):
-    try:
-        gestor = GestorTasas(db)
-        nueva = gestor.establecer_inicial(tasa.tasa_reales, tasa.motivo)
-        db.commit()
-        db.refresh(nueva)
-        return {
-            "status": "success",
-            "message": f"Tasa configurada en R$ {nueva.tasa_reales}/g",
-            "data": {
-                "id": nueva.id,
-                "fecha": nueva.fecha.isoformat(),
-                "tasa_reales": nueva.tasa_reales,
-            },
-        }
-    except ValueError as exc:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="No fue posible configurar la tasa") from exc
-
-
-@router.put("/actualizar")
-def actualizar_tasa(tasa: TasaUpdateRequest, db: Session = Depends(get_db)):
-    try:
-        gestor = GestorTasas(db)
-        resultado = gestor.actualizar(tasa.tasa_reales, tasa.motivo)
-        db.commit()
-        return {
-            "status": "success",
-            "message": f"Tasa actualizada a R$ {tasa.tasa_reales}/g",
-            "data": resultado,
-        }
-    except ValueError as exc:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="No fue posible actualizar la tasa") from exc
-
-
-@router.get("/actual")
-def tasa_actual(db: Session = Depends(get_db)):
-    tasa = CalculosMonetarios.obtener_tasa_actual(db)
-    if not tasa:
-        return {"configurado": False, "mensaje": "No hay tasa configurada"}
+def serializar_tasa(tasa: TasaCambio) -> dict:
     return {
-        "configurado": True,
-        "tasa": tasa.tasa_reales,
-        "fecha": tasa.fecha.isoformat(),
         "id": tasa.id,
+        "nombre": tasa.nombre,
+        "etiqueta": CalculosMonetarios.ETIQUETAS_TASAS.get(tasa.nombre, tasa.nombre),
+        "tasa_reales": tasa.tasa_reales,
+        "actualizado_en": tasa.actualizado_en,
     }
 
 
-@router.get("/estado")
-def estado_sistema(db: Session = Depends(get_db)):
-    tasa = CalculosMonetarios.obtener_tasa_actual(db)
-    return {
-        "sistema_operativo": tasa is not None,
-        "tasa_actual": tasa.tasa_reales if tasa else None,
-        "fecha": tasa.fecha.isoformat() if tasa else None,
-    }
+@router.get("")
+def listar_tasas(db: Session = Depends(get_db)):
+    try:
+        tasas = CalculosMonetarios.listar_tasas(db)
+        db.commit()
+        return [serializar_tasa(tasa) for tasa in tasas]
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible cargar las tasas") from exc
 
 
-@router.get("/historial")
-def historial_tasas(
-    limit: int = Query(default=30, ge=1, le=200),
-    db: Session = Depends(get_db),
-):
-    registros = (
-        db.query(LogTasaCambio)
-        .order_by(LogTasaCambio.fecha_cambio.desc(), LogTasaCambio.id.desc())
-        .limit(limit)
-        .all()
-    )
-    return registros
+@router.put("")
+def actualizar_tasas(data: TasasConfigUpdate, db: Session = Depends(get_db)):
+    try:
+        tasas = {tasa.nombre: tasa for tasa in CalculosMonetarios.listar_tasas(db)}
+
+        for nombre in CalculosMonetarios.TASAS_PREDEFINIDAS:
+            nueva_tasa = getattr(data, nombre)
+            tasa = tasas[nombre]
+            if tasa.tasa_reales != nueva_tasa:
+                tasa_anterior = tasa.tasa_reales
+                variacion = round(((nueva_tasa - tasa.tasa_reales) / tasa.tasa_reales) * 100, 2)
+                db.add(
+                    LogTasaCambio(
+                        nombre_tasa=nombre,
+                        tasa_anterior=tasa_anterior,
+                        tasa_nueva=nueva_tasa,
+                        variacion_porcentaje=variacion,
+                        motivo="Actualizacion desde interfaz",
+                    )
+                )
+                tasa.tasa_reales = nueva_tasa
+
+        db.flush()
+        resultado = [serializar_tasa(tasa) for tasa in CalculosMonetarios.listar_tasas(db)]
+        db.commit()
+        return {
+            "status": "success",
+            "message": "Las 4 tasas fueron actualizadas",
+            "tasas": resultado,
+        }
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible actualizar las tasas") from exc

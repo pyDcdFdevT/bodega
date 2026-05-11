@@ -43,9 +43,14 @@ export function formatNumber(value, decimals = 3) {
 }
 
 export function formatMoney(value, mode = "oro") {
-  const decimals = mode === "reales" ? 2 : 3;
-  const prefix = mode === "reales" ? "R$ " : "";
-  return `${prefix}${formatNumber(value, decimals)}`;
+  if (mode === "reales") {
+    return `R$ ${formatNumber(value, 2)}`;
+  }
+  return formatNumber(value, 3);
+}
+
+export function formatRate(value) {
+  return formatNumber(value, 3);
 }
 
 export function formatDate(value) {

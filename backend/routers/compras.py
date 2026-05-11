@@ -3,11 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
-from database import get_db
-from models import Compra, DetalleCompra, MovimientoInventario
-from schemas import CompraCreate
-from services.calculos import CalculosMonetarios
-from services.validaciones import ValidacionesSistema
+from backend.database import get_db
+from backend.models import Compra, DetalleCompra, MovimientoInventario
+from backend.services.calculos import CalculosMonetarios
+from backend.services.validaciones import ValidacionesSistema
+from backend.schemas import CompraCreate
 
 
 router = APIRouter(prefix="/compras", tags=["Compras"])
@@ -20,7 +20,7 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
         producto = ValidacionesSistema.obtener_producto_activo(compra.producto_id, db)
         unidades = ValidacionesSistema.calcular_unidades_compra(compra.cantidad, compra.tipo_cantidad, producto)
 
-        costo_oro_total = CalculosMonetarios.reales_a_oro(compra.precio_reales, db)
+        costo_oro_total = CalculosMonetarios.reales_a_oro(compra.precio_reales, db, tasa=tasa)
         costo_unitario_oro = CalculosMonetarios.redondear(costo_oro_total / unidades)
         costo_unitario_reales = round(compra.precio_reales / unidades, 2)
         precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
@@ -78,6 +78,7 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
                 "costo_unitario_oro": costo_unitario_oro,
                 "precio_sugerido_venta_oro": precio_sugerido,
                 "stock_actual": producto.stock_actual,
+                "tasa_referencia": tasa.nombre,
             },
         }
     except ValueError as exc:

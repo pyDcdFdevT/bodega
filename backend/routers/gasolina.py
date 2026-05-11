@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from database import get_db
-from models import Gasolina, VentaGasolina
-from schemas import GasolinaConfigUpdate, GasolinaVenta
-from services.calculos import CalculosMonetarios
-from services.validaciones import ValidacionesSistema
+from backend.database import get_db
+from backend.models import Gasolina, VentaGasolina
+from backend.schemas import GasolinaConfigUpdate, GasolinaVenta
+from backend.services.calculos import CalculosMonetarios
+from backend.services.validaciones import ValidacionesSistema
 
 
 router = APIRouter(prefix="/gasolina", tags=["Gasolina"])
-
-DENSIDAD_KG_POR_LITRO = 0.74
 
 
 def _asegurar_gasolina(db: Session) -> Gasolina:
@@ -22,9 +20,7 @@ def _asegurar_gasolina(db: Session) -> Gasolina:
     gasolina = Gasolina(
         tipo="Gasolina",
         litros_disponibles=0,
-        kg_disponibles=0,
         precio_por_litro_oro=0,
-        precio_por_kg_oro=0,
     )
     db.add(gasolina)
     db.flush()
@@ -45,22 +41,8 @@ def configurar_gasolina(data: GasolinaConfigUpdate, db: Session = Depends(get_db
         gasolina.tipo = data.tipo
         if data.litros_disponibles is not None:
             gasolina.litros_disponibles = data.litros_disponibles
-            gasolina.kg_disponibles = CalculosMonetarios.redondear(
-                data.litros_disponibles * DENSIDAD_KG_POR_LITRO
-            )
         if data.precio_por_litro_oro is not None:
             gasolina.precio_por_litro_oro = data.precio_por_litro_oro
-            if data.precio_por_kg_oro is None:
-                gasolina.precio_por_kg_oro = CalculosMonetarios.redondear(
-                    data.precio_por_litro_oro / DENSIDAD_KG_POR_LITRO
-                )
-        if data.precio_por_kg_oro is not None:
-            gasolina.precio_por_kg_oro = data.precio_por_kg_oro
-            if data.precio_por_litro_oro is None:
-                gasolina.precio_por_litro_oro = CalculosMonetarios.redondear(
-                    data.precio_por_kg_oro * DENSIDAD_KG_POR_LITRO
-                )
-
         db.commit()
         db.refresh(gasolina)
         return {"status": "success", "gasolina": gasolina}
@@ -75,12 +57,12 @@ def configurar_gasolina(data: GasolinaConfigUpdate, db: Session = Depends(get_db
 @router.post("/venta")
 def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
     try:
-        tasa = ValidacionesSistema.validar_tasa(db)
+        tasa = ValidacionesSistema.validar_tasa(db, tasa_id=data.tasa_cambio_id)
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(data.tipo_pago)
         gasolina = ValidacionesSistema.validar_stock_gasolina(data.litros, db)
 
         total_oro = CalculosMonetarios.redondear(data.litros * gasolina.precio_por_litro_oro)
-        total_reales = CalculosMonetarios.redondear(total_oro * tasa.tasa_reales, 2)
+        total_reales = CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa)
         vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
             tipo_pago=tipo_pago,
             total_oro=total_oro,
@@ -89,14 +71,12 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
             tasa_reales=tasa.tasa_reales,
         )
 
-        kg_estimados = CalculosMonetarios.redondear(data.litros * DENSIDAD_KG_POR_LITRO)
         gasolina.litros_disponibles = CalculosMonetarios.redondear(gasolina.litros_disponibles - data.litros)
-        gasolina.kg_disponibles = CalculosMonetarios.redondear(gasolina.kg_disponibles - kg_estimados)
 
         venta = VentaGasolina(
             gasolina_id=gasolina.id,
+            tasa_cambio_id=tasa.id,
             litros=data.litros,
-            kg_estimados=kg_estimados,
             total_oro=total_oro,
             total_reales=total_reales,
             tipo_pago=tipo_pago,
@@ -115,9 +95,10 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
             "data": {
                 "venta_id": venta.id,
                 "litros": data.litros,
-                "kg_estimados": kg_estimados,
                 "total_oro": total_oro,
                 "total_reales": total_reales,
+                "tasa_nombre": tasa.nombre,
+                "tasa_reales": tasa.tasa_reales,
                 "stock_restante_litros": gasolina.litros_disponibles,
             },
         }
@@ -136,8 +117,21 @@ def listar_ventas_gasolina(
 ):
     ventas = (
         db.query(VentaGasolina)
+        .options(joinedload(VentaGasolina.tasa_cambio))
         .order_by(VentaGasolina.fecha.desc(), VentaGasolina.id.desc())
         .limit(limit)
         .all()
     )
-    return ventas
+    return [
+        {
+            "id": venta.id,
+            "fecha": venta.fecha,
+            "litros": venta.litros,
+            "total_oro": venta.total_oro,
+            "total_reales": venta.total_reales,
+            "tipo_pago": venta.tipo_pago,
+            "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,
+            "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
+        }
+        for venta in ventas
+    ]

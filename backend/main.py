@@ -1,29 +1,52 @@
+from __future__ import annotations
+
+import os
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from database import engine
-from models import Base
-from init_data import inicializar_datos
-from routers import productos, categorias, compras, ventas, gasolina, reportes, tasas
 
-# Crear tablas
-Base.metadata.create_all(bind=engine)
+from backend.database import Base, engine
+from backend.init_data import inicializar_datos
+from backend.routers import categorias, compras, gasolina, productos, reportes, tasas, ventas
+from backend.routers import compras_oro
 
-# Inicializar datos
-inicializar_datos()
 
-# App
-app = FastAPI(title="🏪 Bodega Inventario", version="1.0.0")
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = BASE_DIR / "frontend"
 
-# CORS
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    if os.getenv("BODEGA_AUTO_INIT", "1") == "1":
+        inicializar_datos()
+    yield
+
+
+app = FastAPI(
+    title="Bodega Inventario",
+    version="2.0.0",
+    description="Sistema de inventario para bodega con tasas multiples y compra de oro.",
+    lifespan=lifespan,
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers API
+
+@app.get("/api/health")
+def healthcheck():
+    return {"status": "ok", "service": "bodega-api"}
+
+
 app.include_router(productos.router, prefix="/api")
 app.include_router(categorias.router, prefix="/api")
 app.include_router(compras.router, prefix="/api")
@@ -31,12 +54,7 @@ app.include_router(ventas.router, prefix="/api")
 app.include_router(gasolina.router, prefix="/api")
 app.include_router(reportes.router, prefix="/api")
 app.include_router(tasas.router, prefix="/api")
+app.include_router(compras_oro.router, prefix="/api")
 
-# Frontend estático
-import os
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-
-@app.get("/api/health")
-def health():
-    return {"status": "ok", "service": "bodega-api"}
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

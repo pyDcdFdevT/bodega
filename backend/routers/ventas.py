@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from database import get_db
-from models import DetalleVenta, MovimientoInventario, Producto, Venta
-from schemas import VentaCreate
-from services.calculos import CalculosMonetarios
-from services.validaciones import ValidacionesSistema
+from backend.database import get_db
+from backend.models import DetalleVenta, MovimientoInventario, Producto, Venta
+from backend.schemas import VentaCreate
+from backend.services.calculos import CalculosMonetarios
+from backend.services.validaciones import ValidacionesSistema
 
 
 router = APIRouter(prefix="/ventas", tags=["Ventas"])
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/ventas", tags=["Ventas"])
 @router.post("")
 def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     try:
-        tasa = ValidacionesSistema.validar_tasa(db)
+        tasa = ValidacionesSistema.validar_tasa(db, tasa_id=venta.tasa_cambio_id)
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(venta.tipo_pago)
         consolidados = ValidacionesSistema.validar_venta(venta.items, db)
 
@@ -31,7 +31,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             subtotales[producto_id] = CalculosMonetarios.redondear(producto.precio_venta_oro * cantidad)
 
         total_oro = CalculosMonetarios.consolidar_total_oro(subtotales.values())
-        total_reales = CalculosMonetarios.oro_a_reales(total_oro, db)
+        total_reales = CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa)
         vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
             tipo_pago=tipo_pago,
             total_oro=total_oro,
@@ -101,6 +101,8 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 "total_oro": total_oro,
                 "total_reales": total_reales,
                 "tipo_pago": tipo_pago,
+                "tasa_nombre": tasa.nombre,
+                "tasa_reales": tasa.tasa_reales,
                 "vuelto_oro": vuelto_oro,
                 "vuelto_reales": vuelto_reales,
                 "detalles": detalles_resumen,
@@ -124,17 +126,29 @@ def listar_ventas(
 ):
     ventas = (
         db.query(Venta)
-        .options(joinedload(Venta.detalles))
+        .options(joinedload(Venta.detalles), joinedload(Venta.tasa_cambio))
         .order_by(Venta.fecha.desc(), Venta.id.desc())
         .limit(limit)
         .all()
     )
-    return ventas
+    return [
+        {
+            "id": venta.id,
+            "fecha": venta.fecha,
+            "cliente": venta.cliente,
+            "total_oro": venta.total_oro,
+            "total_reales": venta.total_reales,
+            "tipo_pago": venta.tipo_pago,
+            "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,
+            "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
+        }
+        for venta in ventas
+    ]
 
 
 @router.get("/resumen/hoy")
 def resumen_ventas_hoy(db: Session = Depends(get_db)):
-    inicio = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    inicio = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
     total_oro, total_reales, cantidad = (
         db.query(
             func.coalesce(func.sum(Venta.total_oro), 0),

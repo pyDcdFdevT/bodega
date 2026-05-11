@@ -15,7 +15,7 @@
         <p class="eyebrow">Sistema de inventario</p>
         <h1>Bodega Operativa</h1>
         <p class="hero-copy">
-          Control de inventario, ventas, compras, gasolina, tasas y reportes en una sola vista.
+          Control de inventario, ventas, compras, gasolina, tasas multipunto y compra de oro en una sola vista.
         </p>
       </div>
       <div class="hero-stats" id="hero-stats">
@@ -39,6 +39,7 @@
       <button class="tab" data-target="panel-ventas">Ventas</button>
       <button class="tab" data-target="panel-compras">Compras</button>
       <button class="tab" data-target="panel-gasolina">Gasolina</button>
+      <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
       <button class="tab" data-target="panel-tasas">Tasas</button>
       <button class="tab" data-target="panel-reportes">Reportes</button>
     </nav>
@@ -75,8 +76,8 @@
               <label>Stock minimo
                 <input name="stock_minimo" type="number" min="0" step="0.001" value="5" required>
               </label>
-              <label>Precio venta (oro)
-                <input name="precio_venta_oro" type="number" min="0" step="0.001" value="0" required>
+              <label>Precio venta (oro en gramos)
+                <input name="precio_venta_oro" type="number" min="0" step="0.001" value="0.000" required>
               </label>
               <button type="submit">Guardar producto</button>
             </form>
@@ -112,6 +113,7 @@
                   <th>Costo oro</th>
                   <th>Venta oro</th>
                   <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody id="tabla-productos"></tbody>
@@ -168,6 +170,9 @@
               <label>Cliente
                 <input name="cliente" value="Mostrador">
               </label>
+              <label>Tasa a aplicar
+                <select name="tasa_cambio_id" id="venta-tasa" required></select>
+              </label>
               <label>Tipo de pago
                 <select name="tipo_pago" id="venta-tipo-pago">
                   <option value="oro">Oro</option>
@@ -176,10 +181,10 @@
                 </select>
               </label>
               <label>Monto recibido (oro)
-                <input name="monto_recibido_oro" type="number" min="0" step="0.001" value="0">
+                <input name="monto_recibido_oro" type="number" min="0" step="0.001" value="0.000">
               </label>
               <label>Monto recibido (reales)
-                <input name="monto_recibido_reales" type="number" min="0" step="0.01" value="0">
+                <input name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
               </label>
               <button type="submit">Registrar venta</button>
             </form>
@@ -197,6 +202,7 @@
                   <th>Cliente</th>
                   <th>Total oro</th>
                   <th>Total reales</th>
+                  <th>Tasa</th>
                   <th>Pago</th>
                 </tr>
               </thead>
@@ -282,11 +288,8 @@
               <label>Litros disponibles
                 <input name="litros_disponibles" type="number" min="0" step="0.001">
               </label>
-              <label>Precio por litro (oro)
+              <label>Precio por litro (oro en gramos)
                 <input name="precio_por_litro_oro" type="number" min="0" step="0.001">
-              </label>
-              <label>Precio por kg (oro)
-                <input name="precio_por_kg_oro" type="number" min="0" step="0.001">
               </label>
               <button type="submit">Guardar configuracion</button>
             </form>
@@ -298,6 +301,9 @@
               <label>Litros
                 <input name="litros" type="number" min="0.001" step="0.001" required>
               </label>
+              <label>Tasa a aplicar
+                <select name="tasa_cambio_id" id="gasolina-tasa" required></select>
+              </label>
               <label>Tipo de pago
                 <select name="tipo_pago">
                   <option value="oro">Oro</option>
@@ -306,10 +312,10 @@
                 </select>
               </label>
               <label>Monto recibido (oro)
-                <input name="monto_recibido_oro" type="number" min="0" step="0.001" value="0">
+                <input name="monto_recibido_oro" type="number" min="0" step="0.001" value="0.000">
               </label>
               <label>Monto recibido (reales)
-                <input name="monto_recibido_reales" type="number" min="0" step="0.01" value="0">
+                <input name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
               </label>
               <button type="submit">Registrar venta</button>
             </form>
@@ -329,6 +335,7 @@
                   <th>Litros</th>
                   <th>Total oro</th>
                   <th>Total reales</th>
+                  <th>Tasa</th>
                   <th>Pago</th>
                 </tr>
               </thead>
@@ -338,60 +345,103 @@
         </article>
       </section>
 
-      <section class="panel" id="panel-tasas">
+      <section class="panel" id="panel-compras-oro">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Tasas</p>
-            <h2>Tasa de cambio del dia</h2>
+            <p class="eyebrow">Compra de Oro</p>
+            <h2>Registrar oro recibido</h2>
           </div>
-          <div class="badge" id="tasa-actual-pill">Sin configurar</div>
         </div>
 
         <div class="grid two">
           <article class="card">
-            <h3>Configurar tasa</h3>
-            <form id="form-tasa-inicial" class="stack-form">
-              <label>Tasa reales por gramo
-                <input name="tasa_reales" type="number" min="0.01" step="0.01" required>
+            <h3>Nueva compra de oro</h3>
+            <form id="form-compra-oro" class="stack-form">
+              <label>Tipo de oro
+                <select name="tipo_oro" id="compra-oro-tipo" required>
+                  <option value="araparita">Araparita</option>
+                  <option value="uruman">Uruman</option>
+                  <option value="santa_elena_minero">Santa Elena Minero</option>
+                  <option value="santa_elena_fundido">Santa Elena Fundido</option>
+                </select>
               </label>
-              <label>Motivo
-                <input name="motivo" value="Inicio del dia">
+              <label>Gramos recibidos
+                <input name="gramos" id="compra-oro-gramos" type="number" min="0.001" step="0.001" value="0.000" required>
               </label>
-              <button type="submit">Iniciar o reiniciar tasa</button>
+              <label>Tasa de compra (reales por gramo)
+                <input name="tasa_compra_reales" id="compra-oro-tasa" type="number" min="0.001" step="0.001" value="0.000" required>
+              </label>
+              <div class="report-item">Total a pagar: <strong id="compra-oro-total">R$ 0.00</strong></div>
+              <button type="submit">Registrar compra</button>
             </form>
           </article>
 
           <article class="card">
-            <h3>Actualizar tasa</h3>
-            <form id="form-tasa-actualizar" class="stack-form">
-              <label>Nueva tasa
-                <input name="tasa_reales" type="number" min="0.01" step="0.01" required>
-              </label>
-              <label>Motivo
-                <input name="motivo" value="Actualizacion manual">
-              </label>
-              <button type="submit">Actualizar</button>
-            </form>
+            <h3>Compras recientes de oro</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Gramos</th>
+                    <th>Tasa</th>
+                    <th>Total reales</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-compras-oro"></tbody>
+              </table>
+            </div>
           </article>
         </div>
+      </section>
 
-        <article class="card">
-          <h3>Historial</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tasa anterior</th>
-                  <th>Tasa nueva</th>
-                  <th>Variacion</th>
-                  <th>Motivo</th>
-                </tr>
-              </thead>
-              <tbody id="tabla-tasas"></tbody>
-            </table>
+      <section class="panel" id="panel-tasas">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Tasas</p>
+            <h2>Las 4 tasas activas</h2>
           </div>
-        </article>
+          <div class="badge" id="tasa-actual-pill">4 tasas activas</div>
+        </div>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>Configurar tasas</h3>
+            <form id="form-tasas" class="stack-form">
+              <label>Araparita
+                <input name="araparita" type="number" min="0.001" step="0.001" required>
+              </label>
+              <label>Uruman
+                <input name="uruman" type="number" min="0.001" step="0.001" required>
+              </label>
+              <label>Santa Elena Minero
+                <input name="santa_elena_minero" type="number" min="0.001" step="0.001" required>
+              </label>
+              <label>Santa Elena Fundido
+                <input name="santa_elena_fundido" type="number" min="0.001" step="0.001" required>
+              </label>
+              <button type="submit">Guardar tasas</button>
+            </form>
+          </article>
+
+          <article class="card">
+            <h3>Tasas configuradas</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tasa</th>
+                    <th>Actualizado</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-tasas"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="panel" id="panel-reportes">

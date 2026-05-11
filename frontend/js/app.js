@@ -1,5 +1,6 @@
 import { showToast } from "./api.js";
 import { initCompras, loadCompras } from "./compras.js";
+import { initComprasOro, loadComprasOro } from "./compras_oro.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
 import { initInventario, loadInventario, loadProductoOptions } from "./inventario.js";
 import { loadReportes } from "./reportes.js";
@@ -22,9 +23,9 @@ function initTabs() {
 
 async function refreshAll() {
   try {
-    await loadInventario();
+    await Promise.all([loadInventario(), loadTasas()]);
     await loadProductoOptions(["venta-producto", "compra-producto"]);
-    await Promise.all([loadVentas(), loadCompras(), loadGasolina(), loadTasas(), loadReportes()]);
+    await Promise.all([loadVentas(), loadCompras(), loadGasolina(), loadComprasOro(), loadReportes()]);
   } catch (error) {
     showToast(error.message, "error");
   }
@@ -44,6 +45,7 @@ function init() {
   initVentas();
   initCompras();
   initGasolina();
+  initComprasOro();
   initTasas();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", refreshAll);

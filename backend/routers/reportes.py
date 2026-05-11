@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from database import get_db
-from models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Venta, VentaGasolina
-from routers.productos import serializar_producto
+from backend.database import get_db
+from backend.models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Venta, VentaGasolina
+from backend.routers.productos import serializar_producto
 
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/reportes", tags=["Reportes"])
 
 @router.get("/dashboard")
 def dashboard(db: Session = Depends(get_db)):
-    inicio_hoy = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    inicio_hoy = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
     total_productos = db.query(func.count(Producto.id)).filter(Producto.activo.is_(True)).scalar() or 0
     stock_bajo = (
         db.query(func.count(Producto.id))
@@ -75,7 +75,7 @@ def reporte_ventas(
     dias: int = Query(default=7, ge=1, le=90),
     db: Session = Depends(get_db),
 ):
-    desde = datetime.utcnow() - timedelta(days=dias)
+    desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
     ventas = db.query(Venta).filter(Venta.fecha >= desde).order_by(Venta.fecha.desc()).all()
     total_oro = sum(venta.total_oro for venta in ventas)
     total_reales = sum(venta.total_reales for venta in ventas)
@@ -93,7 +93,7 @@ def reporte_compras(
     dias: int = Query(default=7, ge=1, le=90),
     db: Session = Depends(get_db),
 ):
-    desde = datetime.utcnow() - timedelta(days=dias)
+    desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
     compras = db.query(Compra).filter(Compra.fecha >= desde).order_by(Compra.fecha.desc()).all()
     total_oro = sum(compra.total_oro for compra in compras)
     total_reales = sum(compra.total_reales for compra in compras)

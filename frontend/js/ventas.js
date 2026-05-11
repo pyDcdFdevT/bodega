@@ -1,8 +1,16 @@
 import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
 import { getProductosCache, loadProductoOptions } from "./inventario.js";
+import { ensureTasas, fillTasaSelect, findTasaById, getRateLabel } from "./tasas.js";
 
 const carrito = [];
-let tasaActual = 0;
+
+function obtenerTasaSeleccionada() {
+  const tasaId = Number(document.getElementById("venta-tasa").value);
+  if (!tasaId) {
+    return null;
+  }
+  return findTasaById(tasaId) || null;
+}
 
 function calcularTotales() {
   const productos = getProductosCache();
@@ -24,6 +32,8 @@ function calcularTotales() {
 function renderCarrito() {
   const tbody = document.getElementById("tabla-carrito");
   const totals = calcularTotales();
+  const tasa = obtenerTasaSeleccionada();
+
   if (!totals.items.length) {
     tbody.innerHTML = renderEmptyRow(4, "Aun no hay productos en el carrito.");
   } else {
@@ -42,7 +52,9 @@ function renderCarrito() {
   }
 
   document.getElementById("venta-total-oro").textContent = totals.totalOro.toFixed(3);
-  document.getElementById("venta-total-reales").textContent = (totals.totalOro * tasaActual).toFixed(2);
+  document.getElementById("venta-total-reales").textContent = tasa
+    ? (totals.totalOro * tasa.tasa_reales).toFixed(2)
+    : "0.00";
 
   tbody.querySelectorAll("[data-remove]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -56,14 +68,11 @@ function renderCarrito() {
   });
 }
 
-async function loadTasaActual() {
-  const tasa = await api.get("/tasas/actual");
-  tasaActual = tasa.configurado ? Number(tasa.tasa) : 0;
-}
-
 export async function loadVentas() {
   await loadProductoOptions(["venta-producto"]);
-  await loadTasaActual();
+  await ensureTasas();
+  fillTasaSelect("venta-tasa");
+
   const [ventas, resumen] = await Promise.all([api.get("/ventas"), api.get("/ventas/resumen/hoy")]);
 
   document.getElementById("ventas-resumen-hoy").textContent = `${resumen.ventas} ventas hoy`;
@@ -71,7 +80,7 @@ export async function loadVentas() {
 
   const tbody = document.getElementById("tabla-ventas");
   if (!ventas.length) {
-    tbody.innerHTML = renderEmptyRow(6, "No hay ventas registradas.");
+    tbody.innerHTML = renderEmptyRow(7, "No hay ventas registradas.");
   } else {
     tbody.innerHTML = ventas
       .map(
@@ -82,6 +91,7 @@ export async function loadVentas() {
             <td>${venta.cliente}</td>
             <td>${formatMoney(venta.total_oro)}</td>
             <td>${formatMoney(venta.total_reales, "reales")}</td>
+            <td>${getRateLabel(venta.tasa_nombre)}</td>
             <td>${venta.tipo_pago}</td>
           </tr>
         `
@@ -95,6 +105,7 @@ export async function loadVentas() {
 export function initVentas() {
   const formCarrito = document.getElementById("form-carrito");
   const formVenta = document.getElementById("form-venta");
+  const tasaSelect = document.getElementById("venta-tasa");
 
   formCarrito.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -116,10 +127,18 @@ export function initVentas() {
     renderCarrito();
   });
 
+  tasaSelect.addEventListener("change", renderCarrito);
+
   formVenta.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!carrito.length) {
       showToast("Agrega al menos un producto al carrito", "error");
+      return;
+    }
+
+    const tasaId = Number(tasaSelect.value);
+    if (!tasaId) {
+      showToast("Selecciona una tasa para calcular la venta", "error");
       return;
     }
 
@@ -130,6 +149,7 @@ export function initVentas() {
         cantidad: item.cantidad,
       })),
       cliente: formData.get("cliente"),
+      tasa_cambio_id: tasaId,
       tipo_pago: formData.get("tipo_pago"),
       monto_recibido_oro: Number(formData.get("monto_recibido_oro")),
       monto_recibido_reales: Number(formData.get("monto_recibido_reales")),
@@ -141,8 +161,9 @@ export function initVentas() {
       formVenta.reset();
       formVenta.cliente.value = "Mostrador";
       formVenta.tipo_pago.value = "oro";
-      formVenta.monto_recibido_oro.value = "0";
-      formVenta.monto_recibido_reales.value = "0";
+      formVenta.monto_recibido_oro.value = "0.000";
+      formVenta.monto_recibido_reales.value = "0.00";
+      fillTasaSelect("venta-tasa");
       renderCarrito();
       showToast(`Venta #${response.data.venta_id} registrada`, "success");
       document.dispatchEvent(new CustomEvent("bodega:refresh"));

@@ -4,24 +4,43 @@ from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
-from models import Gasolina, Producto, TasaCambio
-from services.calculos import CalculosMonetarios
+from backend.models import Gasolina, Producto, TasaCambio
+from backend.services.calculos import CalculosMonetarios
 
 
 class ValidacionesSistema:
     TIPOS_PAGO = {"oro", "reales", "mixto"}
     TIPOS_CANTIDAD = {"bulto", "caja", "unidad"}
+    TIPOS_ORO = set(CalculosMonetarios.TASAS_PREDEFINIDAS.keys())
 
     @staticmethod
-    def validar_tasa(db: Session) -> TasaCambio:
-        tasa = CalculosMonetarios.obtener_tasa_actual(db)
+    def validar_tasas_configuradas(db: Session) -> list[TasaCambio]:
+        tasas = CalculosMonetarios.listar_tasas(db)
+        if len(tasas) < len(CalculosMonetarios.TASAS_PREDEFINIDAS):
+            raise ValueError("Faltan tasas de cambio por configurar")
+        return tasas
+
+    @staticmethod
+    def validar_tasa(db: Session, tasa_id: int | None = None, tasa_nombre: str | None = None) -> TasaCambio:
+        ValidacionesSistema.validar_tasas_configuradas(db)
+        if tasa_id is not None:
+            tasa = CalculosMonetarios.obtener_tasa_por_id(db, tasa_id)
+        elif tasa_nombre is not None:
+            tasa = CalculosMonetarios.obtener_tasa_por_nombre(db, tasa_nombre)
+        else:
+            tasa = CalculosMonetarios.obtener_tasa_referencia(db)
         if not tasa:
-            raise ValueError("No hay tasa de cambio configurada")
+            raise ValueError("La tasa seleccionada no existe")
         if tasa.tasa_reales <= 0:
-            raise ValueError(f"Tasa invalida: R$ {tasa.tasa_reales}")
-        if tasa.tasa_reales < 10 or tasa.tasa_reales > 100:
-            raise ValueError(f"Tasa sospechosa: R$ {tasa.tasa_reales}")
+            raise ValueError("La tasa seleccionada es invalida")
         return tasa
+
+    @staticmethod
+    def validar_tipo_oro(tipo_oro: str) -> str:
+        normalizado = tipo_oro.strip().lower()
+        if normalizado not in ValidacionesSistema.TIPOS_ORO:
+            raise ValueError("Tipo de oro invalido")
+        return normalizado
 
     @staticmethod
     def normalizar_tipo_pago(tipo_pago: str) -> str:
@@ -50,9 +69,7 @@ class ValidacionesSistema:
             raise ValueError("La cantidad debe ser mayor a cero")
         producto = ValidacionesSistema.obtener_producto_activo(producto_id, db)
         if producto.stock_actual < cantidad:
-            raise ValueError(
-                f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual}"
-            )
+            raise ValueError(f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual}")
         return producto
 
     @staticmethod
@@ -116,7 +133,5 @@ class ValidacionesSistema:
         if litros <= 0:
             raise ValueError("Los litros deben ser mayores a cero")
         if gasolina.litros_disponibles < litros:
-            raise ValueError(
-                f"Stock insuficiente de gasolina. Disponible: {gasolina.litros_disponibles} litros"
-            )
+            raise ValueError(f"Stock insuficiente de gasolina. Disponible: {gasolina.litros_disponibles} litros")
         return gasolina
