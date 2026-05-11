@@ -18,8 +18,10 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
     try:
         tasa = ValidacionesSistema.validar_tasa(db)
         producto = ValidacionesSistema.obtener_producto_activo(compra.producto_id, db)
-        unidades = ValidacionesSistema.calcular_unidades_compra(compra.cantidad, compra.tipo_cantidad, producto)
+        if compra.cantidad <= 0:
+            raise ValueError("La cantidad debe ser mayor a cero")
 
+        unidades = compra.cantidad
         costo_oro_total = CalculosMonetarios.reales_a_oro(compra.precio_reales, db, tasa=tasa)
         costo_unitario_oro = CalculosMonetarios.redondear(costo_oro_total / unidades)
         costo_unitario_reales = round(compra.precio_reales / unidades, 2)
@@ -45,12 +47,10 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
         detalle = DetalleCompra(
             compra_id=nueva.id,
             producto_id=producto.id,
-            cantidad_bultos=compra.cantidad,
-            tipo_cantidad=ValidacionesSistema.normalizar_tipo_cantidad(compra.tipo_cantidad),
+            cantidad=unidades,
             precio_reales_total=round(compra.precio_reales, 2),
             precio_reales_unitario=costo_unitario_reales,
             precio_oro_unitario=costo_unitario_oro,
-            unidades_reales=unidades,
             subtotal_oro=costo_oro_total,
         )
         db.add(detalle)

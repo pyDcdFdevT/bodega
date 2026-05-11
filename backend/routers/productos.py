@@ -25,7 +25,7 @@ def serializar_producto(producto: Producto) -> dict:
         "categoria_id": producto.categoria_id,
         "categoria_nombre": producto.categoria_rel.nombre if producto.categoria_rel else None,
         "presentacion": producto.presentacion,
-        "unidades_por_bulto": producto.unidades_por_bulto,
+        "unidad_venta": producto.unidad_venta,
         "stock_actual": producto.stock_actual,
         "stock_minimo": producto.stock_minimo,
         "precio_costo_oro": producto.precio_costo_oro,
@@ -120,7 +120,7 @@ def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
             nombre=producto.nombre,
             categoria_id=categoria.id,
             presentacion=producto.presentacion,
-            unidades_por_bulto=producto.unidades_por_bulto,
+            unidad_venta=producto.unidad_venta,
             stock_actual=producto.stock_actual,
             stock_minimo=producto.stock_minimo,
             precio_venta_oro=producto.precio_venta_oro,
@@ -171,8 +171,8 @@ def actualizar_producto(producto_id: int, data: ProductoUpdate, db: Session = De
             producto.nombre = data.nombre
         if data.presentacion is not None:
             producto.presentacion = data.presentacion
-        if data.unidades_por_bulto is not None:
-            producto.unidades_por_bulto = data.unidades_por_bulto
+        if data.unidad_venta is not None:
+            producto.unidad_venta = data.unidad_venta
         if data.stock_minimo is not None:
             producto.stock_minimo = data.stock_minimo
         if data.precio_venta_oro is not None:

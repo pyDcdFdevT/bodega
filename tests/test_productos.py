@@ -4,8 +4,8 @@ def test_crear_producto_con_categoria_automatica(client):
         json={
             "nombre": "Detergente liquido",
             "categoria_nombre": "Limpieza",
-            "presentacion": "botella",
-            "unidades_por_bulto": 12,
+            "presentacion": "unidad",
+            "unidad_venta": "unidad",
             "stock_actual": 24,
             "stock_minimo": 4,
             "precio_venta_oro": 0.74,
@@ -23,8 +23,8 @@ def test_crear_producto_duplicado_devuelve_error_y_no_duplica(client):
     payload = {
         "nombre": "Harina integral",
         "categoria_nombre": "Alimentos",
-        "presentacion": "paquete",
-        "unidades_por_bulto": 10,
+        "presentacion": "unidad",
+        "unidad_venta": "unidad",
         "stock_actual": 12,
         "stock_minimo": 2,
         "precio_venta_oro": 0.61,

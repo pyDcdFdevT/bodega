@@ -94,11 +94,19 @@
               <label>Categoria
                 <input name="categoria_nombre" required>
               </label>
-              <label>Presentacion
-                <input name="presentacion" value="unidad" required>
+              <label>Unidad de inventario (como se cuenta)
+                <select name="presentacion" required>
+                  <option value="unidad" selected>Unidad</option>
+                  <option value="kg">Kilogramo (kg)</option>
+                  <option value="litro">Litro</option>
+                </select>
               </label>
-              <label>Unidades por bulto
-                <input name="unidades_por_bulto" type="number" min="0.001" step="0.001" value="1" required>
+              <label>Unidad de venta (como se cobra)
+                <select name="unidad_venta" required>
+                  <option value="unidad" selected>Unidad</option>
+                  <option value="kg">Kilogramo (kg)</option>
+                  <option value="litro">Litro</option>
+                </select>
               </label>
               <label>Stock inicial
                 <input name="stock_actual" type="number" min="0" step="0.001" value="0" required>
@@ -138,7 +146,8 @@
                 <tr>
                   <th>Producto</th>
                   <th>Categoria</th>
-                  <th>Presentacion</th>
+                  <th>Inventario</th>
+                  <th>Venta</th>
                   <th>Stock</th>
                   <th>Costo oro</th>
                   <th>Venta oro</th>
@@ -257,15 +266,8 @@
               <label>Producto
                 <select name="producto_id" id="compra-producto" required></select>
               </label>
-              <label>Cantidad
+              <label>Cantidad (unidades, kg o litros segun el producto)
                 <input name="cantidad" type="number" min="0.001" step="0.001" value="1" required>
-              </label>
-              <label>Tipo de cantidad
-                <select name="tipo_cantidad">
-                  <option value="bulto">Bulto</option>
-                  <option value="caja">Caja</option>
-                  <option value="unidad">Unidad</option>
-                </select>
               </label>
               <label>Precio total (reales)
                 <input name="precio_reales" type="number" min="0.01" step="0.01" required>

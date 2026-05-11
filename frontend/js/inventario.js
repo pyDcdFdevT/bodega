@@ -5,7 +5,7 @@ let productosCache = [];
 function renderProductos(items) {
   const tbody = document.getElementById("tabla-productos");
   if (!items.length) {
-    tbody.innerHTML = renderEmptyRow(8, "No hay productos para mostrar.");
+    tbody.innerHTML = renderEmptyRow(9, "No hay productos para mostrar.");
     return;
   }
 
@@ -16,6 +16,7 @@ function renderProductos(items) {
           <td>${producto.nombre}</td>
           <td>${producto.categoria_nombre || "-"}</td>
           <td>${producto.presentacion}</td>
+          <td>${producto.unidad_venta}</td>
           <td>${producto.stock_actual}</td>
           <td>${formatMoney(producto.precio_costo_oro)}</td>
           <td>${formatMoney(producto.precio_venta_oro)}</td>
@@ -74,7 +75,7 @@ function restaurarFormularioProducto() {
   form.reset();
   delete form.dataset.id;
   form.presentacion.value = "unidad";
-  form.unidades_por_bulto.value = "1";
+  form.unidad_venta.value = "unidad";
   form.stock_actual.value = "0";
   form.stock_minimo.value = "5";
   form.precio_venta_oro.value = "0";
@@ -108,7 +109,7 @@ function editarProducto(id) {
   form.nombre.value = producto.nombre;
   form.categoria_nombre.value = producto.categoria_nombre || "";
   form.presentacion.value = producto.presentacion;
-  form.unidades_por_bulto.value = producto.unidades_por_bulto;
+  form.unidad_venta.value = producto.unidad_venta;
   form.stock_actual.value = producto.stock_actual;
   form.stock_minimo.value = producto.stock_minimo;
   form.precio_venta_oro.value = producto.precio_venta_oro;
@@ -144,7 +145,6 @@ export function initInventario() {
     event.preventDefault();
     const formData = new FormData(form);
     const payload = Object.fromEntries(formData.entries());
-    payload.unidades_por_bulto = Number(payload.unidades_por_bulto);
     payload.stock_actual = Number(payload.stock_actual);
     payload.stock_minimo = Number(payload.stock_minimo);
     payload.precio_venta_oro = Number(payload.precio_venta_oro);

@@ -35,7 +35,6 @@ export function initCompras() {
     const payload = {
       producto_id: Number(formData.get("producto_id")),
       cantidad: Number(formData.get("cantidad")),
-      tipo_cantidad: formData.get("tipo_cantidad"),
       precio_reales: Number(formData.get("precio_reales")),
       proveedor: formData.get("proveedor"),
       observaciones: formData.get("observaciones") || null,
@@ -44,7 +43,6 @@ export function initCompras() {
     try {
       await api.post("/compras", payload);
       form.reset();
-      form.tipo_cantidad.value = "bulto";
       form.proveedor.value = "Proveedor";
       showToast("Compra registrada correctamente", "success");
       document.dispatchEvent(new CustomEvent("bodega:refresh"));

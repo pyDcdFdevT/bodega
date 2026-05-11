@@ -1,15 +1,21 @@
 import os
+import sys
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 os.environ["BODEGA_AUTO_INIT"] = "0"
 
-from backend.database import Base, get_db
-from backend.init_data import _inicializar_datos
-from backend.main import app
+from database import Base, get_db
+from init_data import _inicializar_datos
+from main import app
 
 
 @pytest.fixture()

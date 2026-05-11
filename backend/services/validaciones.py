@@ -10,7 +10,6 @@ from services.calculos import CalculosMonetarios
 
 class ValidacionesSistema:
     TIPOS_PAGO = {"oro", "reales", "mixto"}
-    TIPOS_CANTIDAD = {"bulto", "caja", "unidad"}
     TIPOS_ORO = set(CalculosMonetarios.TASAS_PREDEFINIDAS.keys())
 
     @staticmethod
@@ -47,13 +46,6 @@ class ValidacionesSistema:
         tipo = tipo_pago.strip().lower()
         if tipo not in ValidacionesSistema.TIPOS_PAGO:
             raise ValueError("Tipo de pago invalido. Use oro, reales o mixto")
-        return tipo
-
-    @staticmethod
-    def normalizar_tipo_cantidad(tipo_cantidad: str) -> str:
-        tipo = tipo_cantidad.strip().lower()
-        if tipo not in ValidacionesSistema.TIPOS_CANTIDAD:
-            raise ValueError("Tipo de cantidad invalido. Use bulto, caja o unidad")
         return tipo
 
     @staticmethod
@@ -110,15 +102,6 @@ class ValidacionesSistema:
             raise ValueError("Monto recibido insuficiente para completar la operacion")
         excedente_oro = CalculosMonetarios.redondear(recibido_oro - total_oro)
         return CalculosMonetarios.calcular_vuelto(tipo, excedente_oro, tasa_reales)
-
-    @staticmethod
-    def calcular_unidades_compra(cantidad: float, tipo_cantidad: str, producto: Producto) -> float:
-        tipo = ValidacionesSistema.normalizar_tipo_cantidad(tipo_cantidad)
-        if cantidad <= 0:
-            raise ValueError("La cantidad debe ser mayor a cero")
-        if tipo in {"bulto", "caja"}:
-            return cantidad * producto.unidades_por_bulto
-        return cantidad
 
     @staticmethod
     def validar_gasolina(db: Session) -> Gasolina:

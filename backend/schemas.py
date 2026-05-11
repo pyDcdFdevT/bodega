@@ -17,6 +17,13 @@ def _texto_requerido(valor: str) -> str:
     return limpio
 
 
+def _unidad_medida(valor: str) -> str:
+    n = _texto_requerido(valor).lower()
+    if n not in ("unidad", "kg", "litro"):
+        raise ValueError("Debe ser unidad, kg o litro")
+    return n
+
+
 class PinVerifyRequest(BaseModel):
     pin: str = Field(..., min_length=4, max_length=4)
 
@@ -59,32 +66,40 @@ class ProductoCreate(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=100)
     categoria_nombre: str = Field(..., min_length=2, max_length=100)
     presentacion: str = Field(default="unidad", min_length=2, max_length=20)
-    unidades_por_bulto: float = Field(default=1, gt=0)
+    unidad_venta: str = Field(default="unidad", min_length=2, max_length=20)
     stock_actual: float = Field(default=0, ge=0)
     stock_minimo: float = Field(default=5, ge=0)
     precio_venta_oro: float = Field(..., ge=0)
 
     _nombre = field_validator("nombre")(_texto_requerido)
     _categoria = field_validator("categoria_nombre")(_texto_requerido)
-    _presentacion = field_validator("presentacion")(_texto_requerido)
+    _presentacion = field_validator("presentacion")(_unidad_medida)
+    _unidad_venta = field_validator("unidad_venta")(_unidad_medida)
 
 
 class ProductoUpdate(BaseModel):
     nombre: Optional[str] = Field(default=None, min_length=2, max_length=100)
     categoria_nombre: Optional[str] = Field(default=None, min_length=2, max_length=100)
     presentacion: Optional[str] = Field(default=None, min_length=2, max_length=20)
-    unidades_por_bulto: Optional[float] = Field(default=None, gt=0)
+    unidad_venta: Optional[str] = Field(default=None, min_length=2, max_length=20)
     stock_actual: Optional[float] = Field(default=None, ge=0)
     stock_minimo: Optional[float] = Field(default=None, ge=0)
     precio_venta_oro: Optional[float] = Field(default=None, ge=0)
     activo: Optional[bool] = None
 
-    @field_validator("nombre", "categoria_nombre", "presentacion")
+    @field_validator("nombre", "categoria_nombre")
     @classmethod
-    def limpiar_opcionales(cls, valor: Optional[str]) -> Optional[str]:
+    def limpiar_texto_opcional(cls, valor: Optional[str]) -> Optional[str]:
         if valor is None:
             return valor
         return _texto_requerido(valor)
+
+    @field_validator("presentacion", "unidad_venta")
+    @classmethod
+    def limpiar_medida_opcional(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return valor
+        return _unidad_medida(valor)
 
 
 class ItemVenta(BaseModel):
@@ -107,12 +122,10 @@ class VentaCreate(BaseModel):
 class CompraCreate(BaseModel):
     producto_id: int = Field(..., gt=0)
     cantidad: float = Field(..., gt=0)
-    tipo_cantidad: str = Field(default="bulto", min_length=4, max_length=20)
     precio_reales: float = Field(..., gt=0)
     proveedor: str = Field(default="Proveedor", max_length=100)
     observaciones: Optional[str] = Field(default=None, max_length=500)
 
-    _tipo_cantidad = field_validator("tipo_cantidad")(_texto_requerido)
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
 

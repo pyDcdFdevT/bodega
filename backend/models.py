@@ -40,7 +40,8 @@ class Producto(Base):
     __tablename__ = "productos"
     __table_args__ = (
         UniqueConstraint("nombre", "categoria_id", "presentacion", name="uq_producto_nombre_categoria_presentacion"),
-        CheckConstraint("unidades_por_bulto > 0", name="ck_producto_unidades_por_bulto"),
+        CheckConstraint("presentacion IN ('unidad','kg','litro')", name="ck_producto_presentacion"),
+        CheckConstraint("unidad_venta IN ('unidad','kg','litro')", name="ck_producto_unidad_venta"),
         CheckConstraint("stock_actual >= 0", name="ck_producto_stock_actual"),
         CheckConstraint("stock_minimo >= 0", name="ck_producto_stock_minimo"),
         CheckConstraint("precio_costo_oro >= 0", name="ck_producto_precio_costo_oro"),
@@ -52,7 +53,7 @@ class Producto(Base):
     nombre = Column(String(100), nullable=False, index=True)
     categoria_id = Column(Integer, ForeignKey("categorias.id"), nullable=False, index=True)
     presentacion = Column(String(20), default="unidad", nullable=False)
-    unidades_por_bulto = Column(Float, default=1, nullable=False)
+    unidad_venta = Column(String(20), default="unidad", nullable=False)
     stock_actual = Column(Float, default=0, nullable=False)
     stock_minimo = Column(Float, default=5, nullable=False)
     precio_costo_oro = Column(Float, default=0, nullable=False)
@@ -165,23 +166,20 @@ class Compra(Base):
 class DetalleCompra(Base):
     __tablename__ = "detalles_compras"
     __table_args__ = (
-        CheckConstraint("cantidad_bultos > 0", name="ck_detalle_compra_cantidad"),
+        CheckConstraint("cantidad > 0", name="ck_detalle_compra_cantidad"),
         CheckConstraint("precio_reales_total >= 0", name="ck_detalle_compra_precio_reales_total"),
         CheckConstraint("precio_reales_unitario >= 0", name="ck_detalle_compra_precio_reales_unitario"),
         CheckConstraint("precio_oro_unitario >= 0", name="ck_detalle_compra_precio_oro_unitario"),
-        CheckConstraint("unidades_reales > 0", name="ck_detalle_compra_unidades_reales"),
         CheckConstraint("subtotal_oro >= 0", name="ck_detalle_compra_subtotal_oro"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     compra_id = Column(Integer, ForeignKey("compras.id"), nullable=False)
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
-    cantidad_bultos = Column(Float, nullable=False)
-    tipo_cantidad = Column(String(20), default="bulto", nullable=False)
+    cantidad = Column(Float, nullable=False)
     precio_reales_total = Column(Float, nullable=False)
     precio_reales_unitario = Column(Float, nullable=False)
     precio_oro_unitario = Column(Float, nullable=False)
-    unidades_reales = Column(Float, nullable=False)
     subtotal_oro = Column(Float, nullable=False)
 
     compra = relationship("Compra", back_populates="detalles")
