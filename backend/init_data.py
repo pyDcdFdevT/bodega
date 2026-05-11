@@ -4,8 +4,8 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from backend.database import SessionLocal
-from backend.models import Categoria, Gasolina, Producto, TasaCambio
+from database import SessionLocal
+from models import Categoria, Gasolina, Producto, TasaCambio
 
 
 def inicializar_datos() -> None:
