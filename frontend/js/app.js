@@ -1,9 +1,11 @@
 import { showToast } from "./api.js";
+import { initAuth } from "./auth.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
 import { initInventario, loadInventario, loadProductoOptions } from "./inventario.js";
 import { loadReportes } from "./reportes.js";
+import { initSalidas, loadSalidas } from "./salidas.js";
 import { initTasas, loadTasas } from "./tasas.js";
 import { initVentas, loadVentas } from "./ventas.js";
 
@@ -24,8 +26,15 @@ function initTabs() {
 async function refreshAll() {
   try {
     await Promise.all([loadInventario(), loadTasas()]);
-    await loadProductoOptions(["venta-producto", "compra-producto"]);
-    await Promise.all([loadVentas(), loadCompras(), loadGasolina(), loadComprasOro(), loadReportes()]);
+    await loadProductoOptions(["venta-producto", "compra-producto", "salida-producto"]);
+    await Promise.all([
+      loadVentas(),
+      loadCompras(),
+      loadSalidas(),
+      loadGasolina(),
+      loadComprasOro(),
+      loadReportes(),
+    ]);
   } catch (error) {
     showToast(error.message, "error");
   }
@@ -39,17 +48,24 @@ function registerServiceWorker() {
   }
 }
 
-function init() {
+async function init() {
   initTabs();
   initInventario();
   initVentas();
   initCompras();
+  initSalidas();
   initGasolina();
   initComprasOro();
   initTasas();
   registerServiceWorker();
+
   document.addEventListener("bodega:refresh", refreshAll);
-  refreshAll();
+  document.addEventListener("bodega:unlocked", refreshAll);
+
+  const autenticado = await initAuth();
+  if (autenticado) {
+    refreshAll();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);

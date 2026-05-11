@@ -24,8 +24,16 @@ function renderDashboard(data) {
       <strong>${formatMoney(data.operaciones_hoy.compras_oro)}</strong>
     </article>
     <article class="metric-pill">
+      <span>Salidas hoy</span>
+      <strong>${formatMoney(data.operaciones_hoy.salidas_oro)}</strong>
+    </article>
+    <article class="metric-pill">
       <span>Gasolina hoy</span>
       <strong>${formatMoney(data.operaciones_hoy.gasolina_oro)}</strong>
+    </article>
+    <article class="metric-pill">
+      <span>Ganancia neta</span>
+      <strong>${formatMoney(data.operaciones_hoy.ganancia_neta)}</strong>
     </article>
   `;
 }

@@ -7,7 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Venta, VentaGasolina
+from models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Salida, Venta, VentaGasolina
 from routers.productos import serializar_producto
 
 
@@ -32,6 +32,7 @@ def dashboard(db: Session = Depends(get_db)):
     )
     ventas_hoy_oro = db.query(func.coalesce(func.sum(Venta.total_oro), 0)).filter(Venta.fecha >= inicio_hoy).scalar() or 0
     compras_hoy_oro = db.query(func.coalesce(func.sum(Compra.total_oro), 0)).filter(Compra.fecha >= inicio_hoy).scalar() or 0
+    salidas_hoy_oro = db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio_hoy).scalar() or 0
     gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
     gasolina_hoy_oro = (
         db.query(func.coalesce(func.sum(VentaGasolina.total_oro), 0))
@@ -39,6 +40,8 @@ def dashboard(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
+    ganancia_neta = round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro, 3)
+
     return {
         "fecha": inicio_hoy.date().isoformat(),
         "inventario": {
@@ -49,7 +52,9 @@ def dashboard(db: Session = Depends(get_db)):
         "operaciones_hoy": {
             "ventas_oro": round(ventas_hoy_oro, 3),
             "compras_oro": round(compras_hoy_oro, 3),
+            "salidas_oro": round(salidas_hoy_oro, 3),
             "gasolina_oro": round(gasolina_hoy_oro, 3),
+            "ganancia_neta": ganancia_neta,
         },
         "gasolina": {
             "litros_disponibles": gasolina.litros_disponibles if gasolina else 0,

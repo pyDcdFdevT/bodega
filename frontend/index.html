@@ -9,7 +9,36 @@
   <link rel="stylesheet" href="/css/estilo.css">
 </head>
 <body>
-  <div class="app-shell">
+  <div
+    id="pantalla-bloqueo"
+    style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,38,58,0.94);z-index:9999;padding:24px;"
+  >
+    <div style="width:min(420px,100%);background:#ffffff;border-radius:24px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.25);text-align:center;">
+      <p style="margin:0 0 8px 0;font-size:0.78rem;letter-spacing:0.18em;text-transform:uppercase;color:#8a5a2b;">Acceso protegido</p>
+      <h2 style="margin:0 0 10px 0;color:#17324d;">Ingrese el PIN</h2>
+      <p style="margin:0 0 18px 0;color:#4f667d;">Debes validar el acceso antes de usar el sistema.</p>
+      <form id="form-pin" style="display:grid;gap:14px;">
+        <input
+          id="pin-input"
+          type="number"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="PIN de 4 digitos"
+          style="padding:14px 16px;border:1px solid rgba(17,38,58,0.18);border-radius:16px;text-align:center;font-size:1.2rem;"
+          required
+        >
+        <button
+          type="submit"
+          style="border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,#d56b1d,#ba4e18);color:#fff8ef;font-weight:700;cursor:pointer;"
+        >
+          Entrar
+        </button>
+        <p id="pin-error" style="min-height:20px;margin:0;color:#b34747;font-weight:600;"></p>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-shell" id="app-contenido">
     <header class="hero">
       <div>
         <p class="eyebrow">Sistema de inventario</p>
@@ -38,6 +67,7 @@
       <button class="tab active" data-target="panel-inventario">Inventario</button>
       <button class="tab" data-target="panel-ventas">Ventas</button>
       <button class="tab" data-target="panel-compras">Compras</button>
+      <button class="tab" data-target="panel-salidas">Salidas</button>
       <button class="tab" data-target="panel-gasolina">Gasolina</button>
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
       <button class="tab" data-target="panel-tasas">Tasas</button>
@@ -264,6 +294,53 @@
                   </tr>
                 </thead>
                 <tbody id="tabla-compras"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-salidas">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Salidas</p>
+            <h2>Consumo y merma</h2>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>Registrar salida</h3>
+            <form id="form-salida" class="stack-form">
+              <label>Producto
+                <select id="salida-producto" required></select>
+              </label>
+              <label>Cantidad
+                <input id="salida-cantidad" type="number" min="0.001" step="0.001" value="1" required>
+              </label>
+              <label>Motivo
+                <select id="salida-motivo" required></select>
+              </label>
+              <div class="report-item">Valor oro: <strong id="salida-valor-oro">0.000</strong></div>
+              <button type="submit">Registrar salida</button>
+            </form>
+          </article>
+
+          <article class="card">
+            <h3>Salidas recientes</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Valor oro</th>
+                    <th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-salidas"></tbody>
               </table>
             </div>
           </article>
