@@ -1,0 +1,106 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
+
+from backend.database import get_db
+from backend.models import Compra, DetalleCompra, MovimientoInventario
+from backend.schemas import CompraCreate
+from backend.services.calculos import CalculosMonetarios
+from backend.services.validaciones import ValidacionesSistema
+
+
+router = APIRouter(prefix="/compras", tags=["Compras"])
+
+
+@router.post("")
+def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
+    try:
+        tasa = ValidacionesSistema.validar_tasa(db)
+        producto = ValidacionesSistema.obtener_producto_activo(compra.producto_id, db)
+        unidades = ValidacionesSistema.calcular_unidades_compra(compra.cantidad, compra.tipo_cantidad, producto)
+
+        costo_oro_total = CalculosMonetarios.reales_a_oro(compra.precio_reales, db)
+        costo_unitario_oro = CalculosMonetarios.redondear(costo_oro_total / unidades)
+        costo_unitario_reales = round(compra.precio_reales / unidades, 2)
+        precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
+
+        stock_anterior = producto.stock_actual
+        producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual + unidades)
+        producto.precio_costo_oro = costo_unitario_oro
+        producto.precio_costo_reales = costo_unitario_reales
+        if producto.precio_venta_oro <= 0:
+            producto.precio_venta_oro = precio_sugerido
+
+        nueva = Compra(
+            proveedor=compra.proveedor,
+            total_reales=round(compra.precio_reales, 2),
+            total_oro=costo_oro_total,
+            tasa_cambio_usada=tasa.tasa_reales,
+            observaciones=compra.observaciones,
+        )
+        db.add(nueva)
+        db.flush()
+
+        detalle = DetalleCompra(
+            compra_id=nueva.id,
+            producto_id=producto.id,
+            cantidad_bultos=compra.cantidad,
+            tipo_cantidad=ValidacionesSistema.normalizar_tipo_cantidad(compra.tipo_cantidad),
+            precio_reales_total=round(compra.precio_reales, 2),
+            precio_reales_unitario=costo_unitario_reales,
+            precio_oro_unitario=costo_unitario_oro,
+            unidades_reales=unidades,
+            subtotal_oro=costo_oro_total,
+        )
+        db.add(detalle)
+        db.add(
+            MovimientoInventario(
+                producto_id=producto.id,
+                tipo="entrada",
+                cantidad=unidades,
+                stock_anterior=stock_anterior,
+                stock_nuevo=producto.stock_actual,
+                motivo=f"Compra registrada #{nueva.id}",
+            )
+        )
+
+        db.commit()
+        db.refresh(nueva)
+
+        return {
+            "status": "success",
+            "message": "Compra registrada correctamente",
+            "data": {
+                "compra_id": nueva.id,
+                "producto": producto.nombre,
+                "unidades_ingresadas": unidades,
+                "costo_unitario_oro": costo_unitario_oro,
+                "precio_sugerido_venta_oro": precio_sugerido,
+                "stock_actual": producto.stock_actual,
+            },
+        }
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible registrar la compra") from exc
+
+
+@router.get("")
+def listar_compras(
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    compras = (
+        db.query(Compra)
+        .options(joinedload(Compra.detalles))
+        .order_by(Compra.fecha.desc(), Compra.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return compras
