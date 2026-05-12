@@ -50,7 +50,7 @@ export function formatMoney(value, mode = "oro") {
 }
 
 export function formatRate(value) {
-  return formatNumber(value, 3);
+  return formatNumber(value, 2);
 }
 
 export function formatDate(value) {
