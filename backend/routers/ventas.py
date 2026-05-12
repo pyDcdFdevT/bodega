@@ -19,8 +19,15 @@ router = APIRouter(prefix="/ventas", tags=["Ventas"])
 @router.post("")
 def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     try:
-        tasa = ValidacionesSistema.validar_tasa(db, tasa_id=venta.tasa_cambio_id)
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(venta.tipo_pago)
+        tipo_oro = None
+        if tipo_pago == "oro":
+            if not venta.tipo_oro:
+                raise ValueError("Debe seleccionar el tipo de oro")
+            tipo_oro = venta.tipo_oro.strip().lower()
+            tasa = ValidacionesSistema.validar_tasa(db, tasa_nombre=tipo_oro)
+        else:
+            tasa = ValidacionesSistema.validar_tasa(db, tasa_id=venta.tasa_cambio_id)
         consolidados = ValidacionesSistema.validar_venta(venta.items, db)
 
         productos: dict[int, Producto] = {}
@@ -45,6 +52,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             total_oro=total_oro,
             total_reales=total_reales,
             tipo_pago=tipo_pago,
+            tipo_oro=tipo_oro,
             monto_recibido_oro=venta.monto_recibido_oro,
             monto_recibido_reales=venta.monto_recibido_reales,
             vuelto_oro=vuelto_oro,
@@ -101,6 +109,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 "total_oro": total_oro,
                 "total_reales": total_reales,
                 "tipo_pago": tipo_pago,
+                "tipo_oro": tipo_oro,
                 "tasa_nombre": tasa.nombre,
                 "tasa_reales": tasa.tasa_reales,
                 "vuelto_oro": vuelto_oro,
@@ -139,6 +148,7 @@ def listar_ventas(
             "total_oro": venta.total_oro,
             "total_reales": venta.total_reales,
             "tipo_pago": venta.tipo_pago,
+            "tipo_oro": venta.tipo_oro,
             "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,
             "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
         }

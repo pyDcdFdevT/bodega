@@ -114,8 +114,8 @@
               <label>Stock minimo
                 <input name="stock_minimo" type="number" min="0" step="0.001" value="5" required>
               </label>
-              <label>Precio venta (oro en gramos)
-                <input name="precio_venta_oro" type="number" min="0" step="0.001" value="0.000" required>
+              <label>Precio venta (reales)
+                <input name="precio_venta_reales" type="number" min="0" step="0.01" value="0.00" required>
               </label>
               <button type="submit">Guardar producto</button>
             </form>
@@ -149,8 +149,9 @@
                   <th>Inventario</th>
                   <th>Venta</th>
                   <th>Stock</th>
-                  <th>Costo oro</th>
-                  <th>Venta oro</th>
+                  <th>Costo R$</th>
+                  <th>Venta R$</th>
+                  <th>Equivalente oro (4 tasas)</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -209,7 +210,7 @@
               <label>Cliente
                 <input name="cliente" value="Mostrador">
               </label>
-              <label>Tasa a aplicar
+              <label>Tasa de conversion
                 <select name="tasa_cambio_id" id="venta-tasa" required></select>
               </label>
               <label>Tipo de pago
@@ -217,6 +218,15 @@
                   <option value="oro">Oro</option>
                   <option value="reales">Reales</option>
                   <option value="mixto">Mixto</option>
+                </select>
+              </label>
+              <label id="venta-tipo-oro-wrap">Tipo de oro
+                <select name="tipo_oro" id="venta-tipo-oro">
+                  <option value="">Seleccione tipo de oro...</option>
+                  <option value="araparita">Araparita</option>
+                  <option value="uruman">Uruman</option>
+                  <option value="santa_elena_minero">Santa Elena Minero</option>
+                  <option value="santa_elena_fundido">Santa Elena Fundido</option>
                 </select>
               </label>
               <label>Monto recibido (oro)
@@ -242,6 +252,7 @@
                   <th>Total oro</th>
                   <th>Total reales</th>
                   <th>Tasa</th>
+                  <th>Tipo oro</th>
                   <th>Pago</th>
                 </tr>
               </thead>
@@ -521,6 +532,25 @@
             </div>
           </article>
         </div>
+
+        <article class="card">
+          <h3>Equivalente de productos en oro (4 tasas)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Venta R$</th>
+                  <th>Araparita</th>
+                  <th>Uruman</th>
+                  <th>StaE Min</th>
+                  <th>StaE Fun</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-tasas-productos"></tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <section class="panel" id="panel-reportes">

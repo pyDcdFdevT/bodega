@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import Categoria, MovimientoInventario, Producto
 from schemas import ProductoCreate, ProductoUpdate
+from services.calculos import CalculosMonetarios
 
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
@@ -30,6 +31,7 @@ def serializar_producto(producto: Producto) -> dict:
         "stock_minimo": producto.stock_minimo,
         "precio_costo_oro": producto.precio_costo_oro,
         "precio_costo_reales": producto.precio_costo_reales,
+        "precio_venta_reales": producto.precio_venta_reales,
         "precio_venta_oro": producto.precio_venta_oro,
         "activo": producto.activo,
         "estado_stock": estado_stock,
@@ -103,6 +105,15 @@ def obtener_producto(producto_id: int, db: Session = Depends(get_db)):
 @router.post("")
 def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
     try:
+        CalculosMonetarios.listar_tasas(db)
+        tasa_referencia = CalculosMonetarios.obtener_tasa_por_nombre(db, "araparita")
+        if not tasa_referencia or tasa_referencia.tasa_reales <= 0:
+            raise ValueError("La tasa de referencia araparita no esta disponible")
+        precio_venta_oro = CalculosMonetarios.reales_a_oro(
+            producto.precio_venta_reales,
+            db,
+            tasa=tasa_referencia,
+        )
         categoria = obtener_o_crear_categoria(db, producto.categoria_nombre)
         duplicado = (
             db.query(Producto)
@@ -123,7 +134,8 @@ def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
             unidad_venta=producto.unidad_venta,
             stock_actual=producto.stock_actual,
             stock_minimo=producto.stock_minimo,
-            precio_venta_oro=producto.precio_venta_oro,
+            precio_venta_reales=producto.precio_venta_reales,
+            precio_venta_oro=precio_venta_oro,
         )
         db.add(nuevo)
         db.flush()
@@ -175,8 +187,17 @@ def actualizar_producto(producto_id: int, data: ProductoUpdate, db: Session = De
             producto.unidad_venta = data.unidad_venta
         if data.stock_minimo is not None:
             producto.stock_minimo = data.stock_minimo
-        if data.precio_venta_oro is not None:
-            producto.precio_venta_oro = data.precio_venta_oro
+        if data.precio_venta_reales is not None:
+            CalculosMonetarios.listar_tasas(db)
+            tasa_referencia = CalculosMonetarios.obtener_tasa_por_nombre(db, "araparita")
+            if not tasa_referencia or tasa_referencia.tasa_reales <= 0:
+                raise ValueError("La tasa de referencia araparita no esta disponible")
+            producto.precio_venta_reales = data.precio_venta_reales
+            producto.precio_venta_oro = CalculosMonetarios.reales_a_oro(
+                data.precio_venta_reales,
+                db,
+                tasa=tasa_referencia,
+            )
         if data.activo is not None:
             producto.activo = data.activo
 

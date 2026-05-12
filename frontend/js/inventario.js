@@ -1,11 +1,12 @@
 import { api, formatMoney, renderEmptyRow, setOptions, showToast } from "./api.js";
+import { RATE_ORDER, getRateLabel, getTasasCache } from "./tasas.js";
 
 let productosCache = [];
 
 function renderProductos(items) {
   const tbody = document.getElementById("tabla-productos");
   if (!items.length) {
-    tbody.innerHTML = renderEmptyRow(9, "No hay productos para mostrar.");
+    tbody.innerHTML = renderEmptyRow(10, "No hay productos para mostrar.");
     return;
   }
 
@@ -18,8 +19,9 @@ function renderProductos(items) {
           <td>${producto.presentacion}</td>
           <td>${producto.unidad_venta}</td>
           <td>${producto.stock_actual}</td>
-          <td>${formatMoney(producto.precio_costo_oro)}</td>
-          <td>${formatMoney(producto.precio_venta_oro)}</td>
+          <td>${formatMoney(producto.precio_costo_reales, "reales")}</td>
+          <td>${formatMoney(producto.precio_venta_reales, "reales")}</td>
+          <td>${renderEquivalenteOro(producto)}</td>
           <td><span class="estado ${producto.estado_stock}">${producto.estado_stock}</span></td>
           <td class="acciones">
             <button type="button" onclick="editarProducto(${producto.id})">✏️</button>
@@ -29,6 +31,29 @@ function renderProductos(items) {
       `
     )
     .join("");
+}
+
+function renderEquivalenteOro(producto) {
+  const tasas = getTasasCache();
+  if (!tasas.length || !producto.precio_venta_reales) {
+    return "<span>-</span>";
+  }
+
+  const filas = RATE_ORDER.map((nombre) => {
+    const tasa = tasas.find((item) => item.nombre === nombre);
+    if (!tasa || !tasa.tasa_reales) {
+      return "";
+    }
+    const oro = (Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(3);
+    return `<div>${getRateLabel(nombre)}: ${oro}g</div>`;
+  }).join("");
+
+  return `
+    <details>
+      <summary>Ver en oro</summary>
+      ${filas}
+    </details>
+  `;
 }
 
 function renderStockBajo(items) {
@@ -78,7 +103,7 @@ function restaurarFormularioProducto() {
   form.unidad_venta.value = "unidad";
   form.stock_actual.value = "0";
   form.stock_minimo.value = "5";
-  form.precio_venta_oro.value = "0";
+  form.precio_venta_reales.value = "0.00";
   submitButton.textContent = "Guardar producto";
 }
 
@@ -90,7 +115,7 @@ export async function loadProductoOptions(selectIds) {
       setOptions(
         select,
         productos.filter((producto) => producto.activo),
-        (producto) => `${producto.nombre} | stock ${producto.stock_actual} | ${formatMoney(producto.precio_venta_oro)}`
+        (producto) => `${producto.nombre} | stock ${producto.stock_actual} | ${formatMoney(producto.precio_venta_reales, "reales")}`
       );
     }
   });
@@ -112,7 +137,7 @@ function editarProducto(id) {
   form.unidad_venta.value = producto.unidad_venta;
   form.stock_actual.value = producto.stock_actual;
   form.stock_minimo.value = producto.stock_minimo;
-  form.precio_venta_oro.value = producto.precio_venta_oro;
+  form.precio_venta_reales.value = producto.precio_venta_reales;
   form.dataset.id = String(producto.id);
   submitButton.textContent = "Actualizar producto";
   form.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -147,7 +172,7 @@ export function initInventario() {
     const payload = Object.fromEntries(formData.entries());
     payload.stock_actual = Number(payload.stock_actual);
     payload.stock_minimo = Number(payload.stock_minimo);
-    payload.precio_venta_oro = Number(payload.precio_venta_oro);
+    payload.precio_venta_reales = Number(payload.precio_venta_reales);
 
     try {
       if (form.dataset.id) {

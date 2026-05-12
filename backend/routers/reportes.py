@@ -24,6 +24,12 @@ def dashboard(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
+    valor_stock_reales = (
+        db.query(func.coalesce(func.sum(Producto.stock_actual * Producto.precio_costo_reales), 0))
+        .filter(Producto.activo.is_(True))
+        .scalar()
+        or 0
+    )
     valor_stock_oro = (
         db.query(func.coalesce(func.sum(Producto.stock_actual * Producto.precio_costo_oro), 0))
         .filter(Producto.activo.is_(True))
@@ -40,6 +46,37 @@ def dashboard(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
+    ventas_hoy_reales = (
+        db.query(func.coalesce(func.sum(Venta.total_reales), 0))
+        .filter(Venta.fecha >= inicio_hoy)
+        .scalar()
+        or 0
+    )
+    oro_araparita = (
+        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "araparita")
+        .scalar()
+        or 0
+    )
+    oro_uruman = (
+        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "uruman")
+        .scalar()
+        or 0
+    )
+    oro_santa_elena_minero = (
+        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "santa_elena_minero")
+        .scalar()
+        or 0
+    )
+    oro_santa_elena_fundido = (
+        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "santa_elena_fundido")
+        .scalar()
+        or 0
+    )
+    oro_total = oro_araparita + oro_uruman + oro_santa_elena_minero + oro_santa_elena_fundido
     ganancia_neta = round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro, 3)
 
     return {
@@ -47,13 +84,20 @@ def dashboard(db: Session = Depends(get_db)):
         "inventario": {
             "productos_activos": total_productos,
             "stock_bajo": stock_bajo,
+            "valor_stock_reales": round(valor_stock_reales, 2),
             "valor_stock_oro": round(valor_stock_oro, 3),
         },
         "operaciones_hoy": {
             "ventas_oro": round(ventas_hoy_oro, 3),
+            "ventas_reales": round(ventas_hoy_reales, 2),
             "compras_oro": round(compras_hoy_oro, 3),
             "salidas_oro": round(salidas_hoy_oro, 3),
             "gasolina_oro": round(gasolina_hoy_oro, 3),
+            "oro_araparita": round(oro_araparita, 3),
+            "oro_uruman": round(oro_uruman, 3),
+            "oro_santa_elena_minero": round(oro_santa_elena_minero, 3),
+            "oro_santa_elena_fundido": round(oro_santa_elena_fundido, 3),
+            "oro_total": round(oro_total, 3),
             "ganancia_neta": ganancia_neta,
         },
         "gasolina": {

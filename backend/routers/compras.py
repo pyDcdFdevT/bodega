@@ -33,6 +33,7 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
         producto.precio_costo_reales = costo_unitario_reales
         if producto.precio_venta_oro <= 0:
             producto.precio_venta_oro = precio_sugerido
+            producto.precio_venta_reales = CalculosMonetarios.oro_a_reales(precio_sugerido, db, tasa=tasa)
 
         nueva = Compra(
             proveedor=compra.proveedor,

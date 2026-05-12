@@ -99,6 +99,36 @@ export async function loadTasas() {
     }
   }
 
+  const tablaProductos = document.getElementById("tabla-tasas-productos");
+  if (tablaProductos) {
+    const productos = await api.get("/productos");
+    if (!productos.length) {
+      tablaProductos.innerHTML = renderEmptyRow(6, "No hay productos para calcular equivalencias.");
+    } else {
+      tablaProductos.innerHTML = productos
+        .map((producto) => {
+          const equivalentes = RATE_ORDER.map((nombre) => {
+            const tasa = findTasaByNombre(nombre);
+            if (!tasa || !tasa.tasa_reales) {
+              return "-";
+            }
+            return `${(Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(3)}g`;
+          });
+          return `
+            <tr>
+              <td>${producto.nombre}</td>
+              <td>R$ ${Number(producto.precio_venta_reales || 0).toFixed(2)}</td>
+              <td>${equivalentes[0]}</td>
+              <td>${equivalentes[1]}</td>
+              <td>${equivalentes[2]}</td>
+              <td>${equivalentes[3]}</td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+  }
+
   return tasasCache;
 }
 

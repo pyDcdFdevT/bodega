@@ -8,7 +8,7 @@ def test_crear_producto_con_categoria_automatica(client):
             "unidad_venta": "unidad",
             "stock_actual": 24,
             "stock_minimo": 4,
-            "precio_venta_oro": 0.74,
+            "precio_venta_reales": 27.38,
         },
     )
 
@@ -27,7 +27,7 @@ def test_crear_producto_duplicado_devuelve_error_y_no_duplica(client):
         "unidad_venta": "unidad",
         "stock_actual": 12,
         "stock_minimo": 2,
-        "precio_venta_oro": 0.61,
+        "precio_venta_reales": 22.57,
     }
 
     first = client.post("/api/productos", json=payload)

@@ -46,6 +46,7 @@ class Producto(Base):
         CheckConstraint("stock_minimo >= 0", name="ck_producto_stock_minimo"),
         CheckConstraint("precio_costo_oro >= 0", name="ck_producto_precio_costo_oro"),
         CheckConstraint("precio_costo_reales >= 0", name="ck_producto_precio_costo_reales"),
+        CheckConstraint("precio_venta_reales >= 0", name="ck_producto_precio_venta_reales"),
         CheckConstraint("precio_venta_oro >= 0", name="ck_producto_precio_venta_oro"),
     )
 
@@ -58,6 +59,7 @@ class Producto(Base):
     stock_minimo = Column(Float, default=5, nullable=False)
     precio_costo_oro = Column(Float, default=0, nullable=False)
     precio_costo_reales = Column(Float, default=0, nullable=False)
+    precio_venta_reales = Column(Float, default=0, nullable=False)
     precio_venta_oro = Column(Float, default=0, nullable=False)
     activo = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -117,6 +119,7 @@ class Venta(Base):
     tipo_pago = Column(String(20), nullable=False)
     monto_recibido_oro = Column(Float, default=0, nullable=False)
     monto_recibido_reales = Column(Float, default=0, nullable=False)
+    tipo_oro = Column(String(50), nullable=True)
     vuelto_oro = Column(Float, default=0, nullable=False)
     vuelto_reales = Column(Float, default=0, nullable=False)
     tasa_cambio_id = Column(Integer, ForeignKey("tasas_cambio.id"), nullable=False)

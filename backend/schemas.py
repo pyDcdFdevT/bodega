@@ -69,7 +69,7 @@ class ProductoCreate(BaseModel):
     unidad_venta: str = Field(default="unidad", min_length=2, max_length=20)
     stock_actual: float = Field(default=0, ge=0)
     stock_minimo: float = Field(default=5, ge=0)
-    precio_venta_oro: float = Field(..., ge=0)
+    precio_venta_reales: float = Field(..., ge=0)
 
     _nombre = field_validator("nombre")(_texto_requerido)
     _categoria = field_validator("categoria_nombre")(_texto_requerido)
@@ -84,7 +84,7 @@ class ProductoUpdate(BaseModel):
     unidad_venta: Optional[str] = Field(default=None, min_length=2, max_length=20)
     stock_actual: Optional[float] = Field(default=None, ge=0)
     stock_minimo: Optional[float] = Field(default=None, ge=0)
-    precio_venta_oro: Optional[float] = Field(default=None, ge=0)
+    precio_venta_reales: Optional[float] = Field(default=None, ge=0)
     activo: Optional[bool] = None
 
     @field_validator("nombre", "categoria_nombre")
@@ -111,12 +111,20 @@ class VentaCreate(BaseModel):
     items: List[ItemVenta] = Field(..., min_length=1)
     tasa_cambio_id: int = Field(..., gt=0)
     tipo_pago: str = Field(..., min_length=3, max_length=20)
+    tipo_oro: Optional[str] = Field(default=None, max_length=50)
     cliente: str = Field(default="Mostrador", max_length=100)
     monto_recibido_oro: float = Field(default=0, ge=0)
     monto_recibido_reales: float = Field(default=0, ge=0)
 
     _tipo_pago = field_validator("tipo_pago")(_texto_requerido)
     _cliente = field_validator("cliente")(_texto_requerido)
+
+    @field_validator("tipo_oro")
+    @classmethod
+    def limpiar_tipo_oro(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return valor
+        return _texto_requerido(valor).lower()
 
 
 class CompraCreate(BaseModel):

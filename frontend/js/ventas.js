@@ -1,6 +1,6 @@
 import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
 import { getProductosCache, loadProductoOptions } from "./inventario.js";
-import { ensureTasas, fillTasaSelect, findTasaById, getRateLabel } from "./tasas.js";
+import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel } from "./tasas.js";
 
 const carrito = [];
 
@@ -10,6 +10,15 @@ function obtenerTasaSeleccionada() {
     return null;
   }
   return findTasaById(tasaId) || null;
+}
+
+function actualizarVisibilidadTipoOro() {
+  const tipoPago = document.getElementById("venta-tipo-pago").value;
+  const wrap = document.getElementById("venta-tipo-oro-wrap");
+  if (!wrap) {
+    return;
+  }
+  wrap.style.display = tipoPago === "oro" ? "grid" : "none";
 }
 
 function calcularTotales() {
@@ -80,7 +89,7 @@ export async function loadVentas() {
 
   const tbody = document.getElementById("tabla-ventas");
   if (!ventas.length) {
-    tbody.innerHTML = renderEmptyRow(7, "No hay ventas registradas.");
+    tbody.innerHTML = renderEmptyRow(8, "No hay ventas registradas.");
   } else {
     tbody.innerHTML = ventas
       .map(
@@ -92,6 +101,7 @@ export async function loadVentas() {
             <td>${formatMoney(venta.total_oro)}</td>
             <td>${formatMoney(venta.total_reales, "reales")}</td>
             <td>${getRateLabel(venta.tasa_nombre)}</td>
+            <td>${venta.tipo_oro ? getRateLabel(venta.tipo_oro) : "-"}</td>
             <td>${venta.tipo_pago}</td>
           </tr>
         `
@@ -106,6 +116,8 @@ export function initVentas() {
   const formCarrito = document.getElementById("form-carrito");
   const formVenta = document.getElementById("form-venta");
   const tasaSelect = document.getElementById("venta-tasa");
+  const tipoPagoSelect = document.getElementById("venta-tipo-pago");
+  const tipoOroSelect = document.getElementById("venta-tipo-oro");
 
   formCarrito.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -128,6 +140,15 @@ export function initVentas() {
   });
 
   tasaSelect.addEventListener("change", renderCarrito);
+  tipoPagoSelect.addEventListener("change", actualizarVisibilidadTipoOro);
+  tipoOroSelect.addEventListener("change", () => {
+    const tasa = findTasaByNombre(tipoOroSelect.value);
+    if (tasa) {
+      tasaSelect.value = String(tasa.id);
+      renderCarrito();
+    }
+  });
+  actualizarVisibilidadTipoOro();
 
   formVenta.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -151,9 +172,15 @@ export function initVentas() {
       cliente: formData.get("cliente"),
       tasa_cambio_id: tasaId,
       tipo_pago: formData.get("tipo_pago"),
+      tipo_oro: formData.get("tipo_oro") || null,
       monto_recibido_oro: Number(formData.get("monto_recibido_oro")),
       monto_recibido_reales: Number(formData.get("monto_recibido_reales")),
     };
+
+    if (payload.tipo_pago === "oro" && !payload.tipo_oro) {
+      showToast("Selecciona el tipo de oro para el cobro", "error");
+      return;
+    }
 
     try {
       const response = await api.post("/ventas", payload);
@@ -161,8 +188,10 @@ export function initVentas() {
       formVenta.reset();
       formVenta.cliente.value = "Mostrador";
       formVenta.tipo_pago.value = "oro";
+      formVenta.tipo_oro.value = "";
       formVenta.monto_recibido_oro.value = "0.000";
       formVenta.monto_recibido_reales.value = "0.00";
+      actualizarVisibilidadTipoOro();
       fillTasaSelect("venta-tasa");
       renderCarrito();
       showToast(`Venta #${response.data.venta_id} registrada`, "success");
