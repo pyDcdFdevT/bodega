@@ -44,24 +44,54 @@ def get_db():
 
 
 def apply_schema_patches() -> None:
-    """Agrega columnas nuevas en SQLite sin migraciones Alembic."""
-    if engine.dialect.name != "sqlite":
-        return
+    """Migraciones ligeras tras create_all (columnas/tablas que faltan en bases ya existentes)."""
     from sqlalchemy import inspect, text
 
-    insp = inspect(engine)
-    if not insp.has_table("ventas_gasolina"):
+    dialect = engine.dialect.name
+
+    if dialect == "postgresql":
+        insp = inspect(engine)
+        if not insp.has_table("ventas_gasolina"):
+            return
+        alters = [
+            "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)",
+            "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS unidad_precio_venta VARCHAR(20) DEFAULT 'oro_litro'",
+            "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS precio_litro_venta FLOAT DEFAULT 0",
+        ]
+        create_reposiciones = """
+CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
+    id SERIAL PRIMARY KEY,
+    gasolina_id INTEGER REFERENCES gasolina(id),
+    litros FLOAT NOT NULL DEFAULT 0,
+    precio_reales_litro FLOAT NOT NULL DEFAULT 0,
+    total_reales FLOAT NOT NULL DEFAULT 0,
+    total_oro FLOAT NOT NULL DEFAULT 0,
+    tasa_cambio_id INTEGER REFERENCES tasas_cambio(id),
+    fecha TIMESTAMP DEFAULT NOW()
+);
+"""
+        with engine.begin() as conn:
+            for sql in alters:
+                conn.execute(text(sql))
+            conn.execute(text(create_reposiciones))
         return
-    existing = {c["name"] for c in insp.get_columns("ventas_gasolina")}
-    stmts: list[str] = []
-    if "tipo_oro" not in existing:
-        stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN tipo_oro VARCHAR(50)")
-    if "unidad_precio_venta" not in existing:
-        stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN unidad_precio_venta VARCHAR(20) DEFAULT 'oro_litro'")
-    if "precio_litro_venta" not in existing:
-        stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN precio_litro_venta REAL DEFAULT 0")
-    if not stmts:
+
+    if dialect == "sqlite":
+        insp = inspect(engine)
+        if not insp.has_table("ventas_gasolina"):
+            return
+        with engine.begin() as conn:
+            result = conn.execute(text("PRAGMA table_info(ventas_gasolina)"))
+            existing = {row[1] for row in result}
+            stmts: list[str] = []
+            if "tipo_oro" not in existing:
+                stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN tipo_oro VARCHAR(50)")
+            if "unidad_precio_venta" not in existing:
+                stmts.append(
+                    "ALTER TABLE ventas_gasolina ADD COLUMN unidad_precio_venta VARCHAR(20) DEFAULT 'oro_litro'"
+                )
+            if "precio_litro_venta" not in existing:
+                stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN precio_litro_venta REAL DEFAULT 0")
+            for sql in stmts:
+                conn.execute(text(sql))
         return
-    with engine.begin() as conn:
-        for sql in stmts:
-            conn.execute(text(sql))
