@@ -24,8 +24,8 @@ function renderProductos(items) {
           <td>${renderEquivalenteOro(producto)}</td>
           <td><span class="estado ${producto.estado_stock}">${producto.estado_stock}</span></td>
           <td class="acciones">
-            <button type="button" onclick="editarProducto(${producto.id})">✏️</button>
-            <button type="button" onclick="eliminarProducto(${producto.id}, ${JSON.stringify(producto.nombre)})">🗑️</button>
+            <button type="button" onclick="window.editarProducto(${producto.id})">✏️</button>
+            <button type="button" onclick="window.eliminarProducto(${producto.id})">🗑️</button>
           </td>
         </tr>
       `
@@ -143,7 +143,9 @@ function editarProducto(id) {
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-async function eliminarProducto(id, nombre) {
+async function eliminarProducto(id) {
+  const producto = productosCache.find((item) => item.id === id);
+  const nombre = producto?.nombre || "este producto";
   const confirmado = window.confirm(`¿Deseas eliminar el producto "${nombre}"?`);
   if (!confirmado) {
     return;
