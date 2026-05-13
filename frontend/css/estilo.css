@@ -446,6 +446,11 @@ summary.accordion-cat-summary::-webkit-details-marker {
   color: var(--ink-soft);
 }
 
+.pos-card strong {
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
 .pos-cart.card {
   position: sticky;
   top: 12px;
