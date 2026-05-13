@@ -146,14 +146,36 @@ class CompraUpdate(BaseModel):
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
 
+def _unidad_precio_gasolina(valor: str) -> str:
+    n = _texto_requerido(valor).lower()
+    if n not in ("reales_litro", "oro_litro"):
+        raise ValueError("Unidad de precio invalida (use reales_litro u oro_litro)")
+    return n
+
+
 class GasolinaVenta(BaseModel):
     litros: float = Field(..., gt=0)
-    tasa_cambio_id: int = Field(..., gt=0)
+    unidad_precio: str = Field(..., min_length=10, max_length=20)
+    precio_por_litro: float = Field(..., gt=0)
     tipo_pago: str = Field(default="oro", min_length=3, max_length=20)
+    tipo_oro: Optional[str] = Field(default=None, max_length=50)
     monto_recibido_oro: float = Field(default=0, ge=0)
     monto_recibido_reales: float = Field(default=0, ge=0)
 
     _tipo_pago = field_validator("tipo_pago")(_texto_requerido)
+    _unidad_precio = field_validator("unidad_precio")(_unidad_precio_gasolina)
+
+    @field_validator("tipo_oro")
+    @classmethod
+    def limpiar_tipo_oro_gasolina(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return valor
+        return _texto_requerido(valor).lower()
+
+
+class GasolinaReposicionCreate(BaseModel):
+    litros: float = Field(..., gt=0)
+    precio_reales_litro: float = Field(..., gt=0)
 
 
 class GasolinaConfigUpdate(BaseModel):

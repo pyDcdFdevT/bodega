@@ -86,6 +86,7 @@ class TasaCambio(Base):
 
     ventas = relationship("Venta", back_populates="tasa_cambio")
     ventas_gasolina = relationship("VentaGasolina", back_populates="tasa_cambio")
+    reposiciones_gasolina = relationship("GasolinaReposicion", back_populates="tasa_cambio")
 
 
 class LogTasaCambio(Base):
@@ -203,6 +204,29 @@ class Gasolina(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     ventas = relationship("VentaGasolina", back_populates="gasolina")
+    reposiciones = relationship("GasolinaReposicion", back_populates="gasolina")
+
+
+class GasolinaReposicion(Base):
+    __tablename__ = "gasolina_reposiciones"
+    __table_args__ = (
+        CheckConstraint("litros > 0", name="ck_gasolina_repo_litros"),
+        CheckConstraint("precio_reales_litro > 0", name="ck_gasolina_repo_precio_litro"),
+        CheckConstraint("total_reales >= 0", name="ck_gasolina_repo_total_reales"),
+        CheckConstraint("total_oro >= 0", name="ck_gasolina_repo_total_oro"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    gasolina_id = Column(Integer, ForeignKey("gasolina.id"), nullable=False, index=True)
+    litros = Column(Float, nullable=False)
+    precio_reales_litro = Column(Float, nullable=False)
+    total_reales = Column(Float, nullable=False)
+    total_oro = Column(Float, nullable=False)
+    tasa_cambio_id = Column(Integer, ForeignKey("tasas_cambio.id"), nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    gasolina = relationship("Gasolina", back_populates="reposiciones")
+    tasa_cambio = relationship("TasaCambio", back_populates="reposiciones_gasolina")
 
 
 class VentaGasolina(Base):
@@ -211,6 +235,10 @@ class VentaGasolina(Base):
         CheckConstraint("litros > 0", name="ck_venta_gasolina_litros"),
         CheckConstraint("total_oro >= 0", name="ck_venta_gasolina_total_oro"),
         CheckConstraint("total_reales >= 0", name="ck_venta_gasolina_total_reales"),
+        CheckConstraint(
+            "unidad_precio_venta IN ('reales_litro','oro_litro')",
+            name="ck_venta_gasolina_unidad_precio",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -221,6 +249,9 @@ class VentaGasolina(Base):
     total_oro = Column(Float, nullable=False)
     total_reales = Column(Float, nullable=False)
     tipo_pago = Column(String(20), nullable=False)
+    tipo_oro = Column(String(50), nullable=True)
+    unidad_precio_venta = Column(String(20), default="oro_litro", nullable=False)
+    precio_litro_venta = Column(Float, default=0, nullable=False)
     monto_recibido_oro = Column(Float, default=0, nullable=False)
     monto_recibido_reales = Column(Float, default=0, nullable=False)
     vuelto_oro = Column(Float, default=0, nullable=False)

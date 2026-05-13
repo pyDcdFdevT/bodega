@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from database import Base, engine
+from database import Base, apply_schema_patches, engine
 from init_data import inicializar_datos
 from routers import auth, categorias, compras, compras_oro, gasolina, productos, reportes, salidas, tasas, ventas
 
@@ -20,6 +20,7 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    apply_schema_patches()
     if os.getenv("BODEGA_AUTO_INIT", "1") == "1":
         inicializar_datos()
     yield

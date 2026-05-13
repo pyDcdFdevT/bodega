@@ -388,7 +388,7 @@
               <label>Litros disponibles
                 <input name="litros_disponibles" type="number" min="0" step="0.001">
               </label>
-              <label>Precio por litro (oro en gramos)
+              <label>Precio referencia por litro (oro, g) — sugerencia al vender en oro
                 <input name="precio_por_litro_oro" type="number" min="0" step="0.001">
               </label>
               <button type="submit">Guardar configuracion</button>
@@ -396,33 +396,83 @@
           </article>
 
           <article class="card">
-            <h3>Venta de gasolina</h3>
-            <form id="form-gasolina-venta" class="stack-form">
-              <label>Litros
+            <h3>Reponer gasolina</h3>
+            <form id="form-gasolina-reponer" class="stack-form">
+              <label>Litros comprados
                 <input name="litros" type="number" min="0.001" step="0.001" required>
               </label>
-              <label>Tasa a aplicar
-                <select name="tasa_cambio_id" id="gasolina-tasa" required></select>
+              <label>Precio por litro (R$)
+                <input name="precio_reales_litro" type="number" min="0.01" step="0.01" required>
               </label>
-              <label>Tipo de pago
-                <select name="tipo_pago">
-                  <option value="oro">Oro</option>
-                  <option value="reales">Reales</option>
-                  <option value="mixto">Mixto</option>
-                </select>
+              <label>Total en reales (calculado)
+                <input id="gasolina-repo-total-reales" type="text" readonly value="0.00">
               </label>
-              <label>Monto recibido (oro)
-                <input name="monto_recibido_oro" type="number" min="0" step="0.001" value="0.000">
+              <label>Total en oro — tasa Araparita (calculado)
+                <input id="gasolina-repo-total-oro" type="text" readonly value="0.000">
               </label>
-              <label>Monto recibido (reales)
-                <input name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
-              </label>
-              <button type="submit">Registrar venta</button>
+              <button type="submit">Registrar reposicion</button>
             </form>
-
-            <div class="pill-grid" id="gasolina-resumen"></div>
           </article>
         </div>
+
+        <article class="card">
+          <h3>Venta de gasolina</h3>
+          <form id="form-gasolina-venta" class="stack-form">
+            <label>Litros
+              <input name="litros" id="gasolina-venta-litros" type="number" min="0.001" step="0.001" required>
+            </label>
+            <label>Vender en
+              <select name="unidad_precio" id="gasolina-unidad-precio">
+                <option value="oro_litro" selected>Gramos de oro por litro</option>
+                <option value="reales_litro">Reales por litro</option>
+              </select>
+            </label>
+            <label>
+              <span id="gasolina-precio-litro-leyenda">Precio por litro (gramos oro)</span>
+              <input name="precio_por_litro" id="gasolina-precio-litro" type="number" min="0.001" step="0.001" required>
+            </label>
+            <div class="pill-grid" id="gasolina-totales-preview" style="margin: 0.5rem 0;">
+              <article class="metric-pill"><span>Total oro (g)</span><strong id="gasolina-preview-oro">0.000</strong></article>
+              <article class="metric-pill"><span>Total reales</span><strong id="gasolina-preview-reales">R$ 0.00</strong></article>
+            </div>
+            <label>Tipo de pago
+              <select name="tipo_pago" id="gasolina-tipo-pago">
+                <option value="oro">Oro</option>
+                <option value="reales">Reales</option>
+                <option value="mixto">Mixto</option>
+              </select>
+            </label>
+            <div id="gasolina-tasa-wrap" class="stack-form" style="display: grid;">
+              <label>Tasa (conversion / tipo de oro)
+                <select id="gasolina-tasa"></select>
+              </label>
+            </div>
+            <div id="gasolina-tipo-oro-wrap" class="stack-form" style="display: grid;">
+              <label>Tipo de oro
+                <select id="gasolina-tipo-oro">
+                  <option value="">Seleccione...</option>
+                  <option value="araparita">Araparita</option>
+                  <option value="uruman">Uruman</option>
+                  <option value="santa_elena_minero">Santa Elena Minero</option>
+                  <option value="santa_elena_fundido">Santa Elena Fundido</option>
+                </select>
+              </label>
+            </div>
+            <div id="gasolina-monto-oro-wrap" class="stack-form" style="display: grid;">
+              <label>Monto recibido (oro, g)
+                <input name="monto_recibido_oro" id="gasolina-monto-oro" type="number" min="0" step="0.001" value="0.000">
+              </label>
+            </div>
+            <div id="gasolina-monto-reales-wrap" class="stack-form" style="display: grid;">
+              <label>Monto recibido (reales)
+                <input name="monto_recibido_reales" id="gasolina-monto-reales" type="number" min="0" step="0.01" value="0.00">
+              </label>
+            </div>
+            <button type="submit">Registrar venta</button>
+          </form>
+
+          <div class="pill-grid" id="gasolina-resumen"></div>
+        </article>
 
         <article class="card">
           <h3>Ventas recientes de gasolina</h3>
@@ -433,9 +483,12 @@
                   <th>ID</th>
                   <th>Fecha</th>
                   <th>Litros</th>
+                  <th>Unidad</th>
+                  <th>P/L</th>
                   <th>Total oro</th>
                   <th>Total reales</th>
                   <th>Tasa</th>
+                  <th>Oro</th>
                   <th>Pago</th>
                 </tr>
               </thead>
@@ -584,6 +637,11 @@
             <div id="reporte-compras-resumen" class="report-block"></div>
           </article>
         </div>
+
+        <article class="card">
+          <h3>Reporte gasolina (hoy)</h3>
+          <div id="reporte-gasolina-bloque" class="report-block"></div>
+        </article>
 
         <article class="card">
           <h3>Movimientos recientes</h3>

@@ -41,3 +41,27 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def apply_schema_patches() -> None:
+    """Agrega columnas nuevas en SQLite sin migraciones Alembic."""
+    if engine.dialect.name != "sqlite":
+        return
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    if not insp.has_table("ventas_gasolina"):
+        return
+    existing = {c["name"] for c in insp.get_columns("ventas_gasolina")}
+    stmts: list[str] = []
+    if "tipo_oro" not in existing:
+        stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN tipo_oro VARCHAR(50)")
+    if "unidad_precio_venta" not in existing:
+        stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN unidad_precio_venta VARCHAR(20) DEFAULT 'oro_litro'")
+    if "precio_litro_venta" not in existing:
+        stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN precio_litro_venta REAL DEFAULT 0")
+    if not stmts:
+        return
+    with engine.begin() as conn:
+        for sql in stmts:
+            conn.execute(text(sql))

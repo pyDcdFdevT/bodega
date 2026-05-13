@@ -1,5 +1,24 @@
 import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow } from "./api.js";
 
+function renderReporteGasolina(data) {
+  const target = document.getElementById("reporte-gasolina-bloque");
+  if (!target || !data) {
+    return;
+  }
+  const h = data.hoy || {};
+  target.innerHTML = `
+    <div class="report-item"><strong>Litros disponibles</strong>: ${Number(data.litros_disponibles || 0).toFixed(3)}</div>
+    <div class="report-item"><strong>Litros vendidos hoy</strong>: ${Number(h.litros_vendidos || 0).toFixed(3)}</div>
+    <div class="report-item"><strong>Litros repuestos hoy</strong>: ${Number(h.litros_repuestos || 0).toFixed(3)}</div>
+    <div class="report-item"><strong>Ventas hoy (oro)</strong>: ${formatMoney(h.total_ventas_oro)}</div>
+    <div class="report-item"><strong>Ventas hoy (reales)</strong>: ${formatMoney(h.total_ventas_reales, "reales")}</div>
+    <div class="report-item"><strong>Reposicion hoy (reales)</strong>: ${formatMoney(h.total_reposicion_reales, "reales")}</div>
+    <div class="report-item"><strong>Reposicion hoy (oro ref.)</strong>: ${formatMoney(h.total_reposicion_oro)}</div>
+    <div class="report-item"><strong>Ganancia hoy (reales)</strong>: ${formatMoney(h.ganancia_reales, "reales")}</div>
+    <div class="report-item"><strong>Ganancia hoy (oro)</strong>: ${formatMoney(h.ganancia_oro)}</div>
+  `;
+}
+
 function renderDashboard(data) {
   const container = document.getElementById("dashboard-cards");
   container.innerHTML = `
@@ -30,15 +49,17 @@ function renderResumen(targetId, data, title) {
 }
 
 export async function loadReportes() {
-  const [dashboard, ventas, compras, movimientos] = await Promise.all([
+  const [dashboard, ventas, compras, movimientos, gasolinaRep] = await Promise.all([
     api.get("/reportes/dashboard"),
     api.get("/reportes/ventas?dias=7"),
     api.get("/reportes/compras?dias=7"),
     api.get("/reportes/movimientos?limit=30"),
+    api.get("/reportes/gasolina"),
   ]);
   renderDashboard(dashboard);
   renderResumen("reporte-ventas-resumen", ventas, "Ventas en 7 dias");
   renderResumen("reporte-compras-resumen", compras, "Compras en 7 dias");
+  renderReporteGasolina(gasolinaRep);
   const tbody = document.getElementById("tabla-movimientos");
   if (!movimientos.length) {
     tbody.innerHTML = renderEmptyRow(8, "No hay movimientos recientes.");

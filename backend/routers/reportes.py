@@ -7,7 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Compra, Gasolina, LogTasaCambio, MovimientoInventario, Producto, Salida, Venta, VentaGasolina
+from models import Compra, Gasolina, GasolinaReposicion, LogTasaCambio, MovimientoInventario, Producto, Salida, Venta, VentaGasolina
 from routers.productos import serializar_producto
 
 
@@ -103,6 +103,49 @@ def dashboard(db: Session = Depends(get_db)):
         "gasolina": {
             "litros_disponibles": gasolina.litros_disponibles if gasolina else 0,
             "precio_por_litro_oro": gasolina.precio_por_litro_oro if gasolina else 0,
+        },
+    }
+
+
+@router.get("/gasolina")
+def reporte_gasolina(db: Session = Depends(get_db)):
+    inicio_hoy = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
+    gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
+    litros_disponibles = float(gasolina.litros_disponibles) if gasolina else 0.0
+
+    litros_vendidos_hoy = (
+        float(db.query(func.coalesce(func.sum(VentaGasolina.litros), 0)).filter(VentaGasolina.fecha >= inicio_hoy).scalar() or 0)
+    )
+    litros_repuestos_hoy = (
+        float(db.query(func.coalesce(func.sum(GasolinaReposicion.litros), 0)).filter(GasolinaReposicion.fecha >= inicio_hoy).scalar() or 0)
+    )
+    ventas_hoy_oro = (
+        float(db.query(func.coalesce(func.sum(VentaGasolina.total_oro), 0)).filter(VentaGasolina.fecha >= inicio_hoy).scalar() or 0)
+    )
+    ventas_hoy_reales = (
+        float(db.query(func.coalesce(func.sum(VentaGasolina.total_reales), 0)).filter(VentaGasolina.fecha >= inicio_hoy).scalar() or 0)
+    )
+    reposicion_hoy_reales = (
+        float(db.query(func.coalesce(func.sum(GasolinaReposicion.total_reales), 0)).filter(GasolinaReposicion.fecha >= inicio_hoy).scalar() or 0)
+    )
+    reposicion_hoy_oro = (
+        float(db.query(func.coalesce(func.sum(GasolinaReposicion.total_oro), 0)).filter(GasolinaReposicion.fecha >= inicio_hoy).scalar() or 0)
+    )
+    ganancia_reales = round(ventas_hoy_reales - reposicion_hoy_reales, 2)
+    ganancia_oro = round(ventas_hoy_oro - reposicion_hoy_oro, 3)
+
+    return {
+        "fecha": inicio_hoy.date().isoformat(),
+        "litros_disponibles": round(litros_disponibles, 3),
+        "hoy": {
+            "litros_vendidos": round(litros_vendidos_hoy, 3),
+            "litros_repuestos": round(litros_repuestos_hoy, 3),
+            "total_ventas_oro": round(ventas_hoy_oro, 3),
+            "total_ventas_reales": round(ventas_hoy_reales, 2),
+            "total_reposicion_reales": round(reposicion_hoy_reales, 2),
+            "total_reposicion_oro": round(reposicion_hoy_oro, 3),
+            "ganancia_reales": ganancia_reales,
+            "ganancia_oro": ganancia_oro,
         },
     }
 
