@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#17324d">
-  <title>Bodega | Inventario</title>
+  <title>Bodega POS 3.0</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/css/estilo.css">
 </head>
@@ -48,13 +48,13 @@
         Cerrar sesión
       </button>
       <div>
-        <p class="eyebrow">Sistema de inventario</p>
+        <p class="eyebrow">Bodega POS v3.0</p>
         <h1>Bodega Operativa</h1>
         <p class="hero-copy">
-          Control de inventario, ventas, compras, gasolina, tasas multipunto y compra de oro en una sola vista.
+          Inventario, ventas tipo POS, gasolina en reales por litro, gastos operativos, cierre diario y reportes unificados.
         </p>
       </div>
-      <div class="hero-stats" id="hero-stats">
+      <div class="hero-stats" id="hero-stats-wrap">
         <article class="stat-card">
           <span>Productos</span>
           <strong id="hero-productos">0</strong>
@@ -79,6 +79,8 @@
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
       <button class="tab solo-admin" data-target="panel-tasas">Tasas</button>
       <button class="tab solo-admin" data-target="panel-reportes">Reportes</button>
+      <button class="tab solo-admin" data-target="panel-gastos">Gastos</button>
+      <button class="tab solo-admin" data-target="panel-cierre">Cierre</button>
     </nav>
 
     <main class="layout">
@@ -86,84 +88,64 @@
         <div class="panel-header">
           <div>
             <p class="eyebrow">Inventario</p>
-            <h2>Productos y stock</h2>
+            <h2>Productos por categoria</h2>
           </div>
           <input id="inventario-busqueda" type="search" placeholder="Buscar producto...">
         </div>
 
-        <div class="grid two">
-          <article class="card">
-            <h3>Nuevo producto</h3>
-            <form id="form-producto" class="stack-form">
-              <label>Nombre
-                <input name="nombre" required>
-              </label>
-              <label>Categoria
-                <input name="categoria_nombre" required>
-              </label>
-              <label>Unidad de inventario (como se cuenta)
-                <select name="presentacion" required>
-                  <option value="unidad" selected>Unidad</option>
-                  <option value="kg">Kilogramo (kg)</option>
-                  <option value="litro">Litro</option>
-                </select>
-              </label>
-              <label>Unidad de venta (como se cobra)
-                <select name="unidad_venta" required>
-                  <option value="unidad" selected>Unidad</option>
-                  <option value="kg">Kilogramo (kg)</option>
-                  <option value="litro">Litro</option>
-                </select>
-              </label>
-              <label>Stock inicial
-                <input name="stock_actual" type="number" min="0" step="0.001" value="0" required>
-              </label>
-              <label>Stock minimo
-                <input name="stock_minimo" type="number" min="0" step="0.001" value="5" required>
-              </label>
-              <label>Precio venta (reales)
-                <input name="precio_venta_reales" type="number" min="0" step="0.01" value="0.00" required>
-              </label>
-              <button type="submit">Guardar producto</button>
-            </form>
-          </article>
-
-          <article class="card">
-            <h3>Stock bajo</h3>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Stock</th>
-                    <th>Minimo</th>
-                  </tr>
-                </thead>
-                <tbody id="tabla-stock-bajo"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
+        <article class="card">
+          <h3>Nuevo producto</h3>
+          <form id="form-producto" class="stack-form">
+            <label>Nombre
+              <input name="nombre" required>
+            </label>
+            <label>Categoria
+              <input name="categoria_nombre" required>
+            </label>
+            <label>Unidad de inventario (como se cuenta)
+              <select name="presentacion" required>
+                <option value="unidad" selected>Unidad</option>
+                <option value="kg">Kilogramo (kg)</option>
+                <option value="litro">Litro</option>
+              </select>
+            </label>
+            <label>Unidad de venta (como se cobra)
+              <select name="unidad_venta" required>
+                <option value="unidad" selected>Unidad</option>
+                <option value="kg">Kilogramo (kg)</option>
+                <option value="litro">Litro</option>
+              </select>
+            </label>
+            <label>Stock inicial
+              <input name="stock_actual" type="number" min="0" step="0.001" value="0" required>
+            </label>
+            <label>Stock minimo
+              <input name="stock_minimo" type="number" min="0" step="0.001" value="5" required>
+            </label>
+            <label>Precio venta (reales)
+              <input name="precio_venta_reales" type="number" min="0" step="0.01" value="0.00" required>
+            </label>
+            <button type="submit">Guardar producto</button>
+          </form>
+        </article>
 
         <article class="card">
-          <h3>Listado de productos</h3>
+          <h3>Listado por categoria</h3>
+          <div id="inventario-accordiones" class="accordion-root"></div>
+        </article>
+
+        <article class="card">
+          <h3>Stock bajo</h3>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th>Categoria</th>
-                  <th>Inventario</th>
-                  <th>Venta</th>
                   <th>Stock</th>
-                  <th>Costo R$</th>
-                  <th>Venta R$</th>
-                  <th>Equivalente oro (4 tasas)</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
+                  <th>Minimo</th>
                 </tr>
               </thead>
-              <tbody id="tabla-productos"></tbody>
+              <tbody id="tabla-stock-bajo"></tbody>
             </table>
           </div>
         </article>
@@ -172,84 +154,46 @@
       <section class="panel" id="panel-ventas">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Ventas</p>
-            <h2>Registro de ventas</h2>
+            <p class="eyebrow">POS</p>
+            <h2>Sistema Ventas</h2>
           </div>
           <div class="badge" id="ventas-resumen-hoy">0 ventas hoy</div>
         </div>
 
-        <div class="grid two">
-          <article class="card">
-            <h3>Agregar al carrito</h3>
-            <form id="form-carrito" class="stack-form">
-              <label>Producto
-                <select id="venta-producto" required></select>
+        <div class="pos-layout">
+          <div class="pos-main">
+            <div class="pos-toolbar">
+              <label class="pos-cat-label">Categoria
+                <select id="venta-filtro-categoria"></select>
               </label>
-              <label>Cantidad
-                <input id="venta-cantidad" type="number" min="0.001" step="0.001" value="1" required>
-              </label>
-              <button type="submit">Agregar</button>
-            </form>
-
+            </div>
+            <div id="pos-grid-productos" class="pos-grid"></div>
+          </div>
+          <aside class="pos-cart card">
+            <h3>Carrito</h3>
             <div class="table-wrap compact">
               <table>
                 <thead>
                   <tr>
                     <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Subtotal</th>
+                    <th>Cant.</th>
+                    <th>Subt.</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody id="tabla-carrito"></tbody>
               </table>
             </div>
-
             <div class="totals">
               <p>Total oro: <strong id="venta-total-oro">0.00</strong></p>
               <p>Total reales: <strong id="venta-total-reales">0.00</strong></p>
             </div>
-          </article>
-
-          <article class="card">
-            <h3>Cobro</h3>
-            <form id="form-venta" class="stack-form">
-              <label>Cliente
-                <input name="cliente" value="Mostrador">
-              </label>
-              <label id="venta-tasa-wrap">Tasa de conversion
-                <select name="tasa_cambio_id" id="venta-tasa"></select>
-              </label>
-              <label>Tipo de pago
-                <select name="tipo_pago" id="venta-tipo-pago">
-                  <option value="oro">Oro</option>
-                  <option value="reales">Reales</option>
-                  <option value="mixto">Mixto</option>
-                </select>
-              </label>
-              <label id="venta-tipo-oro-wrap">Tipo de oro
-                <select name="tipo_oro" id="venta-tipo-oro">
-                  <option value="">Seleccione tipo de oro...</option>
-                  <option value="araparita">Araparita</option>
-                  <option value="uruman">Uruman</option>
-                  <option value="santa_elena_minero">Santa Elena Minero</option>
-                  <option value="santa_elena_fundido">Santa Elena Fundido</option>
-                </select>
-              </label>
-              <label id="venta-monto-oro-wrap">Monto recibido (oro)
-                <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.01" value="0.00">
-              </label>
-              <label id="venta-monto-reales-wrap">Monto recibido (reales)
-                <input id="venta-input-monto-reales" name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
-              </label>
-              <p id="venta-mensaje-vuelto" style="margin:0;font-weight:600;color:#2d6a4f;min-height:1.35em;"></p>
-              <button type="submit">Registrar venta</button>
-            </form>
-          </article>
+            <button type="button" class="btn-cobrar" id="btn-pos-cobrar">Cobrar</button>
+          </aside>
         </div>
 
         <article class="card">
-          <h3>Ventas recientes</h3>
+          <h3>Historial de ventas</h3>
           <div class="table-wrap">
             <table>
               <thead>
@@ -274,8 +218,8 @@
       <section class="panel solo-admin" id="panel-compras">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Compras</p>
-            <h2>Ingreso de mercancia</h2>
+            <p class="eyebrow">Mercancia</p>
+            <h2>Sistema Compras</h2>
           </div>
         </div>
 
@@ -286,17 +230,17 @@
               <label>Producto
                 <select name="producto_id" id="compra-producto" required></select>
               </label>
-              <label>Cantidad (unidades, kg o litros segun el producto)
+              <label>Cantidad
                 <input name="cantidad" type="number" min="0.001" step="0.001" value="1" required>
               </label>
-              <label>Precio total (reales)
+              <label>Precio total (R$)
                 <input name="precio_reales" type="number" min="0.01" step="0.01" required>
               </label>
               <label>Proveedor
                 <input name="proveedor" value="Proveedor">
               </label>
               <label>Observaciones
-                <textarea name="observaciones" rows="3"></textarea>
+                <textarea name="observaciones" rows="2"></textarea>
               </label>
               <button type="submit" id="compra-submit-btn">Registrar compra</button>
             </form>
@@ -327,7 +271,7 @@
         <div class="panel-header">
           <div>
             <p class="eyebrow">Salidas</p>
-            <h2>Consumo y merma</h2>
+            <h2>Sistema Salidas</h2>
           </div>
         </div>
 
@@ -373,8 +317,8 @@
       <section class="panel" id="panel-gasolina">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Gasolina</p>
-            <h2>Control de combustible</h2>
+            <p class="eyebrow">Combustible</p>
+            <h2>Gasolina (precio base en R$/L)</h2>
           </div>
         </div>
 
@@ -388,8 +332,8 @@
               <label>Litros disponibles
                 <input name="litros_disponibles" type="number" min="0" step="0.001">
               </label>
-              <label>Precio referencia por litro (oro, g) — sugerencia al vender en oro
-                <input name="precio_por_litro_oro" type="number" min="0" step="0.01">
+              <label>Precio por litro (R$) — base de venta
+                <input name="precio_por_litro_reales" type="number" min="0" step="0.01">
               </label>
               <button type="submit">Guardar configuracion</button>
             </form>
@@ -417,22 +361,13 @@
 
         <article class="card">
           <h3>Venta de gasolina</h3>
+          <p class="muted small">Total R$ = litros x precio configurado. Si pagan en oro: total oro = total R$ / tasa.</p>
           <form id="form-gasolina-venta" class="stack-form">
             <label>Litros
               <input name="litros" id="gasolina-venta-litros" type="number" min="0.001" step="0.001" required>
             </label>
-            <label>Vender en
-              <select name="unidad_precio" id="gasolina-unidad-precio">
-                <option value="oro_litro" selected>Gramos de oro por litro</option>
-                <option value="reales_litro">Reales por litro</option>
-              </select>
-            </label>
-            <label>
-              <span id="gasolina-precio-litro-leyenda">Precio por litro (gramos oro)</span>
-              <input name="precio_por_litro" id="gasolina-precio-litro" type="number" min="0.01" step="0.01" required>
-            </label>
             <div class="pill-grid" id="gasolina-totales-preview" style="margin: 0.5rem 0;">
-              <article class="metric-pill"><span>Total oro (g)</span><strong id="gasolina-preview-oro">0.00</strong></article>
+              <article class="metric-pill"><span>Total oro (g, ref.)</span><strong id="gasolina-preview-oro">0.00</strong></article>
               <article class="metric-pill"><span>Total reales</span><strong id="gasolina-preview-reales">R$ 0.00</strong></article>
             </div>
             <label>Tipo de pago
@@ -484,7 +419,7 @@
                   <th>Fecha</th>
                   <th>Litros</th>
                   <th>Unidad</th>
-                  <th>P/L</th>
+                  <th>P/L R$</th>
                   <th>Total oro</th>
                   <th>Total reales</th>
                   <th>Tasa</th>
@@ -619,8 +554,8 @@
       <section class="panel solo-admin" id="panel-reportes">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Reportes</p>
-            <h2>Vista general</h2>
+            <p class="eyebrow">Analitica</p>
+            <h2>Reportes unificados</h2>
           </div>
         </div>
 
@@ -664,8 +599,108 @@
           </div>
         </article>
       </section>
+
+      <section class="panel solo-admin" id="panel-gastos">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Operativo</p>
+            <h2>Gastos operativos</h2>
+          </div>
+          <div class="badge" id="gastos-total-hoy">R$ 0.00 hoy</div>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>Registrar gasto</h3>
+            <form id="form-gasto" class="stack-form">
+              <label>Categoria
+                <select name="categoria" id="gasto-categoria" required></select>
+              </label>
+              <label>Descripcion
+                <input name="descripcion" required maxlength="500">
+              </label>
+              <label>Monto (R$)
+                <input name="monto_reales" type="number" min="0.01" step="0.01" required>
+              </label>
+              <button type="submit">Guardar gasto</button>
+            </form>
+          </article>
+          <article class="card">
+            <h3>Gastos del dia</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Categoria</th>
+                    <th>Descripcion</th>
+                    <th>Monto</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-gastos-hoy"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel solo-admin" id="panel-cierre">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Cierre</p>
+            <h2>Cierre general del dia</h2>
+          </div>
+          <button type="button" class="btn-refresh" id="btn-cierre-actualizar">Actualizar</button>
+        </div>
+        <article class="card">
+          <div class="stack-form" style="max-width: 320px;">
+            <label>Saldo inicial caja (R$)
+              <input type="number" id="cierre-saldo-inicial" min="0" step="0.01" value="0">
+            </label>
+          </div>
+        </article>
+        <div id="cierre-contenido" class="cierre-root"></div>
+      </section>
     </main>
   </div>
+
+  <dialog id="dialog-cobro-venta" class="modal-cobro">
+    <form id="form-venta" class="modal-cobro-inner">
+      <h3>Cobro</h3>
+      <label>Cliente
+        <input name="cliente" value="Mostrador">
+      </label>
+      <label id="venta-tasa-wrap">Tasa de conversion
+        <select name="tasa_cambio_id" id="venta-tasa"></select>
+      </label>
+      <label>Tipo de pago
+        <select name="tipo_pago" id="venta-tipo-pago">
+          <option value="oro">Oro</option>
+          <option value="reales">Reales</option>
+          <option value="mixto">Mixto</option>
+        </select>
+      </label>
+      <label id="venta-tipo-oro-wrap">Tipo de oro
+        <select name="tipo_oro" id="venta-tipo-oro">
+          <option value="">Seleccione tipo de oro...</option>
+          <option value="araparita">Araparita</option>
+          <option value="uruman">Uruman</option>
+          <option value="santa_elena_minero">Santa Elena Minero</option>
+          <option value="santa_elena_fundido">Santa Elena Fundido</option>
+        </select>
+      </label>
+      <label id="venta-monto-oro-wrap">Monto recibido (oro)
+        <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.01" value="0.00">
+      </label>
+      <label id="venta-monto-reales-wrap">Monto recibido (reales)
+        <input id="venta-input-monto-reales" name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
+      </label>
+      <p id="venta-mensaje-vuelto" class="vuelto-msg"></p>
+      <div class="modal-actions">
+        <button type="button" id="btn-cerrar-cobro">Cancelar</button>
+        <button type="submit">Confirmar cobro</button>
+      </div>
+    </form>
+  </dialog>
 
   <div id="toast-container" class="toast-container"></div>
   <script type="module" src="/js/app.js"></script>

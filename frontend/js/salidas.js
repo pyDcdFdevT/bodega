@@ -2,10 +2,12 @@ import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.j
 import { getProductosCache, loadProductoOptions } from "./inventario.js";
 
 const MOTIVOS = [
-  "Consumo propio",
+  "Consumo interno",
   "Merma",
-  "Caducado",
+  "Vencido",
   "Dañado",
+  "Muestreo / degustacion",
+  "Donacion",
   "Otro",
 ];
 
@@ -23,21 +25,24 @@ function calcularValorSalida() {
   const target = document.getElementById("salida-valor-oro");
 
   if (!producto || cantidad <= 0) {
-    target.textContent = "0.00";
+    if (target) {
+      target.textContent = "0.00";
+    }
     return;
   }
 
   const valor = producto.precio_venta_oro * cantidad;
-  target.textContent = formatMoney(valor);
+  if (target) {
+    target.textContent = formatMoney(valor);
+  }
 }
 
 function asegurarMotivos() {
   const select = document.getElementById("salida-motivo");
-  if (select.dataset.ready === "1") {
+  if (!select) {
     return;
   }
   select.innerHTML = MOTIVOS.map((motivo) => `<option value="${motivo}">${motivo}</option>`).join("");
-  select.dataset.ready = "1";
 }
 
 export async function loadSalidas() {
@@ -47,8 +52,9 @@ export async function loadSalidas() {
 
   const salidas = await api.get("/salidas");
   const tbody = document.getElementById("tabla-salidas");
-
-  if (!salidas.length) {
+  if (!tbody) {
+    return;
+  }
     tbody.innerHTML = renderEmptyRow(6, "No hay salidas registradas.");
     return;
   }
@@ -76,10 +82,10 @@ export function initSalidas() {
 
   asegurarMotivos();
 
-  productoSelect.addEventListener("change", calcularValorSalida);
-  cantidadInput.addEventListener("input", calcularValorSalida);
+  productoSelect?.addEventListener("change", calcularValorSalida);
+  cantidadInput?.addEventListener("input", calcularValorSalida);
 
-  form.addEventListener("submit", async (event) => {
+  form?.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const payload = {
@@ -94,6 +100,7 @@ export function initSalidas() {
       form.reset();
       document.getElementById("salida-cantidad").value = "1";
       document.getElementById("salida-valor-oro").textContent = "0.00";
+      asegurarMotivos();
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");

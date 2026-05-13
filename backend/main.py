@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from database import Base, apply_schema_patches, engine
 from init_data import inicializar_datos
-from routers import auth, categorias, compras, compras_oro, gasolina, productos, reportes, salidas, tasas, ventas
+from routers import auth, categorias, cierre, compras, compras_oro, gasolina, gastos, productos, reportes, salidas, tasas, ventas
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,9 +27,9 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Bodega Inventario",
-    version="2.1.0",
-    description="Sistema de inventario para bodega con tasas multiples, PIN y salidas.",
+    title="Bodega POS",
+    version="3.0.0",
+    description="Punto de venta e inventario: bodega, gasolina, oro, gastos y cierre.",
     lifespan=lifespan,
 )
 
@@ -55,6 +55,8 @@ app.include_router(compras_oro.router, prefix="/api")
 app.include_router(ventas.router, prefix="/api")
 app.include_router(salidas.router, prefix="/api")
 app.include_router(gasolina.router, prefix="/api")
+app.include_router(gastos.router, prefix="/api")
+app.include_router(cierre.router, prefix="/api")
 app.include_router(reportes.router, prefix="/api")
 app.include_router(tasas.router, prefix="/api")
 

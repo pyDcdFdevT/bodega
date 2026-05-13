@@ -3,33 +3,30 @@ import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLab
 
 let gasolinaConfigCache = null;
 
-function etiquetaUnidadVenta(u) {
-  if (u === "reales_litro") {
-    return "R$/L";
-  }
-  return "g/L";
-}
-
 function renderResumen(gasolina) {
   const target = document.getElementById("gasolina-resumen");
+  if (!target) {
+    return;
+  }
+  const pr = Number(gasolina.precio_por_litro_reales ?? gasolina.precio_por_litro_oro ?? 0);
   target.innerHTML = `
     <article class="metric-pill">
       <span>Litros disponibles</span>
       <strong>${Number(gasolina.litros_disponibles || 0).toFixed(2)}</strong>
     </article>
     <article class="metric-pill">
-      <span>Precio referencia (oro / L)</span>
-      <strong>${formatMoney(gasolina.precio_por_litro_oro)}</strong>
+      <span>Precio base (R$/L)</span>
+      <strong>${formatMoney(pr, "reales")}</strong>
     </article>
   `;
 }
 
 function tasaParaPreviewVenta() {
-  const tipoPago = document.getElementById("gasolina-tipo-pago").value;
+  const tipoPago = document.getElementById("gasolina-tipo-pago")?.value;
   if (tipoPago === "reales") {
     return findTasaByNombre("araparita") || findTasaByNombre("uruman");
   }
-  const id = Number(document.getElementById("gasolina-tasa").value);
+  const id = Number(document.getElementById("gasolina-tasa")?.value);
   return findTasaById(id);
 }
 
@@ -50,30 +47,8 @@ function actualizarPreviewRepo() {
   }
 }
 
-function actualizarEtiquetaPrecioLitro() {
-  const unidad = document.getElementById("gasolina-unidad-precio").value;
-  const leyenda = document.getElementById("gasolina-precio-litro-leyenda");
-  const input = document.getElementById("gasolina-precio-litro");
-  if (!leyenda || !input) {
-    return;
-  }
-  if (unidad === "reales_litro") {
-    leyenda.textContent = "Precio por litro (R$)";
-    input.min = "0.01";
-    input.step = "0.01";
-  } else {
-    leyenda.textContent = "Precio por litro (gramos oro)";
-    input.min = "0.01";
-    input.step = "0.01";
-  }
-  const gasolina = gasolinaConfigCache;
-  if (gasolina && unidad === "oro_litro" && Number(gasolina.precio_por_litro_oro) > 0) {
-    input.value = String(gasolina.precio_por_litro_oro);
-  }
-}
-
 function actualizarVisibilidadPagoGasolina() {
-  const tipoPago = document.getElementById("gasolina-tipo-pago").value;
+  const tipoPago = document.getElementById("gasolina-tipo-pago")?.value;
   const tasaWrap = document.getElementById("gasolina-tasa-wrap");
   const tipoOroWrap = document.getElementById("gasolina-tipo-oro-wrap");
   const wrapMontoOro = document.getElementById("gasolina-monto-oro-wrap");
@@ -112,18 +87,15 @@ function actualizarVisibilidadPagoGasolina() {
 
 function actualizarPreviewVentaGasolina() {
   const litros = Number(document.getElementById("gasolina-venta-litros")?.value);
-  const precio = Number(document.getElementById("gasolina-precio-litro")?.value);
-  const unidad = document.getElementById("gasolina-unidad-precio")?.value;
+  const gasolina = gasolinaConfigCache;
+  const precioR = gasolina ? Number(gasolina.precio_por_litro_reales ?? gasolina.precio_por_litro_oro ?? 0) : 0;
   const tasa = tasaParaPreviewVenta();
 
   let totalOro = 0;
   let totalReales = 0;
-  if (Number.isFinite(litros) && Number.isFinite(precio) && litros > 0 && precio > 0 && tasa && tasa.tasa_reales > 0) {
-    if (unidad === "oro_litro") {
-      totalOro = litros * precio;
-      totalReales = totalOro * tasa.tasa_reales;
-    } else {
-      totalReales = litros * precio;
+  if (Number.isFinite(litros) && litros > 0 && precioR > 0) {
+    totalReales = Number((litros * precioR).toFixed(2));
+    if (tasa && tasa.tasa_reales > 0) {
       totalOro = totalReales / tasa.tasa_reales;
     }
   }
@@ -143,7 +115,7 @@ function actualizarPreviewVentaGasolina() {
 }
 
 function sincronizarTasaDesdeTipoOro() {
-  const nombre = document.getElementById("gasolina-tipo-oro").value;
+  const nombre = document.getElementById("gasolina-tipo-oro")?.value;
   const tasa = findTasaByNombre(nombre);
   const select = document.getElementById("gasolina-tasa");
   if (tasa && select) {
@@ -153,7 +125,7 @@ function sincronizarTasaDesdeTipoOro() {
 }
 
 function sincronizarTipoOroDesdeTasa() {
-  const id = Number(document.getElementById("gasolina-tasa").value);
+  const id = Number(document.getElementById("gasolina-tasa")?.value);
   const tasa = findTasaById(id);
   const tipoOro = document.getElementById("gasolina-tipo-oro");
   if (tasa && tipoOro) {
@@ -171,25 +143,29 @@ export async function loadGasolina() {
 
   renderResumen(gasolina);
   const form = document.getElementById("form-gasolina-config");
-  form.tipo.value = gasolina.tipo;
-  form.litros_disponibles.value = gasolina.litros_disponibles;
-  form.precio_por_litro_oro.value = gasolina.precio_por_litro_oro;
-
-  actualizarEtiquetaPrecioLitro();
+  if (form) {
+    form.tipo.value = gasolina.tipo;
+    form.litros_disponibles.value = gasolina.litros_disponibles;
+    const prField = form.querySelector("[name=precio_por_litro_reales]");
+    if (prField) {
+      prField.value = gasolina.precio_por_litro_reales ?? gasolina.precio_por_litro_oro ?? "";
+    }
+  }
 
   const tbody = document.getElementById("tabla-gasolina-ventas");
-  if (!ventas.length) {
-    tbody.innerHTML = renderEmptyRow(10, "No hay ventas de gasolina registradas.");
-  } else {
-    tbody.innerHTML = ventas
-      .map(
-        (venta) => `
+  if (tbody) {
+    if (!ventas.length) {
+      tbody.innerHTML = renderEmptyRow(9, "No hay ventas de gasolina registradas.");
+    } else {
+      tbody.innerHTML = ventas
+        .map(
+          (venta) => `
         <tr>
           <td>#${venta.id}</td>
           <td>${formatDate(venta.fecha)}</td>
           <td>${venta.litros}</td>
-          <td>${etiquetaUnidadVenta(venta.unidad_precio_venta || "oro_litro")}</td>
-          <td>${venta.precio_litro_venta}</td>
+          <td>R$/L</td>
+          <td>${formatMoney(venta.precio_litro_reales ?? venta.precio_litro_venta, "reales")}</td>
           <td>${formatMoney(venta.total_oro)}</td>
           <td>${formatMoney(venta.total_reales, "reales")}</td>
           <td>${getRateLabel(venta.tasa_nombre)}</td>
@@ -197,8 +173,9 @@ export async function loadGasolina() {
           <td>${venta.tipo_pago}</td>
         </tr>
       `
-      )
-      .join("");
+        )
+        .join("");
+    }
   }
 
   sincronizarTipoOroDesdeTasa();
@@ -209,14 +186,18 @@ export async function loadGasolina() {
 
 function resetFormVentaGasolina() {
   const ventaForm = document.getElementById("form-gasolina-venta");
+  if (!ventaForm) {
+    return;
+  }
   ventaForm.reset();
-  ventaForm.querySelector("#gasolina-tipo-pago").value = "oro";
+  const tp = ventaForm.querySelector("#gasolina-tipo-pago");
+  if (tp) {
+    tp.value = "oro";
+  }
   ventaForm.querySelector("#gasolina-monto-oro").value = "0.00";
   ventaForm.querySelector("#gasolina-monto-reales").value = "0.00";
-  ventaForm.querySelector("#gasolina-unidad-precio").value = "oro_litro";
   fillTasaSelect("gasolina-tasa");
   sincronizarTipoOroDesdeTasa();
-  actualizarEtiquetaPrecioLitro();
   actualizarVisibilidadPagoGasolina();
 }
 
@@ -228,11 +209,11 @@ export function initGasolina() {
   const tasaSelect = document.getElementById("gasolina-tasa");
   const tipoOroSelect = document.getElementById("gasolina-tipo-oro");
 
-  reponerForm.querySelectorAll("input[name=litros], input[name=precio_reales_litro]").forEach((el) => {
+  reponerForm?.querySelectorAll("input[name=litros], input[name=precio_reales_litro]").forEach((el) => {
     el.addEventListener("input", actualizarPreviewRepo);
   });
 
-  reponerForm.addEventListener("submit", async (event) => {
+  reponerForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(reponerForm);
     const payload = {
@@ -250,29 +231,23 @@ export function initGasolina() {
     }
   });
 
-  document.getElementById("gasolina-unidad-precio").addEventListener("change", () => {
-    actualizarEtiquetaPrecioLitro();
-    actualizarPreviewVentaGasolina();
-  });
-
-  ventaForm.addEventListener("input", (event) => {
-    const id = event.target.id;
-    if (id === "gasolina-precio-litro" || id === "gasolina-venta-litros") {
+  ventaForm?.addEventListener("input", (event) => {
+    if (event.target.id === "gasolina-venta-litros") {
       actualizarPreviewVentaGasolina();
     }
   });
 
-  tipoPagoSelect.addEventListener("change", actualizarVisibilidadPagoGasolina);
-  tasaSelect.addEventListener("change", sincronizarTipoOroDesdeTasa);
-  tipoOroSelect.addEventListener("change", sincronizarTasaDesdeTipoOro);
+  tipoPagoSelect?.addEventListener("change", actualizarVisibilidadPagoGasolina);
+  tasaSelect?.addEventListener("change", sincronizarTipoOroDesdeTasa);
+  tipoOroSelect?.addEventListener("change", sincronizarTasaDesdeTipoOro);
 
-  configForm.addEventListener("submit", async (event) => {
+  configForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(configForm);
     const payload = {
       tipo: formData.get("tipo"),
       litros_disponibles: Number(formData.get("litros_disponibles")),
-      precio_por_litro_oro: Number(formData.get("precio_por_litro_oro")),
+      precio_por_litro_reales: Number(formData.get("precio_por_litro_reales")),
     };
 
     try {
@@ -285,7 +260,7 @@ export function initGasolina() {
     }
   });
 
-  ventaForm.addEventListener("submit", async (event) => {
+  ventaForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const tipoPago = document.getElementById("gasolina-tipo-pago").value;
     if (tipoPago !== "reales") {
@@ -299,8 +274,6 @@ export function initGasolina() {
     const tipoOroVal = document.getElementById("gasolina-tipo-oro").value;
     const payload = {
       litros: Number(formData.get("litros")),
-      unidad_precio: formData.get("unidad_precio"),
-      precio_por_litro: Number(formData.get("precio_por_litro")),
       tipo_pago: tipoPago,
       tipo_oro: tipoPago === "reales" ? null : tipoOroVal || null,
       monto_recibido_oro: Number(formData.get("monto_recibido_oro")),
@@ -317,6 +290,5 @@ export function initGasolina() {
     }
   });
 
-  actualizarEtiquetaPrecioLitro();
   actualizarVisibilidadPagoGasolina();
 }

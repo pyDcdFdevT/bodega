@@ -88,7 +88,7 @@ def _inicializar_datos(db: Session) -> None:
             Gasolina(
                 tipo="Gasolina",
                 litros_disponibles=200,
-                precio_por_litro_oro=2.5,
+                precio_por_litro_reales=20.0,
             )
         )
 

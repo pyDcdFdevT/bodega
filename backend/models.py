@@ -194,17 +194,30 @@ class Gasolina(Base):
     __tablename__ = "gasolina"
     __table_args__ = (
         CheckConstraint("litros_disponibles >= 0", name="ck_gasolina_litros"),
-        CheckConstraint("precio_por_litro_oro >= 0", name="ck_gasolina_precio_litro"),
+        CheckConstraint("precio_por_litro_reales >= 0", name="ck_gasolina_precio_litro_reales"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     tipo = Column(String(50), default="Gasolina", nullable=False)
     litros_disponibles = Column(Float, default=0, nullable=False)
-    precio_por_litro_oro = Column(Float, default=0, nullable=False)
+    precio_por_litro_reales = Column(Float, default=0, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     ventas = relationship("VentaGasolina", back_populates="gasolina")
     reposiciones = relationship("GasolinaReposicion", back_populates="gasolina")
+
+
+class GastoOperativo(Base):
+    __tablename__ = "gastos_operativos"
+    __table_args__ = (
+        CheckConstraint("monto_reales >= 0", name="ck_gasto_monto_reales"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    categoria = Column(String(40), nullable=False, index=True)
+    descripcion = Column(Text, nullable=False)
+    monto_reales = Column(Float, nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
 
 
 class GasolinaReposicion(Base):
@@ -250,7 +263,7 @@ class VentaGasolina(Base):
     total_reales = Column(Float, nullable=False)
     tipo_pago = Column(String(20), nullable=False)
     tipo_oro = Column(String(50), nullable=True)
-    unidad_precio_venta = Column(String(20), default="oro_litro", nullable=False)
+    unidad_precio_venta = Column(String(20), default="reales_litro", nullable=False)
     precio_litro_venta = Column(Float, default=0, nullable=False)
     monto_recibido_oro = Column(Float, default=0, nullable=False)
     monto_recibido_reales = Column(Float, default=0, nullable=False)

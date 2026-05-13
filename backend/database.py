@@ -32,8 +32,10 @@ SessionLocal = sessionmaker(
     expire_on_commit=False,
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 def get_db():
     db = SessionLocal()
@@ -41,6 +43,80 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _migrate_gasolina_precio_column(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'gasolina' AND column_name = 'precio_por_litro_oro'
+  ) THEN
+    ALTER TABLE gasolina RENAME COLUMN precio_por_litro_oro TO precio_por_litro_reales;
+  ELSIF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'gasolina' AND column_name = 'precio_por_litro_reales'
+  ) THEN
+    ALTER TABLE gasolina ADD COLUMN precio_por_litro_reales DOUBLE PRECISION NOT NULL DEFAULT 20;
+  END IF;
+END $$;
+"""
+            )
+        )
+        return
+
+    if dialect == "sqlite":
+        result = conn.execute(text("PRAGMA table_info(gasolina)"))
+        cols = {row[1] for row in result}
+        if "precio_por_litro_reales" in cols:
+            return
+        if "precio_por_litro_oro" in cols:
+            conn.execute(text("ALTER TABLE gasolina RENAME COLUMN precio_por_litro_oro TO precio_por_litro_reales"))
+        else:
+            conn.execute(
+                text("ALTER TABLE gasolina ADD COLUMN precio_por_litro_reales REAL NOT NULL DEFAULT 20")
+            )
+
+
+def _ensure_gastos_table(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS gastos_operativos (
+    id SERIAL PRIMARY KEY,
+    categoria VARCHAR(40) NOT NULL,
+    descripcion TEXT NOT NULL,
+    monto_reales DOUBLE PRECISION NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT NOW()
+);
+"""
+            )
+        )
+        return
+
+    if dialect == "sqlite":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS gastos_operativos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    categoria VARCHAR(40) NOT NULL,
+    descripcion TEXT NOT NULL,
+    monto_reales REAL NOT NULL,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+"""
+            )
+        )
 
 
 def apply_schema_patches() -> None:
@@ -51,14 +127,18 @@ def apply_schema_patches() -> None:
 
     if dialect == "postgresql":
         insp = inspect(engine)
-        if not insp.has_table("ventas_gasolina"):
-            return
-        alters = [
-            "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)",
-            "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS unidad_precio_venta VARCHAR(20) DEFAULT 'oro_litro'",
-            "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS precio_litro_venta FLOAT DEFAULT 0",
-        ]
-        create_reposiciones = """
+        with engine.begin() as conn:
+            _migrate_gasolina_precio_column(conn, dialect)
+            _ensure_gastos_table(conn, dialect)
+            if insp.has_table("ventas_gasolina"):
+                alters = [
+                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)",
+                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS unidad_precio_venta VARCHAR(20) DEFAULT 'reales_litro'",
+                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS precio_litro_venta FLOAT DEFAULT 0",
+                ]
+                for sql in alters:
+                    conn.execute(text(sql))
+            create_reposiciones = """
 CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
     id SERIAL PRIMARY KEY,
     gasolina_id INTEGER REFERENCES gasolina(id),
@@ -70,28 +150,27 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
     fecha TIMESTAMP DEFAULT NOW()
 );
 """
-        with engine.begin() as conn:
-            for sql in alters:
-                conn.execute(text(sql))
             conn.execute(text(create_reposiciones))
         return
 
     if dialect == "sqlite":
         insp = inspect(engine)
-        if not insp.has_table("ventas_gasolina"):
-            return
         with engine.begin() as conn:
-            result = conn.execute(text("PRAGMA table_info(ventas_gasolina)"))
-            existing = {row[1] for row in result}
-            stmts: list[str] = []
-            if "tipo_oro" not in existing:
-                stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN tipo_oro VARCHAR(50)")
-            if "unidad_precio_venta" not in existing:
-                stmts.append(
-                    "ALTER TABLE ventas_gasolina ADD COLUMN unidad_precio_venta VARCHAR(20) DEFAULT 'oro_litro'"
-                )
-            if "precio_litro_venta" not in existing:
-                stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN precio_litro_venta REAL DEFAULT 0")
-            for sql in stmts:
-                conn.execute(text(sql))
+            if insp.has_table("gasolina"):
+                _migrate_gasolina_precio_column(conn, dialect)
+            _ensure_gastos_table(conn, dialect)
+            if insp.has_table("ventas_gasolina"):
+                result = conn.execute(text("PRAGMA table_info(ventas_gasolina)"))
+                existing = {row[1] for row in result}
+                stmts: list[str] = []
+                if "tipo_oro" not in existing:
+                    stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN tipo_oro VARCHAR(50)")
+                if "unidad_precio_venta" not in existing:
+                    stmts.append(
+                        "ALTER TABLE ventas_gasolina ADD COLUMN unidad_precio_venta VARCHAR(20) DEFAULT 'reales_litro'"
+                    )
+                if "precio_litro_venta" not in existing:
+                    stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN precio_litro_venta REAL DEFAULT 0")
+                for sql in stmts:
+                    conn.execute(text(sql))
         return

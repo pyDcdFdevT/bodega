@@ -146,24 +146,31 @@ class CompraUpdate(BaseModel):
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
 
-def _unidad_precio_gasolina(valor: str) -> str:
+def _categoria_gasto(valor: str) -> str:
     n = _texto_requerido(valor).lower()
-    if n not in ("reales_litro", "oro_litro"):
-        raise ValueError("Unidad de precio invalida (use reales_litro u oro_litro)")
+    permitidas = {"viaje", "comida", "estadia", "repuestos", "insumos", "otro"}
+    if n not in permitidas:
+        raise ValueError("Categoria de gasto invalida")
     return n
+
+
+class GastoCreate(BaseModel):
+    categoria: str = Field(..., min_length=3, max_length=40)
+    descripcion: str = Field(..., min_length=1, max_length=2000)
+    monto_reales: float = Field(..., ge=0)
+
+    _categoria = field_validator("categoria")(_categoria_gasto)
+    _descripcion = field_validator("descripcion")(_texto_requerido)
 
 
 class GasolinaVenta(BaseModel):
     litros: float = Field(..., gt=0)
-    unidad_precio: str = Field(..., min_length=10, max_length=20)
-    precio_por_litro: float = Field(..., gt=0)
-    tipo_pago: str = Field(default="oro", min_length=3, max_length=20)
+    tipo_pago: str = Field(default="reales", min_length=3, max_length=20)
     tipo_oro: Optional[str] = Field(default=None, max_length=50)
     monto_recibido_oro: float = Field(default=0, ge=0)
     monto_recibido_reales: float = Field(default=0, ge=0)
 
     _tipo_pago = field_validator("tipo_pago")(_texto_requerido)
-    _unidad_precio = field_validator("unidad_precio")(_unidad_precio_gasolina)
 
     @field_validator("tipo_oro")
     @classmethod
@@ -181,7 +188,7 @@ class GasolinaReposicionCreate(BaseModel):
 class GasolinaConfigUpdate(BaseModel):
     tipo: str = Field(default="Gasolina", min_length=3, max_length=50)
     litros_disponibles: Optional[float] = Field(default=None, ge=0)
-    precio_por_litro_oro: Optional[float] = Field(default=None, ge=0)
+    precio_por_litro_reales: Optional[float] = Field(default=None, ge=0)
 
     _tipo = field_validator("tipo")(_texto_requerido)
 

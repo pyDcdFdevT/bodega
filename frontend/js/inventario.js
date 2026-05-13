@@ -1,36 +1,18 @@
-import { api, formatMoney, renderEmptyRow, setOptions, showToast } from "./api.js";
+import { api, formatMoney, renderEmptyRow, showToast } from "./api.js";
 import { RATE_ORDER, getRateLabel, getTasasCache } from "./tasas.js";
 
 let productosCache = [];
 
-function renderProductos(items) {
-  const tbody = document.getElementById("tabla-productos");
-  if (!items.length) {
-    tbody.innerHTML = renderEmptyRow(10, "No hay productos para mostrar.");
-    return;
-  }
-
-  tbody.innerHTML = items
-    .map(
-      (producto) => `
-        <tr>
-          <td>${producto.nombre}</td>
-          <td>${producto.categoria_nombre || "-"}</td>
-          <td>${producto.presentacion}</td>
-          <td>${producto.unidad_venta}</td>
-          <td>${producto.stock_actual}</td>
-          <td>${formatMoney(producto.precio_costo_reales, "reales")}</td>
-          <td>${formatMoney(producto.precio_venta_reales, "reales")}</td>
-          <td>${renderEquivalenteOro(producto)}</td>
-          <td><span class="estado ${producto.estado_stock}">${producto.estado_stock}</span></td>
-          <td class="acciones">
-            <button type="button" onclick="window.editarProducto(${producto.id})">✏️</button>
-            <button type="button" onclick="window.eliminarProducto(${producto.id})">🗑️</button>
-          </td>
-        </tr>
-      `
-    )
-    .join("");
+function agruparPorCategoria(items) {
+  const map = new Map();
+  items.forEach((p) => {
+    const cat = p.categoria_nombre || "Sin categoria";
+    if (!map.has(cat)) {
+      map.set(cat, []);
+    }
+    map.get(cat).push(p);
+  });
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 function renderEquivalenteOro(producto) {
@@ -38,7 +20,6 @@ function renderEquivalenteOro(producto) {
   if (!tasas.length || !producto.precio_venta_reales) {
     return "<span>-</span>";
   }
-
   const filas = RATE_ORDER.map((nombre) => {
     const tasa = tasas.find((item) => item.nombre === nombre);
     if (!tasa || !tasa.tasa_reales) {
@@ -47,22 +28,85 @@ function renderEquivalenteOro(producto) {
     const oro = (Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(2);
     return `<div>${getRateLabel(nombre)}: ${oro}g</div>`;
   }).join("");
+  return `<details><summary>Ver en oro</summary>${filas}</details>`;
+}
 
+function tablaProductosHtml(productos) {
   return `
-    <details>
-      <summary>Ver en oro</summary>
-      ${filas}
-    </details>
-  `;
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Inventario</th>
+            <th>Venta</th>
+            <th>Stock</th>
+            <th>Costo R$</th>
+            <th>Venta R$</th>
+            <th>Equiv. oro</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${productos
+            .map(
+              (producto) => `
+            <tr>
+              <td>${producto.nombre}</td>
+              <td>${producto.presentacion}</td>
+              <td>${producto.unidad_venta}</td>
+              <td>${producto.stock_actual}</td>
+              <td>${formatMoney(producto.precio_costo_reales, "reales")}</td>
+              <td>${formatMoney(producto.precio_venta_reales, "reales")}</td>
+              <td>${renderEquivalenteOro(producto)}</td>
+              <td><span class="estado ${producto.estado_stock}">${producto.estado_stock}</span></td>
+              <td class="acciones">
+                <button type="button" onclick="window.editarProducto(${producto.id})">✏️</button>
+                <button type="button" onclick="window.eliminarProducto(${producto.id})">🗑️</button>
+              </td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderProductosAccordiones(items) {
+  const root = document.getElementById("inventario-accordiones");
+  if (!root) {
+    return;
+  }
+  if (!items.length) {
+    root.innerHTML = '<p class="muted">No hay productos para mostrar.</p>';
+    return;
+  }
+  const grupos = agruparPorCategoria(items);
+  root.innerHTML = grupos
+    .map(
+      ([categoria, productos], idx) => `
+      <details class="accordion-cat" ${idx === 0 ? "open" : ""}>
+        <summary class="accordion-cat-summary">
+          <span class="accordion-cat-icon">📁</span>
+          <span class="accordion-cat-name">${categoria}</span>
+          <span class="accordion-cat-count">${productos.length} producto(s)</span>
+        </summary>
+        <div class="accordion-cat-body">${tablaProductosHtml(productos)}</div>
+      </details>`
+    )
+    .join("");
 }
 
 function renderStockBajo(items) {
   const tbody = document.getElementById("tabla-stock-bajo");
+  if (!tbody) {
+    return;
+  }
   if (!items.length) {
     tbody.innerHTML = renderEmptyRow(3, "Todo el inventario esta por encima del minimo.");
     return;
   }
-
   tbody.innerHTML = items
     .map(
       (producto) => `
@@ -81,12 +125,17 @@ export async function loadInventario() {
     api.get("/productos"),
     api.get("/productos/stock-bajo"),
   ]);
-
   productosCache = productos;
-  renderProductos(productosCache);
+  renderProductosAccordiones(productosCache);
   renderStockBajo(stockBajo);
-  document.getElementById("hero-productos").textContent = String(productos.length);
-  document.getElementById("hero-stock-bajo").textContent = String(stockBajo.length);
+  const hp = document.getElementById("hero-productos");
+  const hs = document.getElementById("hero-stock-bajo");
+  if (hp) {
+    hp.textContent = String(productos.length);
+  }
+  if (hs) {
+    hs.textContent = String(stockBajo.length);
+  }
   return productosCache;
 }
 
@@ -109,15 +158,24 @@ function restaurarFormularioProducto() {
 
 export async function loadProductoOptions(selectIds) {
   const productos = productosCache.length ? productosCache : await loadInventario();
+  const activos = productos.filter((producto) => producto.activo);
   selectIds.forEach((id) => {
     const select = document.getElementById(id);
-    if (select) {
-      setOptions(
-        select,
-        productos.filter((producto) => producto.activo),
-        (producto) => `${producto.nombre} | stock ${producto.stock_actual} | ${formatMoney(producto.precio_venta_reales, "reales")}`
-      );
+    if (!select) {
+      return;
     }
+    const grupos = agruparPorCategoria(activos);
+    select.innerHTML = `<option value="">Seleccione...</option>${grupos
+      .map(
+        ([cat, lista]) =>
+          `<optgroup label="${cat}">${lista
+            .map(
+              (p) =>
+                `<option value="${p.id}">${p.nombre} | stock ${p.stock_actual} | ${formatMoney(p.precio_venta_reales, "reales")}</option>`
+            )
+            .join("")}</optgroup>`
+      )
+      .join("")}`;
   });
 }
 
@@ -127,10 +185,8 @@ function editarProducto(id) {
     showToast("Producto no encontrado", "error");
     return;
   }
-
   const form = document.getElementById("form-producto");
   const submitButton = form.querySelector('button[type="submit"]');
-
   form.nombre.value = producto.nombre;
   form.categoria_nombre.value = producto.categoria_nombre || "";
   form.presentacion.value = producto.presentacion;
@@ -171,7 +227,6 @@ async function eliminarProducto(id) {
   if (!window.confirm(mensaje)) {
     return;
   }
-
   try {
     await api.delete(`/productos/${id}`);
     showToast("Producto eliminado correctamente", "success");
@@ -196,7 +251,6 @@ export function initInventario() {
     payload.stock_actual = Number(payload.stock_actual);
     payload.stock_minimo = Number(payload.stock_minimo);
     payload.precio_venta_reales = Number(payload.precio_venta_reales);
-
     try {
       if (form.dataset.id) {
         await api.put(`/productos/${form.dataset.id}`, payload);
@@ -216,6 +270,6 @@ export function initInventario() {
   search.addEventListener("input", () => {
     const term = search.value.trim().toLowerCase();
     const filtered = productosCache.filter((producto) => producto.nombre.toLowerCase().includes(term));
-    renderProductos(filtered);
+    renderProductosAccordiones(filtered);
   });
 }

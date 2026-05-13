@@ -7,8 +7,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Compra, Gasolina, GasolinaReposicion, LogTasaCambio, MovimientoInventario, Producto, Salida, Venta, VentaGasolina
+from models import Compra, Gasolina, GasolinaReposicion, GastoOperativo, LogTasaCambio, MovimientoInventario, Producto, Salida, Venta, VentaGasolina
 from routers.productos import serializar_producto
+from services.calculos import CalculosMonetarios
 
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
@@ -76,8 +77,25 @@ def dashboard(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
+    gastos_hoy_reales = float(
+        db.query(func.coalesce(func.sum(GastoOperativo.monto_reales), 0))
+        .filter(GastoOperativo.fecha >= inicio_hoy)
+        .scalar()
+        or 0
+    )
+    tasa_ref = CalculosMonetarios.obtener_tasa_referencia(db)
+    gastos_hoy_oro = (
+        CalculosMonetarios.reales_a_oro(gastos_hoy_reales, db, tasa=tasa_ref) if gastos_hoy_reales > 0 else 0.0
+    )
     oro_total = oro_araparita + oro_uruman + oro_santa_elena_minero + oro_santa_elena_fundido
-    ganancia_neta = round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro, 2)
+    ganancia_neta = round(
+        float(ventas_hoy_oro)
+        - float(compras_hoy_oro)
+        - float(salidas_hoy_oro)
+        + float(gasolina_hoy_oro)
+        - float(gastos_hoy_oro),
+        2,
+    )
 
     return {
         "fecha": inicio_hoy.date().isoformat(),
@@ -98,11 +116,15 @@ def dashboard(db: Session = Depends(get_db)):
             "oro_santa_elena_minero": round(oro_santa_elena_minero, 2),
             "oro_santa_elena_fundido": round(oro_santa_elena_fundido, 2),
             "oro_total": round(oro_total, 2),
+            "gastos_reales": round(gastos_hoy_reales, 2),
+            "gastos_oro_equiv": round(gastos_hoy_oro, 2),
             "ganancia_neta": ganancia_neta,
         },
         "gasolina": {
             "litros_disponibles": gasolina.litros_disponibles if gasolina else 0,
-            "precio_por_litro_oro": gasolina.precio_por_litro_oro if gasolina else 0,
+            "precio_por_litro_reales": getattr(gasolina, "precio_por_litro_reales", None)
+            if gasolina
+            else 0,
         },
     }
 

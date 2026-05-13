@@ -3,9 +3,18 @@ import { getProductosCache, loadProductoOptions } from "./inventario.js";
 import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel } from "./tasas.js";
 
 const carrito = [];
+let categoriaFiltro = "";
+
+function productosFiltrados() {
+  const productos = getProductosCache().filter((p) => p.activo);
+  if (!categoriaFiltro) {
+    return productos;
+  }
+  return productos.filter((p) => (p.categoria_nombre || "Sin categoria") === categoriaFiltro);
+}
 
 function obtenerTasaSeleccionada() {
-  const tasaId = Number(document.getElementById("venta-tasa").value);
+  const tasaId = Number(document.getElementById("venta-tasa")?.value);
   if (!tasaId) {
     return null;
   }
@@ -24,23 +33,20 @@ function textoVuelto(data) {
 }
 
 function actualizarVisibilidadCamposPago() {
-  const tipoPago = document.getElementById("venta-tipo-pago").value;
+  const tipoPago = document.getElementById("venta-tipo-pago")?.value;
   const tasaWrap = document.getElementById("venta-tasa-wrap");
   const tipoOroWrap = document.getElementById("venta-tipo-oro-wrap");
   const tasaSelect = document.getElementById("venta-tasa");
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
   const wrapMontoOro = document.getElementById("venta-monto-oro-wrap");
   const wrapMontoReales = document.getElementById("venta-monto-reales-wrap");
-
   if (!tasaWrap || !tipoOroWrap || !tasaSelect || !tipoOroSelect) {
     return;
   }
-
   const requiereConversion = tipoPago !== "reales";
   tasaWrap.style.display = requiereConversion ? "grid" : "none";
   tipoOroWrap.style.display = requiereConversion ? "grid" : "none";
   tipoOroSelect.required = requiereConversion;
-
   if (wrapMontoOro && wrapMontoReales) {
     if (tipoPago === "reales") {
       wrapMontoOro.style.display = "none";
@@ -53,7 +59,6 @@ function actualizarVisibilidadCamposPago() {
       wrapMontoReales.style.display = "grid";
     }
   }
-
   if (!requiereConversion) {
     tipoOroSelect.value = "";
     tasaSelect.value = "";
@@ -79,37 +84,86 @@ function calcularTotales() {
   );
 }
 
+function renderGridProductos() {
+  const grid = document.getElementById("pos-grid-productos");
+  if (!grid) {
+    return;
+  }
+  const lista = productosFiltrados();
+  if (!lista.length) {
+    grid.innerHTML = '<p class="muted">No hay productos en esta categoria.</p>';
+    return;
+  }
+  grid.innerHTML = lista
+    .map(
+      (p) => `
+      <button type="button" class="pos-card" data-pos-add="${p.id}">
+        <strong>${p.nombre}</strong>
+        <span class="pos-card-meta">${formatMoney(p.precio_venta_reales, "reales")}</span>
+        <span class="pos-card-stock">Stock: ${p.stock_actual}</span>
+      </button>`
+    )
+    .join("");
+  grid.querySelectorAll("[data-pos-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.posAdd);
+      const existente = carrito.find((item) => item.producto_id === id);
+      if (existente) {
+        existente.cantidad = Number((existente.cantidad + 1).toFixed(2));
+      } else {
+        carrito.push({ producto_id: id, cantidad: 1 });
+      }
+      renderCarrito();
+    });
+  });
+}
+
 function renderCarrito() {
   const tbody = document.getElementById("tabla-carrito");
+  if (!tbody) {
+    return;
+  }
   const totals = calcularTotales();
   const tasa = obtenerTasaSeleccionada();
-  const tipoPago = document.getElementById("venta-tipo-pago").value;
+  const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
 
   if (!totals.items.length) {
-    tbody.innerHTML = renderEmptyRow(4, "Aun no hay productos en el carrito.");
+    tbody.innerHTML = renderEmptyRow(4, "Carrito vacio. Pulse un producto.");
   } else {
     tbody.innerHTML = totals.items
       .map(
         (item) => `
           <tr>
             <td>${item.producto.nombre}</td>
-            <td>${item.cantidad}</td>
+            <td><input type="number" min="0.01" step="0.01" class="pos-qty" data-pid="${item.producto_id}" value="${item.cantidad}"></td>
             <td>${formatMoney(item.subtotal)}</td>
             <td><button type="button" data-remove="${item.producto_id}">Quitar</button></td>
           </tr>
         `
       )
       .join("");
+    tbody.querySelectorAll(".pos-qty").forEach((input) => {
+      input.addEventListener("change", () => {
+        const pid = Number(input.dataset.pid);
+        const row = carrito.find((c) => c.producto_id === pid);
+        if (row) {
+          row.cantidad = Math.max(0.01, Number(input.value) || 0.01);
+          renderCarrito();
+        }
+      });
+    });
   }
 
-  if (tipoPago === "reales") {
-    document.getElementById("venta-total-oro").textContent = "0.00";
-    document.getElementById("venta-total-reales").textContent = totals.totalReales.toFixed(2);
-  } else {
-    document.getElementById("venta-total-oro").textContent = totals.totalOro.toFixed(2);
-    document.getElementById("venta-total-reales").textContent = tasa
-      ? (totals.totalOro * tasa.tasa_reales).toFixed(2)
-      : "0.00";
+  const elOro = document.getElementById("venta-total-oro");
+  const elReales = document.getElementById("venta-total-reales");
+  if (elOro && elReales) {
+    if (tipoPago === "reales") {
+      elOro.textContent = "0.00";
+      elReales.textContent = totals.totalReales.toFixed(2);
+    } else {
+      elOro.textContent = totals.totalOro.toFixed(2);
+      elReales.textContent = tasa ? (totals.totalOro * tasa.tasa_reales).toFixed(2) : "0.00";
+    }
   }
 
   tbody.querySelectorAll("[data-remove]").forEach((button) => {
@@ -124,23 +178,45 @@ function renderCarrito() {
   });
 }
 
+function llenarFiltroCategorias() {
+  const sel = document.getElementById("venta-filtro-categoria");
+  if (!sel) {
+    return;
+  }
+  const cats = new Set();
+  getProductosCache()
+    .filter((p) => p.activo)
+    .forEach((p) => cats.add(p.categoria_nombre || "Sin categoria"));
+  const ordenados = [...cats].sort((a, b) => a.localeCompare(b));
+  sel.innerHTML = `<option value="">Todas las categorias</option>${ordenados.map((c) => `<option value="${c}">${c}</option>`).join("")}`;
+  sel.value = categoriaFiltro;
+}
+
 export async function loadVentas() {
-  await loadProductoOptions(["venta-producto"]);
   await ensureTasas();
   fillTasaSelect("venta-tasa");
+  llenarFiltroCategorias();
+  renderGridProductos();
 
   const [ventas, resumen] = await Promise.all([api.get("/ventas"), api.get("/ventas/resumen/hoy")]);
 
-  document.getElementById("ventas-resumen-hoy").textContent = `${resumen.ventas} ventas hoy`;
-  document.getElementById("hero-ventas-hoy").textContent = String(resumen.ventas);
+  const badge = document.getElementById("ventas-resumen-hoy");
+  if (badge) {
+    badge.textContent = `${resumen.ventas} ventas hoy`;
+  }
+  const heroV = document.getElementById("hero-ventas-hoy");
+  if (heroV) {
+    heroV.textContent = String(resumen.ventas);
+  }
 
   const tbody = document.getElementById("tabla-ventas");
-  if (!ventas.length) {
-    tbody.innerHTML = renderEmptyRow(9, "No hay ventas registradas.");
-  } else {
-    tbody.innerHTML = ventas
-      .map(
-        (venta) => `
+  if (tbody) {
+    if (!ventas.length) {
+      tbody.innerHTML = renderEmptyRow(9, "No hay ventas registradas.");
+    } else {
+      tbody.innerHTML = ventas
+        .map(
+          (venta) => `
           <tr>
             <td>#${venta.id}</td>
             <td>${formatDateOnly(venta.fecha)}</td>
@@ -153,59 +229,70 @@ export async function loadVentas() {
             <td>${venta.tipo_pago}</td>
           </tr>
         `
-      )
-      .join("");
+        )
+        .join("");
+    }
   }
-
   renderCarrito();
 }
 
+function abrirCobro() {
+  const dlg = document.getElementById("dialog-cobro-venta");
+  if (!dlg?.showModal) {
+    showToast("Su navegador no soporta el cobro en modal", "error");
+    return;
+  }
+  actualizarVisibilidadCamposPago();
+  fillTasaSelect("venta-tasa");
+  dlg.showModal();
+}
+
+function cerrarCobro() {
+  document.getElementById("dialog-cobro-venta")?.close();
+}
+
 export function initVentas() {
-  const formCarrito = document.getElementById("form-carrito");
+  const filtro = document.getElementById("venta-filtro-categoria");
+  const btnCobrar = document.getElementById("btn-pos-cobrar");
   const formVenta = document.getElementById("form-venta");
   const tasaSelect = document.getElementById("venta-tasa");
   const tipoPagoSelect = document.getElementById("venta-tipo-pago");
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
   const mensajeVuelto = document.getElementById("venta-mensaje-vuelto");
+  const btnCerrarModal = document.getElementById("btn-cerrar-cobro");
 
-  formCarrito.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const productoId = Number(document.getElementById("venta-producto").value);
-    const cantidad = Number(document.getElementById("venta-cantidad").value);
-    if (!productoId || cantidad <= 0) {
-      showToast("Seleccione un producto y una cantidad valida", "error");
-      return;
-    }
-
-    const existente = carrito.find((item) => item.producto_id === productoId);
-    if (existente) {
-      existente.cantidad = Number((existente.cantidad + cantidad).toFixed(2));
-    } else {
-      carrito.push({ producto_id: productoId, cantidad });
-    }
-    formCarrito.reset();
-    document.getElementById("venta-cantidad").value = "1";
-    renderCarrito();
+  filtro?.addEventListener("change", () => {
+    categoriaFiltro = filtro.value;
+    renderGridProductos();
   });
 
-  tasaSelect.addEventListener("change", renderCarrito);
-  tipoPagoSelect.addEventListener("change", () => {
+  btnCobrar?.addEventListener("click", () => {
+    if (!carrito.length) {
+      showToast("Agrega productos al carrito", "error");
+      return;
+    }
+    abrirCobro();
+  });
+  btnCerrarModal?.addEventListener("click", cerrarCobro);
+
+  tasaSelect?.addEventListener("change", renderCarrito);
+  tipoPagoSelect?.addEventListener("change", () => {
     actualizarVisibilidadCamposPago();
     renderCarrito();
   });
-  tipoOroSelect.addEventListener("change", () => {
-    if (tipoPagoSelect.value === "reales") {
+  tipoOroSelect?.addEventListener("change", () => {
+    if (tipoPagoSelect?.value === "reales") {
       return;
     }
     const tasa = findTasaByNombre(tipoOroSelect.value);
-    if (tasa) {
+    if (tasa && tasaSelect) {
       tasaSelect.value = String(tasa.id);
       renderCarrito();
     }
   });
   actualizarVisibilidadCamposPago();
 
-  formVenta.addEventListener("submit", async (event) => {
+  formVenta?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (mensajeVuelto) {
       mensajeVuelto.textContent = "";
@@ -214,14 +301,12 @@ export function initVentas() {
       showToast("Agrega al menos un producto al carrito", "error");
       return;
     }
-
     const tipoPago = tipoPagoSelect.value;
     const tasaId = Number(tasaSelect.value);
     if (tipoPago !== "reales" && !tasaId) {
       showToast("Selecciona una tasa para calcular la venta", "error");
       return;
     }
-
     const formData = new FormData(formVenta);
     let montoOro = Number(formData.get("monto_recibido_oro"));
     let montoReales = Number(formData.get("monto_recibido_reales"));
@@ -230,7 +315,6 @@ export function initVentas() {
     } else if (tipoPago === "oro") {
       montoReales = 0;
     }
-
     const payload = {
       items: carrito.map((item) => ({
         producto_id: item.producto_id,
@@ -243,12 +327,10 @@ export function initVentas() {
       monto_recibido_oro: montoOro,
       monto_recibido_reales: montoReales,
     };
-
     if (payload.tipo_pago !== "reales" && !payload.tipo_oro) {
       showToast("Selecciona el tipo de oro para el cobro", "error");
       return;
     }
-
     try {
       const response = await api.post("/ventas", payload);
       const vueltoTxt = textoVuelto(response.data);
@@ -257,7 +339,10 @@ export function initVentas() {
       }
       carrito.splice(0, carrito.length);
       formVenta.reset();
-      formVenta.cliente.value = "Mostrador";
+      const clienteIn = formVenta.querySelector('[name="cliente"]');
+      if (clienteIn) {
+        clienteIn.value = "Mostrador";
+      }
       formVenta.tipo_pago.value = "oro";
       formVenta.tipo_oro.value = "";
       formVenta.monto_recibido_oro.value = "0.00";
@@ -265,6 +350,7 @@ export function initVentas() {
       actualizarVisibilidadCamposPago();
       fillTasaSelect("venta-tasa");
       renderCarrito();
+      cerrarCobro();
       const baseMsg = `Venta #${response.data.venta_id} registrada`;
       showToast(vueltoTxt ? `${baseMsg}. ${vueltoTxt}` : baseMsg, "success");
       document.dispatchEvent(new CustomEvent("bodega:refresh"));

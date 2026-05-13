@@ -20,7 +20,7 @@ def _asegurar_gasolina(db: Session) -> Gasolina:
     gasolina = Gasolina(
         tipo="Gasolina",
         litros_disponibles=0,
-        precio_por_litro_oro=0,
+        precio_por_litro_reales=0,
     )
     db.add(gasolina)
     db.flush()
@@ -41,8 +41,8 @@ def configurar_gasolina(data: GasolinaConfigUpdate, db: Session = Depends(get_db
         gasolina.tipo = data.tipo
         if data.litros_disponibles is not None:
             gasolina.litros_disponibles = data.litros_disponibles
-        if data.precio_por_litro_oro is not None:
-            gasolina.precio_por_litro_oro = data.precio_por_litro_oro
+        if data.precio_por_litro_reales is not None:
+            gasolina.precio_por_litro_reales = data.precio_por_litro_reales
         db.commit()
         db.refresh(gasolina)
         return {"status": "success", "gasolina": gasolina}
@@ -102,8 +102,6 @@ def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_d
 def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
     try:
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(data.tipo_pago)
-        unidad = data.unidad_precio
-
         tasa: TasaCambio | None = None
         tipo_oro: str | None = None
         if tipo_pago in {"oro", "mixto"}:
@@ -115,17 +113,12 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
             tasa = CalculosMonetarios.obtener_tasa_referencia(db)
 
         gasolina = ValidacionesSistema.validar_stock_gasolina(data.litros, db)
-        precio = float(data.precio_por_litro)
-        if precio <= 0:
-            raise ValueError("El precio por litro debe ser mayor a cero")
+        precio_r = float(gasolina.precio_por_litro_reales)
+        if precio_r <= 0:
+            raise ValueError("Configure el precio por litro en reales en la configuracion de gasolina")
 
-        if unidad == "oro_litro":
-            total_oro_core = CalculosMonetarios.redondear(data.litros * precio)
-            total_reales_core = CalculosMonetarios.oro_a_reales(total_oro_core, db, tasa=tasa)
-        else:
-            bruto_reales = CalculosMonetarios.redondear(data.litros * precio, 2)
-            total_reales_core = bruto_reales
-            total_oro_core = CalculosMonetarios.reales_a_oro(bruto_reales, db, tasa=tasa)
+        total_reales_core = CalculosMonetarios.redondear(data.litros * precio_r, 2)
+        total_oro_core = CalculosMonetarios.reales_a_oro(total_reales_core, db, tasa=tasa)
 
         if tipo_pago == "reales":
             total_oro = 0.0
@@ -138,7 +131,7 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
             vuelto_reales = CalculosMonetarios.redondear(data.monto_recibido_reales - total_reales, 2)
         else:
             total_oro = total_oro_core
-            total_reales = total_reales_core
+            total_reales = CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa)
             vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
                 tipo_pago=tipo_pago,
                 total_oro=total_oro,
@@ -158,8 +151,8 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
             total_reales=total_reales,
             tipo_pago=tipo_pago,
             tipo_oro=tipo_oro,
-            unidad_precio_venta=unidad,
-            precio_litro_venta=precio,
+            unidad_precio_venta="reales_litro",
+            precio_litro_venta=precio_r,
             monto_recibido_oro=data.monto_recibido_oro,
             monto_recibido_reales=data.monto_recibido_reales,
             vuelto_oro=vuelto_oro,
@@ -177,6 +170,7 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
                 "litros": data.litros,
                 "total_oro": total_oro,
                 "total_reales": total_reales,
+                "precio_litro_reales": precio_r,
                 "tasa_nombre": tasa.nombre,
                 "tasa_reales": tasa.tasa_reales,
                 "stock_restante_litros": gasolina.litros_disponibles,
@@ -213,8 +207,7 @@ def listar_ventas_gasolina(
             "total_reales": venta.total_reales,
             "tipo_pago": venta.tipo_pago,
             "tipo_oro": venta.tipo_oro,
-            "unidad_precio_venta": venta.unidad_precio_venta or "oro_litro",
-            "precio_litro_venta": venta.precio_litro_venta if venta.precio_litro_venta is not None else 0,
+            "precio_litro_reales": venta.precio_litro_venta,
             "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,
             "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
         }

@@ -347,10 +347,212 @@ th {
   }
 }
 
+.muted.small {
+  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
+}
+
+.accordion-root {
+  display: grid;
+  gap: 10px;
+}
+
+details.accordion-cat {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+summary.accordion-cat-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  font-weight: 700;
+}
+
+summary.accordion-cat-summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-cat-icon {
+  font-size: 1.2rem;
+}
+
+.accordion-cat-count {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.accordion-cat-body {
+  padding: 0 12px 12px;
+}
+
+.pos-layout {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 320px);
+  gap: 18px;
+  align-items: start;
+}
+
+.pos-toolbar {
+  margin-bottom: 12px;
+}
+
+.pos-cat-label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  max-width: 280px;
+}
+
+.pos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.pos-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  text-align: left;
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 8px 20px rgba(17, 38, 58, 0.06);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.pos-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(17, 38, 58, 0.1);
+}
+
+.pos-card-meta {
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.pos-card-stock {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.pos-cart.card {
+  position: sticky;
+  top: 12px;
+}
+
+.btn-cobrar {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #d56b1d, #ba4e18);
+  color: #fff8ef;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-refresh {
+  border-radius: 999px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-refresh:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.modal-cobro {
+  border: none;
+  border-radius: 22px;
+  padding: 0;
+  max-width: min(440px, 94vw);
+  box-shadow: var(--shadow);
+}
+
+.modal-cobro::backdrop {
+  background: rgba(17, 38, 58, 0.45);
+}
+
+.modal-cobro-inner {
+  padding: 22px;
+  display: grid;
+  gap: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.vuelto-msg {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ok);
+  min-height: 1.35em;
+}
+
+.cierre-root {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.cierre-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.cierre-line:last-child {
+  border-bottom: 0;
+}
+
+.cierre-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 8px 0;
+}
+
+.cierre-inline {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  font-weight: 600;
+}
+
 @media (max-width: 960px) {
   .hero,
   .grid.two {
     grid-template-columns: 1fr;
+  }
+
+  .pos-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .pos-cart.card {
+    position: static;
   }
 
   .panel-header {

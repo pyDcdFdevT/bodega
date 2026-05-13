@@ -21,21 +21,26 @@ function renderReporteGasolina(data) {
 
 function renderDashboard(data) {
   const container = document.getElementById("dashboard-cards");
+  const op = data.operaciones_hoy || {};
+  const gas = data.gasolina || {};
   container.innerHTML = `
+    <article class="metric-pill"><span>Ganancia neta (oro equiv.)</span><strong>${formatMoney(op.ganancia_neta)}</strong></article>
+    <article class="metric-pill"><span>Gastos hoy (R$)</span><strong>${formatMoney(op.gastos_reales, "reales")}</strong></article>
+    <article class="metric-pill"><span>Gastos hoy (oro equiv.)</span><strong>${formatMoney(op.gastos_oro_equiv)}</strong></article>
     <article class="metric-pill"><span>Productos activos</span><strong>${data.inventario.productos_activos}</strong></article>
     <article class="metric-pill"><span>Stock bajo</span><strong>${data.inventario.stock_bajo}</strong></article>
     <article class="metric-pill"><span>Valor stock R$</span><strong>${formatMoney(data.inventario.valor_stock_reales, "reales")}</strong></article>
-    <article class="metric-pill"><span>Ventas hoy</span><strong>${formatMoney(data.operaciones_hoy.ventas_oro)}</strong></article>
-    <article class="metric-pill"><span>Ventas hoy R$</span><strong>${formatMoney(data.operaciones_hoy.ventas_reales, "reales")}</strong></article>
-    <article class="metric-pill"><span>Compras hoy</span><strong>${formatMoney(data.operaciones_hoy.compras_oro)}</strong></article>
-    <article class="metric-pill"><span>Salidas hoy</span><strong>${formatMoney(data.operaciones_hoy.salidas_oro)}</strong></article>
-    <article class="metric-pill"><span>Gasolina hoy</span><strong>${formatMoney(data.operaciones_hoy.gasolina_oro)}</strong></article>
-    <article class="metric-pill"><span>Oro Araparita</span><strong>${formatMoney(data.operaciones_hoy.oro_araparita)}</strong></article>
-    <article class="metric-pill"><span>Oro Uruman</span><strong>${formatMoney(data.operaciones_hoy.oro_uruman)}</strong></article>
-    <article class="metric-pill"><span>Oro StaE Min</span><strong>${formatMoney(data.operaciones_hoy.oro_santa_elena_minero)}</strong></article>
-    <article class="metric-pill"><span>Oro StaE Fun</span><strong>${formatMoney(data.operaciones_hoy.oro_santa_elena_fundido)}</strong></article>
-    <article class="metric-pill"><span>Oro total</span><strong>${formatMoney(data.operaciones_hoy.oro_total)}</strong></article>
-    <article class="metric-pill"><span>Ganancia neta</span><strong>${formatMoney(data.operaciones_hoy.ganancia_neta)}</strong></article>
+    <article class="metric-pill"><span>Gasolina P/L (R$)</span><strong>${formatMoney(gas.precio_por_litro_reales, "reales")}</strong></article>
+    <article class="metric-pill"><span>Ventas hoy (oro)</span><strong>${formatMoney(op.ventas_oro)}</strong></article>
+    <article class="metric-pill"><span>Ventas hoy R$</span><strong>${formatMoney(op.ventas_reales, "reales")}</strong></article>
+    <article class="metric-pill"><span>Compras hoy (oro)</span><strong>${formatMoney(op.compras_oro)}</strong></article>
+    <article class="metric-pill"><span>Salidas hoy</span><strong>${formatMoney(op.salidas_oro)}</strong></article>
+    <article class="metric-pill"><span>Gasolina hoy (oro)</span><strong>${formatMoney(op.gasolina_oro)}</strong></article>
+    <article class="metric-pill"><span>Oro Araparita</span><strong>${formatMoney(op.oro_araparita)}</strong></article>
+    <article class="metric-pill"><span>Oro Uruman</span><strong>${formatMoney(op.oro_uruman)}</strong></article>
+    <article class="metric-pill"><span>Oro StaE Min</span><strong>${formatMoney(op.oro_santa_elena_minero)}</strong></article>
+    <article class="metric-pill"><span>Oro StaE Fun</span><strong>${formatMoney(op.oro_santa_elena_fundido)}</strong></article>
+    <article class="metric-pill"><span>Oro total (cobrado)</span><strong>${formatMoney(op.oro_total)}</strong></article>
   `;
 }
 

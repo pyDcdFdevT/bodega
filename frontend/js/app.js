@@ -1,13 +1,28 @@
 import { showToast } from "./api.js";
 import { getRol, initAuth } from "./auth.js";
+import { initCierre, loadCierre } from "./cierre.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
+import { initGastos, loadGastos } from "./gastos.js";
 import { initInventario, loadInventario, loadProductoOptions } from "./inventario.js";
 import { loadReportes } from "./reportes.js";
 import { initSalidas, loadSalidas } from "./salidas.js";
 import { initTasas, loadTasas } from "./tasas.js";
 import { initVentas, loadVentas } from "./ventas.js";
+
+function updateHeroStatsVisibility(panelId) {
+  const wrap = document.getElementById("hero-stats-wrap");
+  if (!wrap) {
+    return;
+  }
+  wrap.style.display = panelId === "panel-inventario" ? "" : "none";
+}
+
+function updateHeroForActivePanel() {
+  const active = document.querySelector(".panel.active");
+  updateHeroStatsVisibility(active?.id || "");
+}
 
 function initTabs() {
   const tabs = [...document.querySelectorAll(".tab")];
@@ -20,7 +35,9 @@ function initTabs() {
       tabs.forEach((item) => item.classList.remove("active"));
       panels.forEach((panel) => panel.classList.remove("active"));
       tab.classList.add("active");
-      document.getElementById(tab.dataset.target).classList.add("active");
+      const target = document.getElementById(tab.dataset.target);
+      target?.classList.add("active");
+      updateHeroStatsVisibility(target?.id || "");
     });
   });
 }
@@ -41,15 +58,22 @@ function aplicarVistaRol() {
       document.getElementById("panel-ventas")?.classList.add("active");
     }
   }
+  updateHeroForActivePanel();
 }
 
 async function refreshAll() {
   try {
     await Promise.all([loadInventario(), loadTasas()]);
-    await loadProductoOptions(["venta-producto", "compra-producto", "salida-producto"]);
+    await loadProductoOptions(["compra-producto", "salida-producto"]);
     await Promise.all([
-      loadVentas(), loadCompras(), loadSalidas(), loadGasolina(),
-      loadComprasOro(), loadReportes(),
+      loadVentas(),
+      loadCompras(),
+      loadSalidas(),
+      loadGasolina(),
+      loadComprasOro(),
+      loadReportes(),
+      loadGastos(),
+      loadCierre(),
     ]);
   } catch (error) {
     showToast(error.message, "error");
@@ -73,6 +97,8 @@ async function init() {
   initGasolina();
   initComprasOro();
   initTasas();
+  initGastos();
+  initCierre();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", refreshAll);
   document.addEventListener("bodega:unlocked", () => {
@@ -81,7 +107,9 @@ async function init() {
   });
   const autenticado = await initAuth();
   aplicarVistaRol();
-  if (autenticado) refreshAll();
+  if (autenticado) {
+    refreshAll();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
