@@ -1,4 +1,4 @@
-import { api, showToast } from "./api.js";
+import { api } from "./api.js";
 
 const SESSION_KEY = "bodega_pin_ok";
 const SESSION_ROL_KEY = "bodega_rol";
@@ -14,7 +14,9 @@ function mostrarPantallaBloqueo() {
 
 function ocultarPantallaBloqueo() {
   const pantalla = document.getElementById("pantalla-bloqueo");
-  pantalla.style.display = "none";
+  if (pantalla) {
+    pantalla.style.display = "none";
+  }
 }
 
 function limpiarError() {
@@ -57,47 +59,9 @@ function enlazarCerrarSesion() {
 
 export async function initAuth() {
   enlazarCerrarSesion();
-  const form = document.getElementById("form-pin");
-  const input = document.getElementById("pin-input");
-
-  if (sesionActiva()) {
-    ocultarPantallaBloqueo();
-    return true;
-  }
-
-  mostrarPantallaBloqueo();
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    limpiarError();
-
-    const pin = String(input.value || "").trim();
-    if (pin.length !== 4) {
-      mostrarError("Ingresa un PIN de 4 digitos");
-      return;
-    }
-
-    try {
-      const respuesta = await verificarPin(pin);
-      if (!respuesta.acceso) {
-        mostrarError("PIN incorrecto");
-        input.value = "";
-        input.focus();
-        return;
-      }
-
-      guardarSesion(respuesta.rol || "admin");
-      ocultarPantallaBloqueo();
-      input.value = "";
-      showToast("Acceso concedido", "success");
-      document.dispatchEvent(new CustomEvent("bodega:unlocked"));
-    } catch (error) {
-      mostrarError("No fue posible verificar el PIN");
-      showToast(error.message, "error");
-    }
-  });
-
-  return false;
+  ocultarPantallaBloqueo();
+  guardarSesion("admin");
+  return true;
 }
 
 export { verificarPin };
