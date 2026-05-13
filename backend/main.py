@@ -60,3 +60,4 @@ app.include_router(tasas.router, prefix="/api")
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
+# test persistence
