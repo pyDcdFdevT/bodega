@@ -43,7 +43,7 @@ export function getRol() {
 export function cerrarSesion() {
   sessionStorage.removeItem("bodega_pin_ok");
   sessionStorage.removeItem("bodega_rol");
-  window.location.href = window.location.href.split("?")[0] + "?t=" + Date.now();
+  location.replace(location.pathname);
 }
 
 function enlazarCerrarSesion() {
