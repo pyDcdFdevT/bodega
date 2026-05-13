@@ -12,12 +12,25 @@ function obtenerTasaSeleccionada() {
   return findTasaById(tasaId) || null;
 }
 
+function textoVuelto(data) {
+  const partes = [];
+  if (Number(data.vuelto_reales) > 0) {
+    partes.push(`Vuelto: R$ ${Number(data.vuelto_reales).toFixed(2)}`);
+  }
+  if (Number(data.vuelto_oro) > 0) {
+    partes.push(`Vuelto: ${Number(data.vuelto_oro).toFixed(3)}g`);
+  }
+  return partes.join(" · ");
+}
+
 function actualizarVisibilidadCamposPago() {
   const tipoPago = document.getElementById("venta-tipo-pago").value;
   const tasaWrap = document.getElementById("venta-tasa-wrap");
   const tipoOroWrap = document.getElementById("venta-tipo-oro-wrap");
   const tasaSelect = document.getElementById("venta-tasa");
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
+  const wrapMontoOro = document.getElementById("venta-monto-oro-wrap");
+  const wrapMontoReales = document.getElementById("venta-monto-reales-wrap");
 
   if (!tasaWrap || !tipoOroWrap || !tasaSelect || !tipoOroSelect) {
     return;
@@ -27,6 +40,19 @@ function actualizarVisibilidadCamposPago() {
   tasaWrap.style.display = requiereConversion ? "grid" : "none";
   tipoOroWrap.style.display = requiereConversion ? "grid" : "none";
   tipoOroSelect.required = requiereConversion;
+
+  if (wrapMontoOro && wrapMontoReales) {
+    if (tipoPago === "reales") {
+      wrapMontoOro.style.display = "none";
+      wrapMontoReales.style.display = "grid";
+    } else if (tipoPago === "oro") {
+      wrapMontoOro.style.display = "grid";
+      wrapMontoReales.style.display = "none";
+    } else {
+      wrapMontoOro.style.display = "grid";
+      wrapMontoReales.style.display = "grid";
+    }
+  }
 
   if (!requiereConversion) {
     tipoOroSelect.value = "";
@@ -139,6 +165,7 @@ export function initVentas() {
   const tasaSelect = document.getElementById("venta-tasa");
   const tipoPagoSelect = document.getElementById("venta-tipo-pago");
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
+  const mensajeVuelto = document.getElementById("venta-mensaje-vuelto");
 
   formCarrito.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -179,6 +206,9 @@ export function initVentas() {
 
   formVenta.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (mensajeVuelto) {
+      mensajeVuelto.textContent = "";
+    }
     if (!carrito.length) {
       showToast("Agrega al menos un producto al carrito", "error");
       return;
@@ -192,6 +222,14 @@ export function initVentas() {
     }
 
     const formData = new FormData(formVenta);
+    let montoOro = Number(formData.get("monto_recibido_oro"));
+    let montoReales = Number(formData.get("monto_recibido_reales"));
+    if (tipoPago === "reales") {
+      montoOro = 0;
+    } else if (tipoPago === "oro") {
+      montoReales = 0;
+    }
+
     const payload = {
       items: carrito.map((item) => ({
         producto_id: item.producto_id,
@@ -201,8 +239,8 @@ export function initVentas() {
       tasa_cambio_id: tipoPago === "reales" ? null : tasaId,
       tipo_pago: tipoPago,
       tipo_oro: tipoPago === "reales" ? null : formData.get("tipo_oro") || null,
-      monto_recibido_oro: Number(formData.get("monto_recibido_oro")),
-      monto_recibido_reales: Number(formData.get("monto_recibido_reales")),
+      monto_recibido_oro: montoOro,
+      monto_recibido_reales: montoReales,
     };
 
     if (payload.tipo_pago !== "reales" && !payload.tipo_oro) {
@@ -212,6 +250,10 @@ export function initVentas() {
 
     try {
       const response = await api.post("/ventas", payload);
+      const vueltoTxt = textoVuelto(response.data);
+      if (mensajeVuelto) {
+        mensajeVuelto.textContent = vueltoTxt;
+      }
       carrito.splice(0, carrito.length);
       formVenta.reset();
       formVenta.cliente.value = "Mostrador";
@@ -222,7 +264,8 @@ export function initVentas() {
       actualizarVisibilidadCamposPago();
       fillTasaSelect("venta-tasa");
       renderCarrito();
-      showToast(`Venta #${response.data.venta_id} registrada`, "success");
+      const baseMsg = `Venta #${response.data.venta_id} registrada`;
+      showToast(vueltoTxt ? `${baseMsg}. ${vueltoTxt}` : baseMsg, "success");
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");

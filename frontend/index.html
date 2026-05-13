@@ -64,18 +64,18 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab active" data-target="panel-inventario">Inventario</button>
+      <button class="tab active solo-admin" data-target="panel-inventario">Inventario</button>
       <button class="tab" data-target="panel-ventas">Ventas</button>
-      <button class="tab" data-target="panel-compras">Compras</button>
+      <button class="tab solo-admin" data-target="panel-compras">Compras</button>
       <button class="tab" data-target="panel-salidas">Salidas</button>
       <button class="tab" data-target="panel-gasolina">Gasolina</button>
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
-      <button class="tab" data-target="panel-tasas">Tasas</button>
-      <button class="tab" data-target="panel-reportes">Reportes</button>
+      <button class="tab solo-admin" data-target="panel-tasas">Tasas</button>
+      <button class="tab solo-admin" data-target="panel-reportes">Reportes</button>
     </nav>
 
     <main class="layout">
-      <section class="panel active" id="panel-inventario">
+      <section class="panel active solo-admin" id="panel-inventario">
         <div class="panel-header">
           <div>
             <p class="eyebrow">Inventario</p>
@@ -229,12 +229,13 @@
                   <option value="santa_elena_fundido">Santa Elena Fundido</option>
                 </select>
               </label>
-              <label>Monto recibido (oro)
-                <input name="monto_recibido_oro" type="number" min="0" step="0.001" value="0.000">
+              <label id="venta-monto-oro-wrap">Monto recibido (oro)
+                <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.001" value="0.000">
               </label>
-              <label>Monto recibido (reales)
-                <input name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
+              <label id="venta-monto-reales-wrap">Monto recibido (reales)
+                <input id="venta-input-monto-reales" name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
               </label>
+              <p id="venta-mensaje-vuelto" style="margin:0;font-weight:600;color:#2d6a4f;min-height:1.35em;"></p>
               <button type="submit">Registrar venta</button>
             </form>
           </article>
@@ -262,7 +263,7 @@
         </article>
       </section>
 
-      <section class="panel" id="panel-compras">
+      <section class="panel solo-admin" id="panel-compras">
         <div class="panel-header">
           <div>
             <p class="eyebrow">Compras</p>
@@ -289,7 +290,7 @@
               <label>Observaciones
                 <textarea name="observaciones" rows="3"></textarea>
               </label>
-              <button type="submit">Registrar compra</button>
+              <button type="submit" id="compra-submit-btn">Registrar compra</button>
             </form>
           </article>
 
@@ -304,6 +305,7 @@
                     <th>Proveedor</th>
                     <th>Total reales</th>
                     <th>Total oro</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody id="tabla-compras"></tbody>
@@ -487,7 +489,7 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-tasas">
+      <section class="panel solo-admin" id="panel-tasas">
         <div class="panel-header">
           <div>
             <p class="eyebrow">Tasas</p>
@@ -553,7 +555,7 @@
         </article>
       </section>
 
-      <section class="panel" id="panel-reportes">
+      <section class="panel solo-admin" id="panel-reportes">
         <div class="panel-header">
           <div>
             <p class="eyebrow">Reportes</p>

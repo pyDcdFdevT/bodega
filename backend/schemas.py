@@ -137,6 +137,15 @@ class CompraCreate(BaseModel):
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
 
+class CompraUpdate(BaseModel):
+    cantidad: float = Field(..., gt=0)
+    precio_reales: float = Field(..., gt=0)
+    proveedor: str = Field(default="Proveedor", max_length=100)
+    observaciones: Optional[str] = Field(default=None, max_length=500)
+
+    _proveedor = field_validator("proveedor")(_texto_requerido)
+
+
 class GasolinaVenta(BaseModel):
     litros: float = Field(..., gt=0)
     tasa_cambio_id: int = Field(..., gt=0)

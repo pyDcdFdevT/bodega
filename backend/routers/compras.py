@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Compra, DetalleCompra, MovimientoInventario
+from models import Compra, DetalleCompra, MovimientoInventario, Producto
 from services.calculos import CalculosMonetarios
 from services.validaciones import ValidacionesSistema
-from schemas import CompraCreate
+from schemas import CompraCreate, CompraUpdate
 
 
 router = APIRouter(prefix="/compras", tags=["Compras"])
@@ -106,3 +106,104 @@ def listar_compras(
         .all()
     )
     return compras
+
+
+@router.put("/{compra_id}")
+def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depends(get_db)):
+    try:
+        compra = (
+            db.query(Compra)
+            .options(joinedload(Compra.detalles).joinedload(DetalleCompra.producto))
+            .filter(Compra.id == compra_id)
+            .first()
+        )
+        if not compra:
+            raise HTTPException(status_code=404, detail="Compra no encontrada")
+        if not compra.detalles:
+            raise ValueError("La compra no tiene detalle asociado")
+
+        detalle = compra.detalles[0]
+        producto = detalle.producto
+        if not producto:
+            producto = db.query(Producto).filter(Producto.id == detalle.producto_id).first()
+        if not producto:
+            raise ValueError("Producto de la compra no encontrado")
+
+        cantidad_anterior = detalle.cantidad
+        unidades = payload.cantidad
+        precio_reales = round(payload.precio_reales, 2)
+
+        if unidades <= 0:
+            raise ValueError("La cantidad debe ser mayor a cero")
+
+        stock_inicial = producto.stock_actual
+        stock_tras_revertir = CalculosMonetarios.redondear(stock_inicial - cantidad_anterior)
+        if stock_tras_revertir < 0:
+            raise ValueError("No se puede revertir el stock de esta compra (stock insuficiente)")
+
+        producto.stock_actual = CalculosMonetarios.redondear(stock_tras_revertir + unidades)
+
+        tasa_usada = compra.tasa_cambio_usada
+        if tasa_usada <= 0:
+            raise ValueError("Tasa de la compra original invalida")
+
+        costo_oro_total = CalculosMonetarios.redondear(precio_reales / tasa_usada)
+        costo_unitario_oro = CalculosMonetarios.redondear(costo_oro_total / unidades)
+        costo_unitario_reales = round(precio_reales / unidades, 2)
+        precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
+
+        producto.precio_costo_oro = costo_unitario_oro
+        producto.precio_costo_reales = costo_unitario_reales
+        if producto.precio_venta_oro <= 0:
+            tasa = ValidacionesSistema.validar_tasa(db)
+            producto.precio_venta_oro = precio_sugerido
+            producto.precio_venta_reales = CalculosMonetarios.oro_a_reales(precio_sugerido, db, tasa=tasa)
+
+        compra.proveedor = payload.proveedor.strip()
+        compra.observaciones = payload.observaciones
+        compra.total_reales = precio_reales
+        compra.total_oro = costo_oro_total
+
+        detalle.cantidad = unidades
+        detalle.precio_reales_total = precio_reales
+        detalle.precio_reales_unitario = costo_unitario_reales
+        detalle.precio_oro_unitario = costo_unitario_oro
+        detalle.subtotal_oro = costo_oro_total
+
+        delta = CalculosMonetarios.redondear(unidades - cantidad_anterior)
+        if abs(delta) > 1e-9:
+            db.add(
+                MovimientoInventario(
+                    producto_id=producto.id,
+                    tipo="entrada" if delta > 0 else "salida",
+                    cantidad=abs(delta),
+                    stock_anterior=stock_inicial,
+                    stock_nuevo=producto.stock_actual,
+                    motivo=f"Compra #{compra.id} actualizada",
+                )
+            )
+
+        db.commit()
+        db.refresh(compra)
+
+        return {
+            "status": "success",
+            "message": "Compra actualizada correctamente",
+            "data": {
+                "compra_id": compra.id,
+                "producto": producto.nombre,
+                "unidades": unidades,
+                "total_reales": precio_reales,
+                "total_oro": costo_oro_total,
+                "stock_actual": producto.stock_actual,
+            },
+        }
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible actualizar la compra") from exc

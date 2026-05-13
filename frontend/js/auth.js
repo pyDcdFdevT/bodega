@@ -1,10 +1,10 @@
 import { api, showToast } from "./api.js";
 
 const SESSION_KEY = "bodega_pin_ok";
+const SESSION_ROL_KEY = "bodega_rol";
 
 async function verificarPin(pin) {
-  const response = await api.post("/auth/verificar-pin", { pin });
-  return Boolean(response.acceso);
+  return api.post("/auth/verificar-pin", { pin });
 }
 
 function mostrarPantallaBloqueo() {
@@ -31,8 +31,13 @@ function sesionActiva() {
   return sessionStorage.getItem(SESSION_KEY) === "1";
 }
 
-function guardarSesion() {
+function guardarSesion(rol) {
   sessionStorage.setItem(SESSION_KEY, "1");
+  sessionStorage.setItem(SESSION_ROL_KEY, rol || "admin");
+}
+
+export function getRol() {
+  return sessionStorage.getItem(SESSION_ROL_KEY) || "admin";
 }
 
 export async function initAuth() {
@@ -57,15 +62,15 @@ export async function initAuth() {
     }
 
     try {
-      const acceso = await verificarPin(pin);
-      if (!acceso) {
+      const respuesta = await verificarPin(pin);
+      if (!respuesta.acceso) {
         mostrarError("PIN incorrecto");
         input.value = "";
         input.focus();
         return;
       }
 
-      guardarSesion();
+      guardarSesion(respuesta.rol || "admin");
       ocultarPantallaBloqueo();
       input.value = "";
       showToast("Acceso concedido", "success");
