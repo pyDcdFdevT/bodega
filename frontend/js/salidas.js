@@ -55,6 +55,7 @@ export async function loadSalidas() {
   if (!tbody) {
     return;
   }
+  if (!salidas.length) {
     tbody.innerHTML = renderEmptyRow(6, "No hay salidas registradas.");
     return;
   }
