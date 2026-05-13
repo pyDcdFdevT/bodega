@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Categoria, MovimientoInventario, Producto
+from models import Categoria, DetalleCompra, DetalleVenta, MovimientoInventario, Producto
 from schemas import ProductoCreate, ProductoUpdate
 from services.calculos import CalculosMonetarios
 
@@ -87,6 +88,34 @@ def stock_bajo(db: Session = Depends(get_db)):
         .all()
     )
     return [serializar_producto(producto) for producto in productos]
+
+
+@router.get("/{producto_id}/info-eliminacion")
+def info_eliminacion_producto(producto_id: int, db: Session = Depends(get_db)):
+    producto = db.query(Producto).filter(Producto.id == producto_id).first()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    stock_actual = float(producto.stock_actual)
+    tiene_stock = stock_actual > 0
+    total_ventas = int(
+        db.query(func.count(DetalleVenta.id)).filter(DetalleVenta.producto_id == producto_id).scalar() or 0
+    )
+    total_compras = int(
+        db.query(func.count(DetalleCompra.id)).filter(DetalleCompra.producto_id == producto_id).scalar() or 0
+    )
+    total_movimientos = int(
+        db.query(func.count(MovimientoInventario.id))
+        .filter(MovimientoInventario.producto_id == producto_id)
+        .scalar()
+        or 0
+    )
+    return {
+        "tiene_stock": tiene_stock,
+        "stock_actual": stock_actual,
+        "total_ventas": total_ventas,
+        "total_compras": total_compras,
+        "total_movimientos": total_movimientos,
+    }
 
 
 @router.get("/{producto_id}")

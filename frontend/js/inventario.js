@@ -146,8 +146,29 @@ function editarProducto(id) {
 async function eliminarProducto(id) {
   const producto = productosCache.find((item) => item.id === id);
   const nombre = producto?.nombre || "este producto";
-  const confirmado = window.confirm(`¿Deseas eliminar el producto "${nombre}"?`);
-  if (!confirmado) {
+  let info;
+  try {
+    info = await api.get(`/productos/${id}/info-eliminacion`);
+  } catch (error) {
+    showToast(error.message, "error");
+    return;
+  }
+  const tieneMovimientos = Number(info.total_movimientos) > 0;
+  const advertencia = Boolean(info.tiene_stock) || tieneMovimientos;
+  let mensaje;
+  if (advertencia) {
+    mensaje =
+      `ADVERTENCIA: desactivar "${nombre}"\n\n` +
+      `• Stock actual: ${info.stock_actual}\n` +
+      `• Lineas de venta (historial): ${info.total_ventas}\n` +
+      `• Lineas de compra (historial): ${info.total_compras}\n` +
+      `• Movimientos de inventario: ${info.total_movimientos}\n\n` +
+      `El producto se desactivara; el historial no se borra.\n\n` +
+      `¿Confirmar desactivacion?`;
+  } else {
+    mensaje = `¿Desactivar el producto "${nombre}"?`;
+  }
+  if (!window.confirm(mensaje)) {
     return;
   }
 
