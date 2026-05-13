@@ -109,7 +109,7 @@ class ItemVenta(BaseModel):
 
 class VentaCreate(BaseModel):
     items: List[ItemVenta] = Field(..., min_length=1)
-    tasa_cambio_id: int = Field(..., gt=0)
+    tasa_cambio_id: Optional[int] = Field(default=None, gt=0)
     tipo_pago: str = Field(..., min_length=3, max_length=20)
     tipo_oro: Optional[str] = Field(default=None, max_length=50)
     cliente: str = Field(default="Mostrador", max_length=100)

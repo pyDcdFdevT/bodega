@@ -21,31 +21,47 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     try:
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(venta.tipo_pago)
         tipo_oro = None
-        if tipo_pago == "oro":
+        tasa = None
+        if tipo_pago in {"oro", "mixto"}:
             if not venta.tipo_oro:
                 raise ValueError("Debe seleccionar el tipo de oro")
             tipo_oro = venta.tipo_oro.strip().lower()
             tasa = ValidacionesSistema.validar_tasa(db, tasa_nombre=tipo_oro)
-        else:
-            tasa = ValidacionesSistema.validar_tasa(db, tasa_id=venta.tasa_cambio_id)
         consolidados = ValidacionesSistema.validar_venta(venta.items, db)
 
         productos: dict[int, Producto] = {}
-        subtotales: dict[int, float] = {}
+        subtotales_oro: dict[int, float] = {}
+        subtotales_reales: dict[int, float] = {}
         for producto_id, cantidad in consolidados.items():
             producto = ValidacionesSistema.validar_stock(producto_id, cantidad, db)
             productos[producto_id] = producto
-            subtotales[producto_id] = CalculosMonetarios.redondear(producto.precio_venta_oro * cantidad)
+            subtotales_oro[producto_id] = CalculosMonetarios.redondear(producto.precio_venta_oro * cantidad)
+            subtotales_reales[producto_id] = CalculosMonetarios.redondear(producto.precio_venta_reales * cantidad, 2)
 
-        total_oro = CalculosMonetarios.consolidar_total_oro(subtotales.values())
-        total_reales = CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa)
-        vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
-            tipo_pago=tipo_pago,
-            total_oro=total_oro,
-            monto_recibido_oro=venta.monto_recibido_oro,
-            monto_recibido_reales=venta.monto_recibido_reales,
-            tasa_reales=tasa.tasa_reales,
+        total_oro = CalculosMonetarios.consolidar_total_oro(subtotales_oro.values())
+        total_reales_convertido = (
+            CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa) if tasa else 0.0
         )
+        total_reales_directo = CalculosMonetarios.redondear(sum(subtotales_reales.values()), 2)
+
+        if tipo_pago == "reales":
+            total_oro = 0.0
+            total_reales = total_reales_directo
+            if venta.monto_recibido_reales <= 0:
+                raise ValueError("Debe indicar monto recibido en reales")
+            if venta.monto_recibido_reales + 1e-9 < total_reales:
+                raise ValueError("Monto recibido insuficiente para completar la operacion")
+            vuelto_oro = 0.0
+            vuelto_reales = CalculosMonetarios.redondear(venta.monto_recibido_reales - total_reales, 2)
+        else:
+            total_reales = total_reales_convertido
+            vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
+                tipo_pago=tipo_pago,
+                total_oro=total_oro,
+                monto_recibido_oro=venta.monto_recibido_oro,
+                monto_recibido_reales=venta.monto_recibido_reales,
+                tasa_reales=tasa.tasa_reales,
+            )
 
         nueva = Venta(
             cliente=venta.cliente,
@@ -57,7 +73,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             monto_recibido_reales=venta.monto_recibido_reales,
             vuelto_oro=vuelto_oro,
             vuelto_reales=vuelto_reales,
-            tasa_cambio_id=tasa.id,
+            tasa_cambio_id=tasa.id if tasa else None,
         )
         db.add(nueva)
         db.flush()
@@ -65,7 +81,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
         detalles_resumen = []
         for producto_id, cantidad in consolidados.items():
             producto = productos[producto_id]
-            subtotal_oro = subtotales[producto_id]
+            subtotal_oro = subtotales_oro[producto_id]
             stock_anterior = producto.stock_actual
             producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual - cantidad)
 
@@ -110,8 +126,8 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 "total_reales": total_reales,
                 "tipo_pago": tipo_pago,
                 "tipo_oro": tipo_oro,
-                "tasa_nombre": tasa.nombre,
-                "tasa_reales": tasa.tasa_reales,
+                "tasa_nombre": tasa.nombre if tasa else None,
+                "tasa_reales": tasa.tasa_reales if tasa else None,
                 "vuelto_oro": vuelto_oro,
                 "vuelto_reales": vuelto_reales,
                 "detalles": detalles_resumen,

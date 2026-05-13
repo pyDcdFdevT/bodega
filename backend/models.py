@@ -122,7 +122,7 @@ class Venta(Base):
     tipo_oro = Column(String(50), nullable=True)
     vuelto_oro = Column(Float, default=0, nullable=False)
     vuelto_reales = Column(Float, default=0, nullable=False)
-    tasa_cambio_id = Column(Integer, ForeignKey("tasas_cambio.id"), nullable=False)
+    tasa_cambio_id = Column(Integer, ForeignKey("tasas_cambio.id"), nullable=True)
 
     tasa_cambio = relationship("TasaCambio", back_populates="ventas")
     detalles = relationship("DetalleVenta", back_populates="venta", cascade="all, delete-orphan")
