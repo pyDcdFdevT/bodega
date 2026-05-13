@@ -76,7 +76,7 @@ export function initComprasOro() {
     try {
       await api.post("/compras-oro", payload);
       showToast("Compra de oro registrada", "success");
-      gramosInput.value = "0.000";
+      gramosInput.value = "0.00";
       actualizarTasaPorTipo();
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {

@@ -7,9 +7,9 @@ function renderReporteGasolina(data) {
   }
   const h = data.hoy || {};
   target.innerHTML = `
-    <div class="report-item"><strong>Litros disponibles</strong>: ${Number(data.litros_disponibles || 0).toFixed(3)}</div>
-    <div class="report-item"><strong>Litros vendidos hoy</strong>: ${Number(h.litros_vendidos || 0).toFixed(3)}</div>
-    <div class="report-item"><strong>Litros repuestos hoy</strong>: ${Number(h.litros_repuestos || 0).toFixed(3)}</div>
+    <div class="report-item"><strong>Litros disponibles</strong>: ${Number(data.litros_disponibles || 0).toFixed(2)}</div>
+    <div class="report-item"><strong>Litros vendidos hoy</strong>: ${Number(h.litros_vendidos || 0).toFixed(2)}</div>
+    <div class="report-item"><strong>Litros repuestos hoy</strong>: ${Number(h.litros_repuestos || 0).toFixed(2)}</div>
     <div class="report-item"><strong>Ventas hoy (oro)</strong>: ${formatMoney(h.total_ventas_oro)}</div>
     <div class="report-item"><strong>Ventas hoy (reales)</strong>: ${formatMoney(h.total_ventas_reales, "reales")}</div>
     <div class="report-item"><strong>Reposicion hoy (reales)</strong>: ${formatMoney(h.total_reposicion_reales, "reales")}</div>

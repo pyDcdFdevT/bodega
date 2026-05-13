@@ -15,7 +15,7 @@ function renderResumen(gasolina) {
   target.innerHTML = `
     <article class="metric-pill">
       <span>Litros disponibles</span>
-      <strong>${Number(gasolina.litros_disponibles || 0).toFixed(3)}</strong>
+      <strong>${Number(gasolina.litros_disponibles || 0).toFixed(2)}</strong>
     </article>
     <article class="metric-pill">
       <span>Precio referencia (oro / L)</span>
@@ -46,7 +46,7 @@ function actualizarPreviewRepo() {
     elR.value = Number.isFinite(totalReales) ? totalReales.toFixed(2) : "0.00";
   }
   if (elO) {
-    elO.value = Number.isFinite(totalOro) ? totalOro.toFixed(3) : "0.000";
+    elO.value = Number.isFinite(totalOro) ? totalOro.toFixed(2) : "0.00";
   }
 }
 
@@ -63,8 +63,8 @@ function actualizarEtiquetaPrecioLitro() {
     input.step = "0.01";
   } else {
     leyenda.textContent = "Precio por litro (gramos oro)";
-    input.min = "0.001";
-    input.step = "0.001";
+    input.min = "0.01";
+    input.step = "0.01";
   }
   const gasolina = gasolinaConfigCache;
   if (gasolina && unidad === "oro_litro" && Number(gasolina.precio_por_litro_oro) > 0) {
@@ -133,10 +133,10 @@ function actualizarPreviewVentaGasolina() {
   const tipoPago = document.getElementById("gasolina-tipo-pago")?.value;
   if (elO && elR) {
     if (tipoPago === "reales") {
-      elO.textContent = "0.000";
+      elO.textContent = "0.00";
       elR.textContent = formatMoney(totalReales, "reales");
     } else {
-      elO.textContent = Number.isFinite(totalOro) ? totalOro.toFixed(3) : "0.000";
+      elO.textContent = Number.isFinite(totalOro) ? totalOro.toFixed(2) : "0.00";
       elR.textContent = formatMoney(Number.isFinite(totalReales) ? totalReales : 0, "reales");
     }
   }
@@ -211,7 +211,7 @@ function resetFormVentaGasolina() {
   const ventaForm = document.getElementById("form-gasolina-venta");
   ventaForm.reset();
   ventaForm.querySelector("#gasolina-tipo-pago").value = "oro";
-  ventaForm.querySelector("#gasolina-monto-oro").value = "0.000";
+  ventaForm.querySelector("#gasolina-monto-oro").value = "0.00";
   ventaForm.querySelector("#gasolina-monto-reales").value = "0.00";
   ventaForm.querySelector("#gasolina-unidad-precio").value = "oro_litro";
   fillTasaSelect("gasolina-tasa");

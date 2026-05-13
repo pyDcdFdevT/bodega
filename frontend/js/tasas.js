@@ -112,7 +112,7 @@ export async function loadTasas() {
             if (!tasa || !tasa.tasa_reales) {
               return "-";
             }
-            return `${(Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(3)}g`;
+            return `${(Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(2)}g`;
           });
           return `
             <tr>

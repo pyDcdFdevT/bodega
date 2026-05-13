@@ -52,29 +52,29 @@ def _inicializar_datos(db: Session) -> None:
             )
 
         productos = [
-            _producto("Arroz", cats["Alimentos"], "kg", "kg", 48, 12, 0.500),
-            _producto("Harina de maiz", cats["Alimentos"], "unidad", "unidad", 40, 10, 0.420),
-            _producto("Pasta corta", cats["Alimentos"], "unidad", "unidad", 60, 12, 0.280),
-            _producto("Azucar", cats["Alimentos"], "kg", "kg", 24, 8, 0.390),
-            _producto("Cafe molido", cats["Alimentos"], "unidad", "unidad", 30, 8, 0.820),
-            _producto("Aceite vegetal", cats["Alimentos"], "unidad", "unidad", 24, 6, 0.880),
-            _producto("Avena", cats["Alimentos"], "unidad", "unidad", 18, 6, 0.220),
-            _producto("Refresco sabor cola 2L", cats["Bebidas"], "unidad", "unidad", 20, 8, 0.360),
-            _producto("Refresco sabor naranja 2L", cats["Bebidas"], "unidad", "unidad", 16, 8, 0.360),
-            _producto("Jugo de frutas", cats["Bebidas"], "unidad", "unidad", 24, 8, 0.270),
-            _producto("Malta", cats["Bebidas"], "unidad", "unidad", 48, 12, 0.210),
-            _producto("Galleta dulce", cats["Snacks"], "unidad", "unidad", 60, 12, 0.170),
-            _producto("Galleta salada", cats["Snacks"], "unidad", "unidad", 54, 12, 0.170),
-            _producto("Chocolate", cats["Snacks"], "unidad", "unidad", 48, 10, 0.220),
-            _producto("Caramelo", cats["Snacks"], "unidad", "unidad", 120, 30, 0.050),
-            _producto("Queso blanco", cats["Lacteos"], "kg", "kg", 10, 3, 0.950),
-            _producto("Mantequilla", cats["Lacteos"], "unidad", "unidad", 24, 6, 0.380),
-            _producto("Pollo", cats["Alimentos"], "kg", "unidad", 25, 5, 0.650),
-            _producto("Atun", cats["Enlatados"], "unidad", "unidad", 72, 24, 0.310),
-            _producto("Sardina", cats["Enlatados"], "unidad", "unidad", 60, 18, 0.230),
-            _producto("Salsa de tomate", cats["Enlatados"], "unidad", "unidad", 36, 12, 0.160),
-            _producto("Papel higienico", cats["Hogar"], "unidad", "unidad", 36, 12, 0.420),
-            _producto("Jabon de bano", cats["Hogar"], "unidad", "unidad", 48, 12, 0.160),
+            _producto("Arroz", cats["Alimentos"], "kg", "kg", 48, 12, 0.5),
+            _producto("Harina de maiz", cats["Alimentos"], "unidad", "unidad", 40, 10, 0.42),
+            _producto("Pasta corta", cats["Alimentos"], "unidad", "unidad", 60, 12, 0.28),
+            _producto("Azucar", cats["Alimentos"], "kg", "kg", 24, 8, 0.39),
+            _producto("Cafe molido", cats["Alimentos"], "unidad", "unidad", 30, 8, 0.82),
+            _producto("Aceite vegetal", cats["Alimentos"], "unidad", "unidad", 24, 6, 0.88),
+            _producto("Avena", cats["Alimentos"], "unidad", "unidad", 18, 6, 0.22),
+            _producto("Refresco sabor cola 2L", cats["Bebidas"], "unidad", "unidad", 20, 8, 0.36),
+            _producto("Refresco sabor naranja 2L", cats["Bebidas"], "unidad", "unidad", 16, 8, 0.36),
+            _producto("Jugo de frutas", cats["Bebidas"], "unidad", "unidad", 24, 8, 0.27),
+            _producto("Malta", cats["Bebidas"], "unidad", "unidad", 48, 12, 0.21),
+            _producto("Galleta dulce", cats["Snacks"], "unidad", "unidad", 60, 12, 0.17),
+            _producto("Galleta salada", cats["Snacks"], "unidad", "unidad", 54, 12, 0.17),
+            _producto("Chocolate", cats["Snacks"], "unidad", "unidad", 48, 10, 0.22),
+            _producto("Caramelo", cats["Snacks"], "unidad", "unidad", 120, 30, 0.05),
+            _producto("Queso blanco", cats["Lacteos"], "kg", "kg", 10, 3, 0.95),
+            _producto("Mantequilla", cats["Lacteos"], "unidad", "unidad", 24, 6, 0.38),
+            _producto("Pollo", cats["Alimentos"], "kg", "unidad", 25, 5, 0.65),
+            _producto("Atun", cats["Enlatados"], "unidad", "unidad", 72, 24, 0.31),
+            _producto("Sardina", cats["Enlatados"], "unidad", "unidad", 60, 18, 0.23),
+            _producto("Salsa de tomate", cats["Enlatados"], "unidad", "unidad", 36, 12, 0.16),
+            _producto("Papel higienico", cats["Hogar"], "unidad", "unidad", 36, 12, 0.42),
+            _producto("Jabon de bano", cats["Hogar"], "unidad", "unidad", 48, 12, 0.16),
         ]
         db.add_all(productos)
 
@@ -88,7 +88,7 @@ def _inicializar_datos(db: Session) -> None:
             Gasolina(
                 tipo="Gasolina",
                 litros_disponibles=200,
-                precio_por_litro_oro=2.500,
+                precio_por_litro_oro=2.5,
             )
         )
 

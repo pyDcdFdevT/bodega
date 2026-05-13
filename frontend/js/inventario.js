@@ -44,7 +44,7 @@ function renderEquivalenteOro(producto) {
     if (!tasa || !tasa.tasa_reales) {
       return "";
     }
-    const oro = (Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(3);
+    const oro = (Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(2);
     return `<div>${getRateLabel(nombre)}: ${oro}g</div>`;
   }).join("");
 

@@ -8,7 +8,7 @@ from models import TasaCambio
 
 
 class CalculosMonetarios:
-    ROUND_DIGITS = 3
+    ROUND_DIGITS = 2
     TASA_REFERENCIA_COMPRAS = "araparita"
     TASAS_PREDEFINIDAS = {
         "araparita": 37.000,

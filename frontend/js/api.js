@@ -38,7 +38,7 @@ export const api = {
     }),
 };
 
-export function formatNumber(value, decimals = 3) {
+export function formatNumber(value, decimals = 2) {
   return Number(value || 0).toFixed(decimals);
 }
 
@@ -46,7 +46,7 @@ export function formatMoney(value, mode = "oro") {
   if (mode === "reales") {
     return `R$ ${formatNumber(value, 2)}`;
   }
-  return formatNumber(value, 3);
+  return formatNumber(value, 2);
 }
 
 export function formatRate(value) {

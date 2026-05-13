@@ -18,7 +18,7 @@ function textoVuelto(data) {
     partes.push(`Vuelto: R$ ${Number(data.vuelto_reales).toFixed(2)}`);
   }
   if (Number(data.vuelto_oro) > 0) {
-    partes.push(`Vuelto: ${Number(data.vuelto_oro).toFixed(3)}g`);
+    partes.push(`Vuelto: ${Number(data.vuelto_oro).toFixed(2)}g`);
   }
   return partes.join(" · ");
 }
@@ -68,7 +68,7 @@ function calcularTotales() {
       if (!producto) {
         return acc;
       }
-      const subtotalOro = Number((producto.precio_venta_oro * item.cantidad).toFixed(3));
+      const subtotalOro = Number((producto.precio_venta_oro * item.cantidad).toFixed(2));
       const subtotalReales = Number((producto.precio_venta_reales * item.cantidad).toFixed(2));
       acc.totalOro += subtotalOro;
       acc.totalReales += subtotalReales;
@@ -103,10 +103,10 @@ function renderCarrito() {
   }
 
   if (tipoPago === "reales") {
-    document.getElementById("venta-total-oro").textContent = "0.000";
+    document.getElementById("venta-total-oro").textContent = "0.00";
     document.getElementById("venta-total-reales").textContent = totals.totalReales.toFixed(2);
   } else {
-    document.getElementById("venta-total-oro").textContent = totals.totalOro.toFixed(3);
+    document.getElementById("venta-total-oro").textContent = totals.totalOro.toFixed(2);
     document.getElementById("venta-total-reales").textContent = tasa
       ? (totals.totalOro * tasa.tasa_reales).toFixed(2)
       : "0.00";
@@ -179,7 +179,7 @@ export function initVentas() {
 
     const existente = carrito.find((item) => item.producto_id === productoId);
     if (existente) {
-      existente.cantidad = Number((existente.cantidad + cantidad).toFixed(3));
+      existente.cantidad = Number((existente.cantidad + cantidad).toFixed(2));
     } else {
       carrito.push({ producto_id: productoId, cantidad });
     }
@@ -260,7 +260,7 @@ export function initVentas() {
       formVenta.cliente.value = "Mostrador";
       formVenta.tipo_pago.value = "oro";
       formVenta.tipo_oro.value = "";
-      formVenta.monto_recibido_oro.value = "0.000";
+      formVenta.monto_recibido_oro.value = "0.00";
       formVenta.monto_recibido_reales.value = "0.00";
       actualizarVisibilidadCamposPago();
       fillTasaSelect("venta-tasa");

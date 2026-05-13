@@ -77,7 +77,7 @@ def dashboard(db: Session = Depends(get_db)):
         or 0
     )
     oro_total = oro_araparita + oro_uruman + oro_santa_elena_minero + oro_santa_elena_fundido
-    ganancia_neta = round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro, 3)
+    ganancia_neta = round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro, 2)
 
     return {
         "fecha": inicio_hoy.date().isoformat(),
@@ -85,19 +85,19 @@ def dashboard(db: Session = Depends(get_db)):
             "productos_activos": total_productos,
             "stock_bajo": stock_bajo,
             "valor_stock_reales": round(valor_stock_reales, 2),
-            "valor_stock_oro": round(valor_stock_oro, 3),
+            "valor_stock_oro": round(valor_stock_oro, 2),
         },
         "operaciones_hoy": {
-            "ventas_oro": round(ventas_hoy_oro, 3),
+            "ventas_oro": round(ventas_hoy_oro, 2),
             "ventas_reales": round(ventas_hoy_reales, 2),
-            "compras_oro": round(compras_hoy_oro, 3),
-            "salidas_oro": round(salidas_hoy_oro, 3),
-            "gasolina_oro": round(gasolina_hoy_oro, 3),
-            "oro_araparita": round(oro_araparita, 3),
-            "oro_uruman": round(oro_uruman, 3),
-            "oro_santa_elena_minero": round(oro_santa_elena_minero, 3),
-            "oro_santa_elena_fundido": round(oro_santa_elena_fundido, 3),
-            "oro_total": round(oro_total, 3),
+            "compras_oro": round(compras_hoy_oro, 2),
+            "salidas_oro": round(salidas_hoy_oro, 2),
+            "gasolina_oro": round(gasolina_hoy_oro, 2),
+            "oro_araparita": round(oro_araparita, 2),
+            "oro_uruman": round(oro_uruman, 2),
+            "oro_santa_elena_minero": round(oro_santa_elena_minero, 2),
+            "oro_santa_elena_fundido": round(oro_santa_elena_fundido, 2),
+            "oro_total": round(oro_total, 2),
             "ganancia_neta": ganancia_neta,
         },
         "gasolina": {
@@ -132,7 +132,7 @@ def reporte_gasolina(db: Session = Depends(get_db)):
         float(db.query(func.coalesce(func.sum(GasolinaReposicion.total_oro), 0)).filter(GasolinaReposicion.fecha >= inicio_hoy).scalar() or 0)
     )
     ganancia_reales = round(ventas_hoy_reales - reposicion_hoy_reales, 2)
-    ganancia_oro = round(ventas_hoy_oro - reposicion_hoy_oro, 3)
+    ganancia_oro = round(ventas_hoy_oro - reposicion_hoy_oro, 2)
 
     return {
         "fecha": inicio_hoy.date().isoformat(),
@@ -140,10 +140,10 @@ def reporte_gasolina(db: Session = Depends(get_db)):
         "hoy": {
             "litros_vendidos": round(litros_vendidos_hoy, 3),
             "litros_repuestos": round(litros_repuestos_hoy, 3),
-            "total_ventas_oro": round(ventas_hoy_oro, 3),
+            "total_ventas_oro": round(ventas_hoy_oro, 2),
             "total_ventas_reales": round(ventas_hoy_reales, 2),
             "total_reposicion_reales": round(reposicion_hoy_reales, 2),
-            "total_reposicion_oro": round(reposicion_hoy_oro, 3),
+            "total_reposicion_oro": round(reposicion_hoy_oro, 2),
             "ganancia_reales": ganancia_reales,
             "ganancia_oro": ganancia_oro,
         },
@@ -171,7 +171,7 @@ def reporte_ventas(dias: int = Query(default=7, ge=1, le=90), db: Session = Depe
     return {
         "desde": desde.isoformat(),
         "cantidad": len(ventas),
-        "total_oro": round(total_oro, 3),
+        "total_oro": round(total_oro, 2),
         "total_reales": round(total_reales, 2),
         "ventas": ventas,
     }
@@ -186,7 +186,7 @@ def reporte_compras(dias: int = Query(default=7, ge=1, le=90), db: Session = Dep
     return {
         "desde": desde.isoformat(),
         "cantidad": len(compras),
-        "total_oro": round(total_oro, 3),
+        "total_oro": round(total_oro, 2),
         "total_reales": round(total_reales, 2),
         "compras": compras,
     }

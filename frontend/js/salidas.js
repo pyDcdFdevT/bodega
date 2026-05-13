@@ -23,7 +23,7 @@ function calcularValorSalida() {
   const target = document.getElementById("salida-valor-oro");
 
   if (!producto || cantidad <= 0) {
-    target.textContent = "0.000";
+    target.textContent = "0.00";
     return;
   }
 
@@ -93,7 +93,7 @@ export function initSalidas() {
       showToast("Salida registrada correctamente", "success");
       form.reset();
       document.getElementById("salida-cantidad").value = "1";
-      document.getElementById("salida-valor-oro").textContent = "0.000";
+      document.getElementById("salida-valor-oro").textContent = "0.00";
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");

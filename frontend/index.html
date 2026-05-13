@@ -206,7 +206,7 @@
             </div>
 
             <div class="totals">
-              <p>Total oro: <strong id="venta-total-oro">0.000</strong></p>
+              <p>Total oro: <strong id="venta-total-oro">0.00</strong></p>
               <p>Total reales: <strong id="venta-total-reales">0.00</strong></p>
             </div>
           </article>
@@ -237,7 +237,7 @@
                 </select>
               </label>
               <label id="venta-monto-oro-wrap">Monto recibido (oro)
-                <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.001" value="0.000">
+                <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.01" value="0.00">
               </label>
               <label id="venta-monto-reales-wrap">Monto recibido (reales)
                 <input id="venta-input-monto-reales" name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
@@ -344,7 +344,7 @@
               <label>Motivo
                 <select id="salida-motivo" required></select>
               </label>
-              <div class="report-item">Valor oro: <strong id="salida-valor-oro">0.000</strong></div>
+              <div class="report-item">Valor oro: <strong id="salida-valor-oro">0.00</strong></div>
               <button type="submit">Registrar salida</button>
             </form>
           </article>
@@ -389,7 +389,7 @@
                 <input name="litros_disponibles" type="number" min="0" step="0.001">
               </label>
               <label>Precio referencia por litro (oro, g) — sugerencia al vender en oro
-                <input name="precio_por_litro_oro" type="number" min="0" step="0.001">
+                <input name="precio_por_litro_oro" type="number" min="0" step="0.01">
               </label>
               <button type="submit">Guardar configuracion</button>
             </form>
@@ -408,7 +408,7 @@
                 <input id="gasolina-repo-total-reales" type="text" readonly value="0.00">
               </label>
               <label>Total en oro — tasa Araparita (calculado)
-                <input id="gasolina-repo-total-oro" type="text" readonly value="0.000">
+                <input id="gasolina-repo-total-oro" type="text" readonly value="0.00">
               </label>
               <button type="submit">Registrar reposicion</button>
             </form>
@@ -429,10 +429,10 @@
             </label>
             <label>
               <span id="gasolina-precio-litro-leyenda">Precio por litro (gramos oro)</span>
-              <input name="precio_por_litro" id="gasolina-precio-litro" type="number" min="0.001" step="0.001" required>
+              <input name="precio_por_litro" id="gasolina-precio-litro" type="number" min="0.01" step="0.01" required>
             </label>
             <div class="pill-grid" id="gasolina-totales-preview" style="margin: 0.5rem 0;">
-              <article class="metric-pill"><span>Total oro (g)</span><strong id="gasolina-preview-oro">0.000</strong></article>
+              <article class="metric-pill"><span>Total oro (g)</span><strong id="gasolina-preview-oro">0.00</strong></article>
               <article class="metric-pill"><span>Total reales</span><strong id="gasolina-preview-reales">R$ 0.00</strong></article>
             </div>
             <label>Tipo de pago
@@ -460,7 +460,7 @@
             </div>
             <div id="gasolina-monto-oro-wrap" class="stack-form" style="display: grid;">
               <label>Monto recibido (oro, g)
-                <input name="monto_recibido_oro" id="gasolina-monto-oro" type="number" min="0" step="0.001" value="0.000">
+                <input name="monto_recibido_oro" id="gasolina-monto-oro" type="number" min="0" step="0.01" value="0.00">
               </label>
             </div>
             <div id="gasolina-monto-reales-wrap" class="stack-form" style="display: grid;">
@@ -519,10 +519,10 @@
                 </select>
               </label>
               <label>Gramos recibidos
-                <input name="gramos" id="compra-oro-gramos" type="number" min="0.001" step="0.001" value="0.000" required>
+                <input name="gramos" id="compra-oro-gramos" type="number" min="0.01" step="0.01" value="0.00" required>
               </label>
               <label>Tasa de compra (reales por gramo)
-                <input name="tasa_compra_reales" id="compra-oro-tasa" type="number" min="0.001" step="0.001" value="0.000" required>
+                <input name="tasa_compra_reales" id="compra-oro-tasa" type="number" min="0.01" step="0.01" value="0.00" required>
               </label>
               <div class="report-item">Total a pagar: <strong id="compra-oro-total">R$ 0.00</strong></div>
               <button type="submit">Registrar compra</button>
