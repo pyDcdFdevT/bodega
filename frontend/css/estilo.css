@@ -510,6 +510,31 @@ summary.accordion-cat-summary::-webkit-details-marker {
   min-height: 1.35em;
 }
 
+.cobro-resumen-block {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(23, 50, 77, 0.06);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.cobro-resumen-block strong {
+  color: var(--ink);
+}
+
+.cobro-vuelto-live {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1a5c47;
+  min-height: 1.4em;
+}
+
+.cobro-vuelto-live.insuficiente {
+  color: var(--danger);
+}
+
 .cierre-root {
   display: grid;
   gap: 16px;

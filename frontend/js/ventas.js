@@ -63,6 +63,104 @@ function actualizarVisibilidadCamposPago() {
     tipoOroSelect.value = "";
     tasaSelect.value = "";
   }
+  sincronizarModalCobro();
+}
+
+function datosTotalesCobro() {
+  const { totalOro, totalReales } = calcularTotales();
+  const tasa = obtenerTasaSeleccionada();
+  const tr = Number(totalReales.toFixed(2));
+  const to = Number(totalOro.toFixed(2));
+  const equivRealesDesdeOro =
+    tasa && tasa.tasa_reales > 0 ? Number((to * tasa.tasa_reales).toFixed(2)) : 0;
+  return { totalOro: to, totalReales: tr, equivRealesDesdeOro, tasa };
+}
+
+function actualizarModalTotalesACobrar() {
+  const el = document.getElementById("venta-cobro-total-resumen");
+  if (!el) {
+    return;
+  }
+  const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
+  const { totalOro, totalReales, equivRealesDesdeOro } = datosTotalesCobro();
+  if (!carrito.length) {
+    el.innerHTML = "";
+    return;
+  }
+  if (tipoPago === "reales") {
+    el.innerHTML = `<strong>Total a cobrar:</strong> ${formatMoney(totalReales, "reales")}`;
+  } else if (tipoPago === "oro") {
+    el.innerHTML = `<strong>Total a cobrar:</strong> ${totalOro.toFixed(2)}g (${formatMoney(equivRealesDesdeOro, "reales")})`;
+  } else {
+    el.innerHTML = `
+      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(2)}g (${formatMoney(equivRealesDesdeOro, "reales")})</div>
+      <div><strong>Total a cobrar (reales en precios):</strong> ${formatMoney(totalReales, "reales")}</div>
+    `;
+  }
+}
+
+function actualizarModalVueltoPreview() {
+  const el = document.getElementById("venta-cobro-vuelto-preview");
+  if (!el) {
+    return;
+  }
+  el.classList.remove("insuficiente");
+  const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
+  const mOro = Number(document.getElementById("venta-input-monto-oro")?.value || 0);
+  const mReales = Number(document.getElementById("venta-input-monto-reales")?.value || 0);
+  const { totalOro, totalReales, tasa } = datosTotalesCobro();
+
+  if (!carrito.length) {
+    el.textContent = "";
+    return;
+  }
+
+  if (tipoPago === "reales") {
+    const diff = Number((mReales - totalReales).toFixed(2));
+    if (diff >= 0) {
+      el.textContent = `Vuelto: ${formatMoney(diff, "reales")}`;
+    } else {
+      el.classList.add("insuficiente");
+      el.textContent = `Falta: ${formatMoney(-diff, "reales")}`;
+    }
+    return;
+  }
+
+  if (!tasa || !tasa.tasa_reales) {
+    el.textContent = "Seleccione tipo de oro y tasa para ver el vuelto";
+    return;
+  }
+
+  const recibidoEquivOro = Number((mOro + mReales / tasa.tasa_reales).toFixed(2));
+  const diffOro = Number((recibidoEquivOro - totalOro).toFixed(2));
+
+  if (tipoPago === "oro") {
+    if (diffOro >= 0) {
+      el.textContent = `Vuelto: ${diffOro.toFixed(2)}g`;
+    } else {
+      el.classList.add("insuficiente");
+      el.textContent = `Falta: ${(-diffOro).toFixed(2)}g`;
+    }
+    return;
+  }
+
+  if (diffOro >= 0) {
+    const vueltoReales = Number((diffOro * tasa.tasa_reales).toFixed(2));
+    el.textContent = `Vuelto: ${formatMoney(vueltoReales, "reales")}`;
+  } else {
+    el.classList.add("insuficiente");
+    const faltaReales = Number((-diffOro * tasa.tasa_reales).toFixed(2));
+    el.textContent = `Falta: ${formatMoney(faltaReales, "reales")}`;
+  }
+}
+
+function sincronizarModalCobro() {
+  const dlg = document.getElementById("dialog-cobro-venta");
+  if (!dlg?.open) {
+    return;
+  }
+  actualizarModalTotalesACobrar();
+  actualizarModalVueltoPreview();
 }
 
 function calcularTotales() {
@@ -176,6 +274,8 @@ function renderCarrito() {
       }
     });
   });
+
+  sincronizarModalCobro();
 }
 
 function llenarFiltroCategorias() {
@@ -242,9 +342,14 @@ function abrirCobro() {
     showToast("Su navegador no soporta el cobro en modal", "error");
     return;
   }
+  const mensajeVuelto = document.getElementById("venta-mensaje-vuelto");
+  if (mensajeVuelto) {
+    mensajeVuelto.textContent = "";
+  }
   actualizarVisibilidadCamposPago();
   fillTasaSelect("venta-tasa");
   dlg.showModal();
+  sincronizarModalCobro();
 }
 
 function cerrarCobro() {
@@ -260,6 +365,8 @@ export function initVentas() {
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
   const mensajeVuelto = document.getElementById("venta-mensaje-vuelto");
   const btnCerrarModal = document.getElementById("btn-cerrar-cobro");
+  const inputMontoOro = document.getElementById("venta-input-monto-oro");
+  const inputMontoReales = document.getElementById("venta-input-monto-reales");
 
   filtro?.addEventListener("change", () => {
     categoriaFiltro = filtro.value;
@@ -290,6 +397,8 @@ export function initVentas() {
       renderCarrito();
     }
   });
+  inputMontoOro?.addEventListener("input", sincronizarModalCobro);
+  inputMontoReales?.addEventListener("input", sincronizarModalCobro);
   actualizarVisibilidadCamposPago();
 
   formVenta?.addEventListener("submit", async (event) => {

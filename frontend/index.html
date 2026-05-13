@@ -689,12 +689,14 @@
           <option value="santa_elena_fundido">Santa Elena Fundido</option>
         </select>
       </label>
+      <div id="venta-cobro-total-resumen" class="cobro-resumen-block" aria-live="polite"></div>
       <label id="venta-monto-oro-wrap">Monto recibido (oro)
         <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.01" value="0.00">
       </label>
       <label id="venta-monto-reales-wrap">Monto recibido (reales)
         <input id="venta-input-monto-reales" name="monto_recibido_reales" type="number" min="0" step="0.01" value="0.00">
       </label>
+      <p id="venta-cobro-vuelto-preview" class="cobro-vuelto-live" aria-live="polite"></p>
       <p id="venta-mensaje-vuelto" class="vuelto-msg"></p>
       <div class="modal-actions">
         <button type="button" id="btn-cerrar-cobro">Cancelar</button>
