@@ -1,4 +1,4 @@
-import { api, formatDate, formatMoney, renderEmptyRow } from "./api.js";
+import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow } from "./api.js";
 
 function renderDashboard(data) {
   const container = document.getElementById("dashboard-cards");
@@ -41,12 +41,13 @@ export async function loadReportes() {
   renderResumen("reporte-compras-resumen", compras, "Compras en 7 dias");
   const tbody = document.getElementById("tabla-movimientos");
   if (!movimientos.length) {
-    tbody.innerHTML = renderEmptyRow(7, "No hay movimientos recientes.");
+    tbody.innerHTML = renderEmptyRow(8, "No hay movimientos recientes.");
     return;
   }
   tbody.innerHTML = movimientos.map((movimiento) => `
     <tr>
-      <td>${formatDate(movimiento.fecha)}</td>
+      <td>${formatDateOnly(movimiento.fecha)}</td>
+      <td>${formatTimeOnly(movimiento.fecha)}</td>
       <td>${movimiento.producto}</td>
       <td>${movimiento.tipo}</td>
       <td>${movimiento.cantidad}</td>

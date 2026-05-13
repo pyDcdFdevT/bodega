@@ -1,4 +1,4 @@
-import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
+import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
 import { getProductosCache, loadProductoOptions } from "./inventario.js";
 import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel } from "./tasas.js";
 
@@ -136,14 +136,15 @@ export async function loadVentas() {
 
   const tbody = document.getElementById("tabla-ventas");
   if (!ventas.length) {
-    tbody.innerHTML = renderEmptyRow(8, "No hay ventas registradas.");
+    tbody.innerHTML = renderEmptyRow(9, "No hay ventas registradas.");
   } else {
     tbody.innerHTML = ventas
       .map(
         (venta) => `
           <tr>
             <td>#${venta.id}</td>
-            <td>${formatDate(venta.fecha)}</td>
+            <td>${formatDateOnly(venta.fecha)}</td>
+            <td>${formatTimeOnly(venta.fecha)}</td>
             <td>${venta.cliente}</td>
             <td>${formatMoney(venta.total_oro)}</td>
             <td>${formatMoney(venta.total_reales, "reales")}</td>

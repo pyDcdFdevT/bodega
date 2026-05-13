@@ -53,14 +53,55 @@ export function formatRate(value) {
   return formatNumber(value, 2);
 }
 
+function parseFechaLocal(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+  return d;
+}
+
+function partesFechaHora(value) {
+  const d = parseFechaLocal(value);
+  if (!d) {
+    return null;
+  }
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const anio = String(d.getFullYear()).slice(-2);
+  const hora = String(d.getHours()).padStart(2, "0");
+  const minuto = String(d.getMinutes()).padStart(2, "0");
+  return { fecha: `${dia}/${mes}/${anio}`, hora: `${hora}:${minuto}` };
+}
+
+/** Fecha y hora: "13/05/26 10:31" (sin coma, sin segundos). */
 export function formatDate(value) {
-  if (!value) {
+  const partes = partesFechaHora(value);
+  if (!partes) {
     return "-";
   }
-  return new Date(value).toLocaleString("es-ES", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return `${partes.fecha} ${partes.hora}`;
+}
+
+/** Solo fecha: "13/05/26". */
+export function formatDateOnly(value) {
+  const partes = partesFechaHora(value);
+  if (!partes) {
+    return "-";
+  }
+  return partes.fecha;
+}
+
+/** Solo hora: "10:31". */
+export function formatTimeOnly(value) {
+  const partes = partesFechaHora(value);
+  if (!partes) {
+    return "-";
+  }
+  return partes.hora;
 }
 
 export function showToast(message, type = "info") {
