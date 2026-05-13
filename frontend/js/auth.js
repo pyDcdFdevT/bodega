@@ -41,9 +41,9 @@ export function getRol() {
 }
 
 export function cerrarSesion() {
-  sessionStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(SESSION_ROL_KEY);
-  window.location.reload();
+  sessionStorage.removeItem("bodega_pin_ok");
+  sessionStorage.removeItem("bodega_rol");
+  window.location.href = window.location.href.split("?")[0] + "?t=" + Date.now();
 }
 
 function enlazarCerrarSesion() {
