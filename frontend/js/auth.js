@@ -40,7 +40,23 @@ export function getRol() {
   return sessionStorage.getItem(SESSION_ROL_KEY) || "admin";
 }
 
+export function cerrarSesion() {
+  sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_ROL_KEY);
+  window.location.reload();
+}
+
+function enlazarCerrarSesion() {
+  const boton = document.getElementById("btn-cerrar-sesion");
+  if (!boton || boton.dataset.bound === "1") {
+    return;
+  }
+  boton.dataset.bound = "1";
+  boton.addEventListener("click", () => cerrarSesion());
+}
+
 export async function initAuth() {
+  enlazarCerrarSesion();
   const form = document.getElementById("form-pin");
   const input = document.getElementById("pin-input");
 
