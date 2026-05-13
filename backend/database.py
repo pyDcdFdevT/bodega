@@ -1,25 +1,28 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
+USE_POSTGRES = os.getenv("USE_POSTGRES", "false").lower() == "true"
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-DEFAULT_DB_PATH = DATA_DIR / "bodega.db"
-SQLALCHEMY_DATABASE_URL = os.getenv("BODEGA_DB_URL", f"sqlite:///{DEFAULT_DB_PATH}")
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    future=True,
-)
+if USE_POSTGRES:
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL no configurada")
+    engine = create_engine(DATABASE_URL, future=True)
+else:
+    from pathlib import Path
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    DATA_DIR = BASE_DIR / "data"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATA_DIR / 'bodega.db'}"
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        future=True,
+    )
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -29,17 +32,8 @@ SessionLocal = sessionmaker(
     expire_on_commit=False,
 )
 
-
-@event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, _connection_record) -> None:
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
-
 class Base(DeclarativeBase):
     pass
-
 
 def get_db():
     db = SessionLocal()
