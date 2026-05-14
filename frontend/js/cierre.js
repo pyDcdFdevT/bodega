@@ -143,4 +143,23 @@ export async function loadCierre() {
 export function initCierre() {
   document.getElementById("cierre-saldo-inicial")?.addEventListener("change", () => loadCierre());
   document.getElementById("btn-cierre-actualizar")?.addEventListener("click", () => loadCierre());
+  document.getElementById("btn-cierre-generar")?.addEventListener("click", async () => {
+    const saldo = Number(document.getElementById("cierre-saldo-inicial")?.value || 0);
+    try {
+      await api.post(
+        "/cierre/generar",
+        { cerrado_por: "Admin", saldo_inicial_reales: saldo },
+        { headers: { "X-Bodega-Rol": "admin" } }
+      );
+      showToast("Cierre generado correctamente", "success");
+      await loadCierre();
+    } catch (error) {
+      const msg = String(error.message || "");
+      if (msg.includes("ya fue generado")) {
+        showToast("El cierre de hoy ya fue generado", "error");
+      } else {
+        showToast(msg, "error");
+      }
+    }
+  });
 }

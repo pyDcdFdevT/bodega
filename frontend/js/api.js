@@ -1,12 +1,13 @@
 const API_BASE = "/api";
 
 async function request(path, options = {}) {
+  const { headers: extraHeaders, ...rest } = options;
   const response = await fetch(`${API_BASE}${path}`, {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(extraHeaders || {}),
     },
-    ...options,
   });
 
   const isJson = response.headers.get("content-type")?.includes("application/json");
@@ -22,10 +23,11 @@ async function request(path, options = {}) {
 
 export const api = {
   get: (path) => request(path),
-  post: (path, body) =>
+  post: (path, body, fetchOptions = {}) =>
     request(path, {
       method: "POST",
       body: JSON.stringify(body),
+      ...fetchOptions,
     }),
   put: (path, body) =>
     request(path, {
