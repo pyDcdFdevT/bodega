@@ -87,6 +87,7 @@
       <button class="tab" data-target="panel-cobros">Cobros</button>
       <button class="tab solo-admin" data-target="panel-cierre">Cierre</button>
       <button class="tab solo-admin" data-target="panel-fundicion">Fundicion</button>
+      <button class="tab solo-admin" data-target="panel-activos">Activos</button>
     </nav>
 
     <main class="layout">
@@ -908,6 +909,58 @@
             <button type="button" class="btn-cobrar" id="btn-fund-dist-registrar">Registrar distribucion</button>
           </div>
         </article>
+      </section>
+
+      <section class="panel solo-admin" id="panel-activos">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Inversion</p>
+            <h2>Activos</h2>
+          </div>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>Registrar activo</h3>
+            <p class="muted small">Bienes que conservan valor (equipo, obra, vehiculo). No son gastos operativos.</p>
+            <form id="form-activo" class="stack-form">
+              <label>Descripcion
+                <input name="descripcion" required maxlength="500" placeholder="Ej. Nevera exhibidora 2 puertas">
+              </label>
+              <label>Categoria
+                <select name="categoria" id="activo-categoria" required>
+                  <option value="equipo">Equipo</option>
+                  <option value="construccion">Construccion</option>
+                  <option value="vehiculo">Vehiculo</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </label>
+              <label>Monto (R$)
+                <input name="monto_reales" type="number" min="0.01" step="0.01" required>
+              </label>
+              <label>Observaciones
+                <textarea name="observaciones" rows="2" maxlength="2000" placeholder="Opcional"></textarea>
+              </label>
+              <button type="submit">Guardar activo</button>
+            </form>
+          </article>
+          <article class="card">
+            <h3>Activos registrados</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Categoria</th>
+                    <th>Descripcion</th>
+                    <th>Monto R$</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-activos"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
       </section>
     </main>
   </div>

@@ -1,6 +1,7 @@
 import { showToast } from "./api.js";
 import { getRol, initAuth } from "./auth.js";
 import { initApertura, loadApertura } from "./apertura.js";
+import { initActivos, loadActivos } from "./activos.js";
 import { initCierre, loadCierre } from "./cierre.js";
 import { initCobros, loadCobros } from "./cobros.js";
 import { initCompras, loadCompras } from "./compras.js";
@@ -93,6 +94,7 @@ async function refreshAll() {
       loadCierre(),
       loadFundicion(),
       loadCobros(),
+      loadActivos(),
     ]);
   } catch (error) {
     showToast(error.message, "error");
@@ -121,6 +123,7 @@ async function init() {
   initCierre();
   initCobros();
   initFundicion();
+  initActivos();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", refreshAll);
   document.addEventListener("bodega:unlocked", () => {

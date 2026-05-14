@@ -257,6 +257,24 @@ class GastoOperativo(Base):
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
 
 
+class Activo(Base):
+    __tablename__ = "activos"
+    __table_args__ = (
+        CheckConstraint("monto_reales >= 0", name="ck_activo_monto_reales"),
+        CheckConstraint(
+            "categoria IN ('equipo','construccion','vehiculo','otro')",
+            name="ck_activo_categoria",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    descripcion = Column(String(500), nullable=False)
+    categoria = Column(String(40), nullable=False, index=True)
+    monto_reales = Column(Float, nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+    observaciones = Column(Text, nullable=True)
+
+
 class GasolinaReposicion(Base):
     __tablename__ = "gasolina_reposiciones"
     __table_args__ = (

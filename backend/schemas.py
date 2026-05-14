@@ -215,6 +215,24 @@ class GastoCreate(BaseModel):
     _descripcion = field_validator("descripcion")(_texto_requerido)
 
 
+def _categoria_activo(valor: str) -> str:
+    n = _texto_requerido(valor).lower()
+    permitidas = {"equipo", "construccion", "vehiculo", "otro"}
+    if n not in permitidas:
+        raise ValueError("Categoria de activo invalida")
+    return n
+
+
+class ActivoCreate(BaseModel):
+    descripcion: str = Field(..., min_length=1, max_length=500)
+    categoria: str = Field(..., min_length=3, max_length=40)
+    monto_reales: float = Field(..., gt=0)
+    observaciones: Optional[str] = Field(default=None, max_length=2000)
+
+    _descripcion = field_validator("descripcion")(_texto_requerido)
+    _categoria = field_validator("categoria")(_categoria_activo)
+
+
 class GasolinaVenta(BaseModel):
     litros: float = Field(..., gt=0)
     tipo_pago: str = Field(default="reales", min_length=3, max_length=20)

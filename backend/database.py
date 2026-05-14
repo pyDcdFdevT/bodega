@@ -119,6 +119,52 @@ CREATE TABLE IF NOT EXISTS gastos_operativos (
         )
 
 
+def _ensure_activos_table(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS activos (
+    id SERIAL PRIMARY KEY,
+    descripcion VARCHAR(500) NOT NULL,
+    categoria VARCHAR(40) NOT NULL,
+    monto_reales DOUBLE PRECISION NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT NOW(),
+    observaciones TEXT,
+    CONSTRAINT ck_activo_monto_reales CHECK (monto_reales >= 0),
+    CONSTRAINT ck_activo_categoria CHECK (categoria IN ('equipo','construccion','vehiculo','otro'))
+)
+"""
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_activos_fecha ON activos (fecha)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_activos_categoria ON activos (categoria)"))
+        return
+
+    if dialect == "sqlite":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS activos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    descripcion VARCHAR(500) NOT NULL,
+    categoria VARCHAR(40) NOT NULL,
+    monto_reales REAL NOT NULL,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    observaciones TEXT,
+    CHECK (monto_reales >= 0),
+    CHECK (categoria IN ('equipo','construccion','vehiculo','otro'))
+)
+"""
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_activos_fecha ON activos (fecha)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_activos_categoria ON activos (categoria)"))
+        return
+
+
 def _ensure_transacciones_table(conn, dialect: str) -> None:
     from sqlalchemy import text
 
@@ -646,6 +692,7 @@ def apply_schema_patches() -> None:
         with engine.begin() as conn:
             _migrate_gasolina_precio_column(conn, dialect)
             _ensure_gastos_table(conn, dialect)
+            _ensure_activos_table(conn, dialect)
             if insp.has_table("ventas_gasolina"):
                 alters = [
                     "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)",
@@ -682,6 +729,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             if insp.has_table("gasolina"):
                 _migrate_gasolina_precio_column(conn, dialect)
             _ensure_gastos_table(conn, dialect)
+            _ensure_activos_table(conn, dialect)
             if insp.has_table("ventas_gasolina"):
                 result = conn.execute(text("PRAGMA table_info(ventas_gasolina)"))
                 existing = {row[1] for row in result}

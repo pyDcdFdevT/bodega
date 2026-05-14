@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from database import Base, apply_schema_patches, engine
 from init_data import inicializar_datos
 from routers import (
+    activos,
     apertura,
     auth,
     categorias,
@@ -74,6 +75,7 @@ app.include_router(cobros.router, prefix="/api")
 app.include_router(salidas.router, prefix="/api")
 app.include_router(gasolina.router, prefix="/api")
 app.include_router(gastos.router, prefix="/api")
+app.include_router(activos.router, prefix="/api")
 app.include_router(cierre.router, prefix="/api")
 app.include_router(apertura.router, prefix="/api")
 app.include_router(fundicion.router, prefix="/api")
