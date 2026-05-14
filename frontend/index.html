@@ -12,7 +12,7 @@
 <body>
   <div
     id="pantalla-bloqueo"
-    style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(17,38,58,0.94);z-index:9999;padding:24px;"
+    style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,38,58,0.94);z-index:9999;padding:24px;"
   >
     <div style="width:min(420px,100%);background:#ffffff;border-radius:24px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.25);text-align:center;">
       <p style="margin:0 0 8px 0;font-size:0.78rem;letter-spacing:0.18em;text-transform:uppercase;color:#8a5a2b;">Acceso protegido</p>
@@ -21,11 +21,13 @@
       <form id="form-pin" style="display:grid;gap:14px;">
         <input
           id="pin-input"
-          type="number"
+          type="text"
           inputmode="numeric"
+          autocomplete="one-time-code"
           maxlength="4"
+          pattern="[0-9]*"
           placeholder="PIN de 4 digitos"
-          style="padding:14px 16px;border:1px solid rgba(17,38,58,0.18);border-radius:16px;text-align:center;font-size:1.2rem;"
+          style="padding:14px 16px;border:1px solid rgba(17,38,58,0.18);border-radius:16px;text-align:center;font-size:1.2rem;letter-spacing:0.35em;"
           required
         >
         <button
@@ -82,7 +84,7 @@
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
       <button class="tab solo-admin" data-target="panel-gastos">Gastos</button>
       <button class="tab solo-admin" data-target="panel-dashboard">Dashboard</button>
-      <button class="tab solo-admin" data-target="panel-cobros">Cobros</button>
+      <button class="tab" data-target="panel-cobros">Cobros</button>
       <button class="tab solo-admin" data-target="panel-cierre">Cierre</button>
       <button class="tab solo-admin" data-target="panel-fundicion">Fundicion</button>
     </nav>
@@ -693,7 +695,7 @@
         </div>
       </section>
 
-      <section class="panel solo-admin" id="panel-cobros">
+      <section class="panel" id="panel-cobros">
         <div class="panel-header">
           <div>
             <p class="eyebrow">Cuentas por cobrar</p>

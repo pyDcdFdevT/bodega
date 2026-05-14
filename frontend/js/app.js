@@ -66,8 +66,21 @@ function aplicarVistaRol() {
 
 async function refreshAll() {
   try {
+    const rol = getRol();
     await Promise.all([loadInventario(), loadTasas()]);
     await loadProductoOptions(["compra-producto", "salida-producto"]);
+
+    if (rol === "vendedor") {
+      await Promise.all([
+        loadVentas(),
+        loadSalidas(),
+        loadGasolina(),
+        loadComprasOro(),
+        loadCobros(),
+      ]);
+      return;
+    }
+
     await Promise.all([
       loadApertura(),
       loadVentas(),

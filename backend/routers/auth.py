@@ -1,9 +1,6 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 
-from database import get_db
 from schemas import PinVerifyRequest
-
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -12,8 +9,7 @@ PIN_VENDEDOR = "1111"
 
 
 @router.post("/verificar-pin")
-def verificar_pin(data: PinVerifyRequest, db: Session = Depends(get_db)):
-    _ = db
+def verificar_pin(data: PinVerifyRequest):
     pin = data.pin.strip()
     if pin == PIN_ADMIN:
         return {"acceso": True, "rol": "admin"}
