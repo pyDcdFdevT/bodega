@@ -24,7 +24,7 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
 
         unidades = compra.cantidad
         costo_oro_total = CalculosMonetarios.reales_a_oro(compra.precio_reales, db, tasa=tasa)
-        costo_unitario_oro = CalculosMonetarios.redondear(costo_oro_total / unidades)
+        costo_unitario_oro = CalculosMonetarios.redondear_oro(costo_oro_total / unidades)
         costo_unitario_reales = round(compra.precio_reales / unidades, 2)
         precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
 
@@ -161,8 +161,8 @@ def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depen
         if tasa_usada <= 0:
             raise ValueError("Tasa de la compra original invalida")
 
-        costo_oro_total = CalculosMonetarios.redondear(precio_reales / tasa_usada)
-        costo_unitario_oro = CalculosMonetarios.redondear(costo_oro_total / unidades)
+        costo_oro_total = CalculosMonetarios.redondear_oro(precio_reales / tasa_usada)
+        costo_unitario_oro = CalculosMonetarios.redondear_oro(costo_oro_total / unidades)
         costo_unitario_reales = round(precio_reales / unidades, 2)
         precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
 

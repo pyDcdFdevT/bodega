@@ -73,7 +73,7 @@ function renderCierre() {
       "Caja (reales)",
       `
       ${fila("Saldo inicial", formatMoney(caja.saldo_inicial_reales, "reales"))}
-      ${fila("Oro operativo inicial", `${Number(caja.oro_operativo_inicial ?? 0).toFixed(2)} g`)}
+      ${fila("Oro operativo inicial", `${Number(caja.oro_operativo_inicial ?? 0).toFixed(4)} g`)}
       ${fila("+ Ingresos (bodega + gasolina)", formatMoney(caja.ingresos_reales, "reales"))}
       ${fila("Cobros del dia (ventas fiadas)", formatMoney(data.cobros_del_dia ?? 0, "reales"))}
       ${fila("Cuentas por cobrar (total pendiente)", formatMoney(data.cuentas_por_cobrar ?? 0, "reales"))}
@@ -95,7 +95,7 @@ function updateConciliacionUi() {
     espR.textContent = formatMoney(conc.reales_esperados, "reales");
   }
   if (espO && conc) {
-    espO.textContent = `${Number(conc.oro_esperado || 0).toFixed(2)} g`;
+    espO.textContent = `${Number(conc.oro_esperado || 0).toFixed(4)} g`;
   }
 
   const cr = Number(document.getElementById("cierre-conc-real-contado")?.value || 0);
@@ -112,7 +112,7 @@ function updateConciliacionUi() {
     elDr.classList.toggle("insuficiente", Math.abs(dr) > 0.009);
   }
   if (elDo) {
-    elDo.textContent = `${dor.toFixed(2)} g`;
+    elDo.textContent = `${dor.toFixed(4)} g`;
     elDo.classList.toggle("insuficiente", Math.abs(dor) > 0.009);
   }
 }

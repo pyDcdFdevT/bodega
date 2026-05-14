@@ -28,7 +28,7 @@ def _validar_invariante_venta_balanceada(
     tasa,
     db: Session,
 ) -> None:
-    suma_det_oro = CalculosMonetarios.redondear(sum(subtotales_oro[pid] for pid in consolidados))
+    suma_det_oro = CalculosMonetarios.redondear_oro(sum(subtotales_oro[pid] for pid in consolidados))
     if tipo_pago == "reales":
         if abs(total_oro) > 1e-5:
             raise ValueError("Invariante venta balanceada: con pago en reales total_oro debe ser cero")
@@ -37,7 +37,7 @@ def _validar_invariante_venta_balanceada(
         return
     if not tasa:
         raise ValueError("Invariante venta balanceada: falta tasa para validar totales en oro/mixto")
-    if abs(total_oro - suma_det_oro) > 0.05:
+    if abs(total_oro - suma_det_oro) > 0.001:
         raise ValueError("Invariante venta balanceada: total_oro debe coincidir con la suma de subtotales oro")
     esperado_reales = CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa)
     if abs(float(total_reales) - float(esperado_reales)) > 0.15:
@@ -72,7 +72,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
         for producto_id, cantidad in consolidados.items():
             producto = ValidacionesSistema.validar_stock(producto_id, cantidad, db)
             productos[producto_id] = producto
-            subtotales_oro[producto_id] = CalculosMonetarios.redondear(producto.precio_venta_oro * cantidad)
+            subtotales_oro[producto_id] = CalculosMonetarios.redondear_oro(producto.precio_venta_oro * cantidad)
             subtotales_reales[producto_id] = CalculosMonetarios.redondear(producto.precio_venta_reales * cantidad, 2)
 
         total_oro = CalculosMonetarios.consolidar_total_oro(subtotales_oro.values())

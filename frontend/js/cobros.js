@@ -42,7 +42,7 @@ export async function loadCobros() {
           <td>${formatTimeOnly(p.fecha)}</td>
           <td>#${p.venta_id}</td>
           <td>${String(p.cliente || "")}</td>
-          <td>${p.moneda === "oro" ? `${Number(p.monto).toFixed(2)} g` : formatMoney(p.monto, "reales")} <span class="muted">(≈ ${formatMoney(p.monto_reales_equivalente, "reales")})</span></td>
+          <td>${p.moneda === "oro" ? `${Number(p.monto).toFixed(4)} g` : formatMoney(p.monto, "reales")} <span class="muted">(≈ ${formatMoney(p.monto_reales_equivalente, "reales")})</span></td>
           <td>${String(p.tipo_pago || "")}</td>
         </tr>`
         )

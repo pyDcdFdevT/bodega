@@ -27,7 +27,7 @@ function textoVuelto(data) {
     partes.push(`Vuelto: R$ ${Number(data.vuelto_reales).toFixed(2)}`);
   }
   if (Number(data.vuelto_oro) > 0) {
-    partes.push(`Vuelto: ${Number(data.vuelto_oro).toFixed(2)}g`);
+    partes.push(`Vuelto: ${Number(data.vuelto_oro).toFixed(4)}g`);
   }
   return partes.join(" · ");
 }
@@ -99,7 +99,7 @@ function datosTotalesCobro() {
   const { totalOro, totalReales } = calcularTotales();
   const tasa = obtenerTasaSeleccionada();
   const tr = Number(totalReales.toFixed(2));
-  const to = Number(totalOro.toFixed(2));
+  const to = Number(totalOro.toFixed(4));
   const equivRealesDesdeOro =
     tasa && tasa.tasa_reales > 0 ? Number((to * tasa.tasa_reales).toFixed(2)) : 0;
   return { totalOro: to, totalReales: tr, equivRealesDesdeOro, tasa };
@@ -119,10 +119,10 @@ function actualizarModalTotalesACobrar() {
   if (tipoPago === "reales") {
     el.innerHTML = `<strong>Total a cobrar:</strong> ${formatMoney(totalReales, "reales")}`;
   } else if (tipoPago === "oro") {
-    el.innerHTML = `<strong>Total a cobrar:</strong> ${totalOro.toFixed(2)}g (${formatMoney(equivRealesDesdeOro, "reales")})`;
+    el.innerHTML = `<strong>Total a cobrar:</strong> ${totalOro.toFixed(4)}g (${formatMoney(equivRealesDesdeOro, "reales")})`;
   } else {
     el.innerHTML = `
-      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(2)}g (${formatMoney(equivRealesDesdeOro, "reales")})</div>
+      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(4)}g (${formatMoney(equivRealesDesdeOro, "reales")})</div>
       <div><strong>Total a cobrar (reales en precios):</strong> ${formatMoney(totalReales, "reales")}</div>
     `;
   }
@@ -164,15 +164,15 @@ function actualizarModalVueltoPreview() {
     return;
   }
 
-  const recibidoEquivOro = Number((mOro + mReales / tasa.tasa_reales).toFixed(2));
-  const diffOro = Number((recibidoEquivOro - totalOro).toFixed(2));
+  const recibidoEquivOro = Number((mOro + mReales / tasa.tasa_reales).toFixed(4));
+  const diffOro = Number((recibidoEquivOro - totalOro).toFixed(4));
 
   if (tipoPago === "oro") {
     if (diffOro >= 0) {
-      el.textContent = `Vuelto: ${diffOro.toFixed(2)}g`;
+      el.textContent = `Vuelto: ${diffOro.toFixed(4)}g`;
     } else {
       el.classList.add("insuficiente");
-      el.textContent = `Falta: ${(-diffOro).toFixed(2)}g`;
+      el.textContent = `Falta: ${(-diffOro).toFixed(4)}g`;
     }
     return;
   }
@@ -204,7 +204,7 @@ function calcularTotales() {
       if (!producto) {
         return acc;
       }
-      const subtotalOro = Number((producto.precio_venta_oro * item.cantidad).toFixed(2));
+      const subtotalOro = Number((producto.precio_venta_oro * item.cantidad).toFixed(4));
       const subtotalReales = Number((producto.precio_venta_reales * item.cantidad).toFixed(2));
       acc.totalOro += subtotalOro;
       acc.totalReales += subtotalReales;
@@ -292,7 +292,7 @@ function renderCarrito() {
       elOro.textContent = "0.00";
       elReales.textContent = totals.totalReales.toFixed(2);
     } else {
-      elOro.textContent = totals.totalOro.toFixed(2);
+      elOro.textContent = totals.totalOro.toFixed(4);
       elReales.textContent = tasa ? (totals.totalOro * tasa.tasa_reales).toFixed(2) : "0.00";
     }
   }

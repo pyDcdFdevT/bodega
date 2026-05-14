@@ -26,7 +26,7 @@ function calcularValorSalida() {
 
   if (!producto || cantidad <= 0) {
     if (target) {
-      target.textContent = "0.00";
+      target.textContent = "0.0000";
     }
     return;
   }

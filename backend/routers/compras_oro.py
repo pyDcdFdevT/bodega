@@ -22,7 +22,7 @@ def registrar_compra_oro(data: CompraOroCreate, db: Session = Depends(get_db)):
 
         compra = CompraOro(
             tipo_oro=tipo_oro,
-            gramos=CalculosMonetarios.redondear(data.gramos),
+            gramos=CalculosMonetarios.redondear_oro(data.gramos),
             tasa_compra_reales=CalculosMonetarios.redondear(data.tasa_compra_reales),
             total_reales=total_reales,
         )

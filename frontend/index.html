@@ -73,7 +73,7 @@
 
     <nav class="tabs">
       <button class="tab active solo-admin" data-target="panel-apertura">Apertura</button>
-      <button class="tab solo-admin" data-target="panel-tasas">Tasas</button>
+      <button class="tab solo-admin" data-target="panel-tasas">Tasas operativas</button>
       <button class="tab solo-admin" data-target="panel-inventario">Inventario</button>
       <button class="tab solo-admin" data-target="panel-compras">Compras</button>
       <button class="tab" data-target="panel-ventas">Ventas</button>
@@ -266,6 +266,7 @@
                 <input name="precio_reales" type="number" min="0.01" step="0.01" required>
               </label>
               <p class="report-item" id="compra-precio-unitario-wrap">Precio unitario: <strong id="compra-precio-unitario">R$ 0.00</strong></p>
+              <p class="muted small" style="margin-top:-6px;">Total R$ dividido entre la cantidad (se actualiza al escribir).</p>
               <label>Proveedor
                 <input name="proveedor" value="Proveedor">
               </label>
@@ -520,15 +521,18 @@
       <section class="panel solo-admin" id="panel-tasas">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Tasas</p>
-            <h2>Las 4 tasas activas</h2>
+            <p class="eyebrow">Tasas operativas</p>
+            <h2>Tasas operativas locales</h2>
+            <p class="muted small" style="margin-top:8px;max-width:520px;">
+              Valor del oro según casa de compra/fundición local
+            </p>
           </div>
-          <div class="badge" id="tasa-actual-pill">4 tasas activas</div>
+          <div class="badge" id="tasa-actual-pill">4 tasas operativas activas</div>
         </div>
 
         <div class="grid two">
           <article class="card">
-            <h3>Configurar tasas</h3>
+            <h3>Configurar tasas operativas</h3>
             <form id="form-tasas" class="stack-form">
               <label>Araparita
                 <input name="araparita" type="number" min="0.001" step="0.001" required>
@@ -542,12 +546,12 @@
               <label>Santa Elena Fundido
                 <input name="santa_elena_fundido" type="number" min="0.001" step="0.001" required>
               </label>
-              <button type="submit">Guardar tasas</button>
+              <button type="submit">Guardar tasas operativas</button>
             </form>
           </article>
 
           <article class="card">
-            <h3>Tasas configuradas</h3>
+            <h3>Tasas operativas configuradas</h3>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -564,7 +568,7 @@
         </div>
 
         <article class="card">
-          <h3>Equivalente de productos en oro (4 tasas)</h3>
+          <h3>Equivalente de productos en oro (4 tasas operativas)</h3>
           <div class="table-wrap">
             <table>
               <thead>

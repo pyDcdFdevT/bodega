@@ -46,7 +46,7 @@ export function fillTasaSelect(selectId) {
   }
   const previousValue = select.value;
   select.innerHTML = `
-    <option value="">Seleccione una tasa...</option>
+    <option value="">Seleccione una tasa operativa...</option>
     ${tasasCache
       .map(
         (tasa) =>
@@ -66,7 +66,7 @@ export async function loadTasas() {
 
   const pill = document.getElementById("tasa-actual-pill");
   if (pill) {
-    pill.textContent = `${tasasCache.length} tasas activas`;
+    pill.textContent = `${tasasCache.length} tasas operativas activas`;
   }
 
   const form = document.getElementById("form-tasas");
@@ -83,7 +83,7 @@ export async function loadTasas() {
   const tbody = document.getElementById("tabla-tasas");
   if (tbody) {
     if (!tasasCache.length) {
-      tbody.innerHTML = renderEmptyRow(3, "No hay tasas configuradas.");
+      tbody.innerHTML = renderEmptyRow(3, "No hay tasas operativas configuradas.");
     } else {
       tbody.innerHTML = tasasCache
         .map(
@@ -112,7 +112,7 @@ export async function loadTasas() {
             if (!tasa || !tasa.tasa_reales) {
               return "-";
             }
-            return `${(Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(2)}g`;
+            return `${(Number(producto.precio_venta_reales) / Number(tasa.tasa_reales)).toFixed(4)}g`;
           });
           return `
             <tr>
@@ -149,7 +149,7 @@ export function initTasas() {
 
     try {
       await api.put("/tasas", payload);
-      showToast("Tasas actualizadas correctamente", "success");
+      showToast("Tasas operativas actualizadas correctamente", "success");
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");

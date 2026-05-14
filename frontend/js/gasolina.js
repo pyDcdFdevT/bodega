@@ -42,7 +42,7 @@ function datosTotalesGasolinaVenta() {
   const tasa = tasaParaPreviewVenta();
   let totalOro = 0;
   if (tasa && tasa.tasa_reales > 0 && totalReales > 0) {
-    totalOro = Number((totalReales / tasa.tasa_reales).toFixed(2));
+    totalOro = Number((totalReales / tasa.tasa_reales).toFixed(4));
   }
   return { totalOro, totalReales, tasa, litrosValid };
 }
@@ -61,10 +61,10 @@ function actualizarGasolinaTotalesACobrar() {
   if (tipoPago === "reales") {
     el.innerHTML = `<strong>Total a cobrar:</strong> ${formatMoney(totalReales, "reales")}`;
   } else if (tipoPago === "oro") {
-    el.innerHTML = `<strong>Total a cobrar:</strong> ${totalOro.toFixed(2)} g`;
+    el.innerHTML = `<strong>Total a cobrar:</strong> ${totalOro.toFixed(4)} g`;
   } else {
     el.innerHTML = `
-      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(2)} g</div>
+      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(4)} g</div>
       <div><strong>Total a cobrar (reales en precios):</strong> ${formatMoney(totalReales, "reales")}</div>
     `;
   }
@@ -102,15 +102,15 @@ function actualizarGasolinaVueltoPreview() {
     return;
   }
 
-  const recibidoEquivOro = Number((mOro + mReales / tasa.tasa_reales).toFixed(2));
-  const diffOro = Number((recibidoEquivOro - totalOro).toFixed(2));
+  const recibidoEquivOro = Number((mOro + mReales / tasa.tasa_reales).toFixed(4));
+  const diffOro = Number((recibidoEquivOro - totalOro).toFixed(4));
 
   if (tipoPago === "oro") {
     if (diffOro >= 0) {
-      el.textContent = `Vuelto: ${diffOro.toFixed(2)}g`;
+      el.textContent = `Vuelto: ${diffOro.toFixed(4)}g`;
     } else {
       el.classList.add("insuficiente");
-      el.textContent = `Falta: ${(-diffOro).toFixed(2)}g`;
+      el.textContent = `Falta: ${(-diffOro).toFixed(4)}g`;
     }
     return;
   }
@@ -143,7 +143,7 @@ function actualizarPreviewRepo() {
     elR.value = Number.isFinite(totalReales) ? totalReales.toFixed(2) : "0.00";
   }
   if (elO) {
-    elO.value = Number.isFinite(totalOro) ? totalOro.toFixed(2) : "0.00";
+    elO.value = Number.isFinite(totalOro) ? totalOro.toFixed(4) : "0.0000";
   }
 }
 
@@ -208,7 +208,7 @@ function actualizarPreviewVentaGasolina() {
       elO.textContent = "0.00";
       elR.textContent = formatMoney(totalReales, "reales");
     } else {
-      elO.textContent = Number.isFinite(totalOro) ? totalOro.toFixed(2) : "0.00";
+      elO.textContent = Number.isFinite(totalOro) ? totalOro.toFixed(4) : "0.0000";
       elR.textContent = formatMoney(Number.isFinite(totalReales) ? totalReales : 0, "reales");
     }
   }

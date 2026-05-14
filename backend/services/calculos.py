@@ -9,12 +9,13 @@ from models import TasaCambio
 
 class CalculosMonetarios:
     ROUND_DIGITS = 2
+    ROUND_DIGITS_ORO = 4
     TASA_REFERENCIA_COMPRAS = "araparita"
     TASAS_PREDEFINIDAS = {
-        "araparita": 37.000,
-        "uruman": 38.000,
-        "santa_elena_minero": 35.000,
-        "santa_elena_fundido": 39.000,
+        "araparita": 652.80,
+        "uruman": 691.20,
+        "santa_elena_minero": 614.40,
+        "santa_elena_fundido": 768.00,
     }
     ETIQUETAS_TASAS = {
         "araparita": "Araparita",
@@ -27,6 +28,10 @@ class CalculosMonetarios:
     def redondear(valor: float, decimales: int | None = None) -> float:
         precision = decimales if decimales is not None else CalculosMonetarios.ROUND_DIGITS
         return round(float(valor), precision)
+
+    @staticmethod
+    def redondear_oro(valor: float) -> float:
+        return CalculosMonetarios.redondear(valor, CalculosMonetarios.ROUND_DIGITS_ORO)
 
     @staticmethod
     def ordenar_tasas(tasas: list[TasaCambio]) -> list[TasaCambio]:
@@ -84,7 +89,7 @@ class CalculosMonetarios:
             tasa_obj = CalculosMonetarios.obtener_tasa_referencia(db)
         if tasa_obj.tasa_reales <= 0:
             raise ValueError("La tasa de cambio es invalida")
-        return CalculosMonetarios.redondear(reales / tasa_obj.tasa_reales)
+        return CalculosMonetarios.redondear_oro(reales / tasa_obj.tasa_reales)
 
     @staticmethod
     def oro_a_reales(
@@ -110,7 +115,7 @@ class CalculosMonetarios:
         if unidades <= 0:
             raise ValueError("Las unidades deben ser mayores a cero")
         total_oro = CalculosMonetarios.reales_a_oro(precio_reales_total, db)
-        return CalculosMonetarios.redondear(total_oro / unidades)
+        return CalculosMonetarios.redondear_oro(total_oro / unidades)
 
     @staticmethod
     def sugerir_precio_venta(costo_unitario_oro: float, margen: float = 0.30) -> float:
@@ -118,15 +123,15 @@ class CalculosMonetarios:
             raise ValueError("El costo unitario no puede ser negativo")
         if margen < 0:
             raise ValueError("El margen no puede ser negativo")
-        return CalculosMonetarios.redondear(costo_unitario_oro * (1 + margen))
+        return CalculosMonetarios.redondear_oro(costo_unitario_oro * (1 + margen))
 
     @staticmethod
     def consolidar_total_oro(subtotales: Iterable[float]) -> float:
-        return CalculosMonetarios.redondear(sum(subtotales))
+        return CalculosMonetarios.redondear_oro(sum(subtotales))
 
     @staticmethod
     def calcular_vuelto(tipo_pago: str, excedente_oro: float, tasa_reales: float) -> tuple[float, float]:
-        excedente_oro = CalculosMonetarios.redondear(max(excedente_oro, 0))
+        excedente_oro = CalculosMonetarios.redondear_oro(max(excedente_oro, 0))
         if tipo_pago == "oro":
             return excedente_oro, 0.0
         if tipo_pago == "reales":

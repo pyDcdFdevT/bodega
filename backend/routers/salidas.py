@@ -18,7 +18,7 @@ def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
         producto = ValidacionesSistema.validar_stock(data.producto_id, data.cantidad, db)
 
         stock_anterior = producto.stock_actual
-        valor_oro = CalculosMonetarios.redondear(producto.precio_venta_oro * data.cantidad)
+        valor_oro = CalculosMonetarios.redondear_oro(producto.precio_venta_oro * data.cantidad)
         producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual - data.cantidad)
 
         salida = Salida(

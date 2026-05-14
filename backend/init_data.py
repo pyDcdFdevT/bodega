@@ -7,10 +7,10 @@ from models import Categoria, Gasolina, Producto, TasaCambio
 
 
 TASAS_INICIALES = {
-    "araparita": 37.000,
-    "uruman": 38.000,
-    "santa_elena_minero": 35.000,
-    "santa_elena_fundido": 39.000,
+    "araparita": 652.80,
+    "uruman": 691.20,
+    "santa_elena_minero": 614.40,
+    "santa_elena_fundido": 768.00,
 }
 
 
@@ -39,7 +39,7 @@ def _inicializar_datos(db: Session) -> None:
         cats = {categoria.nombre: categoria.id for categoria in categorias}
 
         def _producto(nombre: str, categoria_id: int, presentacion: str, unidad_venta: str, stock: float, minimo: float, oro: float) -> Producto:
-            precio_reales = round(oro * 37, 2)
+            precio_reales = round(oro * TASAS_INICIALES["araparita"], 2)
             return Producto(
                 nombre=nombre,
                 categoria_id=categoria_id,

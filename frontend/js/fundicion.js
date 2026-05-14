@@ -64,7 +64,7 @@ export async function loadFundicion() {
       document.getElementById("fund-sel-lote"),
       lotesAbiertos,
       "id",
-      (l) => `#${l.id} ${l.estado} ${Number(l.gramos_brutos).toFixed(2)}g`,
+      (l) => `#${l.id} ${l.estado} ${Number(l.gramos_brutos).toFixed(4)}g`,
       "Seleccione lote..."
     );
 
@@ -72,7 +72,7 @@ export async function loadFundicion() {
       document.getElementById("fund-sel-fundicion"),
       dispVenta,
       "id",
-      (f) => `#${f.id} ${Number(f.gramos_finos).toFixed(2)}g finos`,
+      (f) => `#${f.id} ${Number(f.gramos_finos).toFixed(4)}g finos`,
       "Seleccione fundicion..."
     );
 
@@ -148,7 +148,7 @@ export function initFundicion() {
     const sel = rows.find((x) => String(x.id) === id);
     const el = document.getElementById("fund-vp-finos-disp");
     if (el && sel) {
-      el.textContent = `${Number(sel.gramos_finos).toFixed(2)} g`;
+      el.textContent = `${Number(sel.gramos_finos).toFixed(4)} g`;
     }
   });
 

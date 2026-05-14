@@ -114,7 +114,7 @@ class ValidacionesSistema:
             raise ValueError("Debe indicar al menos un monto recibido")
         if recibido_oro + 1e-9 < total_oro:
             raise ValueError("Monto recibido insuficiente para completar la operacion")
-        excedente_oro = CalculosMonetarios.redondear(recibido_oro - total_oro)
+        excedente_oro = CalculosMonetarios.redondear_oro(recibido_oro - total_oro)
         return CalculosMonetarios.calcular_vuelto(tipo, excedente_oro, tasa_reales)
 
     @staticmethod
