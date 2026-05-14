@@ -3,7 +3,7 @@ def test_venta_exitosa_descuenta_stock(client_with_apertura):
     productos = client.get("/api/productos").json()
     tasas = client.get("/api/tasas").json()
     tasa_id = tasas[0]["id"]
-    arroz = next(producto for producto in productos if producto["nombre"] == "Arroz")
+    arroz = next(producto for producto in productos if producto["nombre"] == "Arroz Tío Ivó")
     stock_inicial = arroz["stock_actual"]
 
     response = client.post(
@@ -29,7 +29,7 @@ def test_venta_fallida_hace_rollback_de_stock(client_with_apertura):
     productos = client.get("/api/productos").json()
     tasas = client.get("/api/tasas").json()
     tasa_id = tasas[0]["id"]
-    arroz = next(producto for producto in productos if producto["nombre"] == "Arroz")
+    arroz = next(producto for producto in productos if producto["nombre"] == "Arroz Tío Ivó")
     stock_inicial = arroz["stock_actual"]
 
     response = client.post(
@@ -39,7 +39,7 @@ def test_venta_fallida_hace_rollback_de_stock(client_with_apertura):
             "tipo_pago": "oro",
             "tasa_cambio_id": tasa_id,
             "tipo_oro": "araparita",
-            "monto_recibido_oro": 0.1,
+            "monto_recibido_oro": 0.01,
             "monto_recibido_reales": 0,
             "items": [{"producto_id": arroz["id"], "cantidad": 2}],
         },

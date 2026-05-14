@@ -1,7 +1,7 @@
 def _producto_arroz(client_with_apertura):
     client = client_with_apertura
     productos = client.get("/api/productos").json()
-    return next(p for p in productos if p["nombre"] == "Arroz")
+    return next(p for p in productos if p["nombre"] == "Arroz Tío Ivó")
 
 
 def _crear_venta_fiado_total_pendiente(client_with_apertura):
