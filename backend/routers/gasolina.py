@@ -154,6 +154,11 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
                 tasa_reales=tasa.tasa_reales,
             )
 
+        if gasolina.litros_disponibles + 1e-9 < data.litros:
+            raise ValueError(
+                "Invariante stock: litros insuficientes de gasolina (no puede quedar stock negativo)"
+            )
+
         gasolina.litros_disponibles = CalculosMonetarios.redondear(gasolina.litros_disponibles - data.litros, 3)
 
         assert tasa is not None

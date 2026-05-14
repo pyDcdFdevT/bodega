@@ -1,3 +1,10 @@
+"""
+API de lectura del libro transacciones (ledger).
+
+Las filas son inmutables: no exponemos PUT, PATCH ni DELETE.
+Cualquier correccion contable debe modelarse como nuevas filas tipo 'correccion' (otro flujo).
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

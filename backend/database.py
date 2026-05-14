@@ -176,6 +176,49 @@ CREATE TABLE IF NOT EXISTS transacciones (
             conn.execute(text(sql))
 
 
+def _ensure_cierres_diarios_table(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        stmts = [
+            """
+CREATE TABLE IF NOT EXISTS cierres_diarios (
+    id SERIAL PRIMARY KEY,
+    fecha DATE NOT NULL UNIQUE,
+    total_oro DOUBLE PRECISION NOT NULL,
+    total_reales DOUBLE PRECISION NOT NULL,
+    gastos DOUBLE PRECISION NOT NULL,
+    ganancia_neta DOUBLE PRECISION NOT NULL,
+    cerrado_por VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha ON cierres_diarios (fecha)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql))
+        return
+
+    if dialect == "sqlite":
+        stmts = [
+            """
+CREATE TABLE IF NOT EXISTS cierres_diarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha DATE NOT NULL UNIQUE,
+    total_oro REAL NOT NULL,
+    total_reales REAL NOT NULL,
+    gastos REAL NOT NULL,
+    ganancia_neta REAL NOT NULL,
+    cerrado_por VARCHAR(100) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha ON cierres_diarios (fecha)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql))
+
+
 def apply_schema_patches() -> None:
     """Migraciones ligeras tras create_all (columnas/tablas que faltan en bases ya existentes)."""
     from sqlalchemy import inspect, text
@@ -209,6 +252,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
 """
             conn.execute(text(create_reposiciones))
             _ensure_transacciones_table(conn, dialect)
+            _ensure_cierres_diarios_table(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -232,4 +276,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
                 for sql in stmts:
                     conn.execute(text(sql))
             _ensure_transacciones_table(conn, dialect)
+            _ensure_cierres_diarios_table(conn, dialect)
         return

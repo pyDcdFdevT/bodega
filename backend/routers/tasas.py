@@ -40,6 +40,8 @@ def actualizar_tasas(data: TasasConfigUpdate, db: Session = Depends(get_db)):
 
         for nombre in CalculosMonetarios.TASAS_PREDEFINIDAS:
             nueva_tasa = getattr(data, nombre)
+            if nueva_tasa <= 0:
+                raise ValueError(f"La tasa '{nombre}' debe ser mayor a cero")
             tasa = tasas[nombre]
             if tasa.tasa_reales != nueva_tasa:
                 tasa_anterior = tasa.tasa_reales

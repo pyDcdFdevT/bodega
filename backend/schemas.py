@@ -138,8 +138,8 @@ class CompraCreate(BaseModel):
 
 
 class CompraUpdate(BaseModel):
-    cantidad: float = Field(..., gt=0)
-    precio_reales: float = Field(..., gt=0)
+    cantidad: float = Field(..., ge=0)
+    precio_reales: float = Field(..., ge=0)
     proveedor: str = Field(default="Proveedor", max_length=100)
     observaciones: Optional[str] = Field(default=None, max_length=500)
 
@@ -157,7 +157,7 @@ def _categoria_gasto(valor: str) -> str:
 class GastoCreate(BaseModel):
     categoria: str = Field(..., min_length=3, max_length=40)
     descripcion: str = Field(..., min_length=1, max_length=2000)
-    monto_reales: float = Field(..., ge=0)
+    monto_reales: float = Field(..., gt=0)
 
     _categoria = field_validator("categoria")(_categoria_gasto)
     _descripcion = field_validator("descripcion")(_texto_requerido)
@@ -225,3 +225,10 @@ class SalidaOut(ORMModel):
     valor_oro: float
     motivo: str
     fecha: datetime
+
+
+class CierreGenerarCreate(BaseModel):
+    cerrado_por: str = Field(..., min_length=1, max_length=100)
+    saldo_inicial_reales: float = Field(default=0, ge=0)
+
+    _cerrado_por = field_validator("cerrado_por")(_texto_requerido)

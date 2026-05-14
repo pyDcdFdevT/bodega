@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import MovimientoInventario, Producto, Salida
+from models import MovimientoInventario, Salida
 from schemas import SalidaCreate
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
+from services.validaciones import ValidacionesSistema
 
 
 router = APIRouter(prefix="/salidas", tags=["Salidas"])
@@ -14,19 +15,7 @@ router = APIRouter(prefix="/salidas", tags=["Salidas"])
 @router.post("")
 def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
     try:
-        producto = (
-            db.query(Producto)
-            .filter(Producto.id == data.producto_id, Producto.activo.is_(True))
-            .first()
-        )
-        if not producto:
-            raise ValueError("Producto no encontrado o inactivo")
-        if data.cantidad <= 0:
-            raise ValueError("La cantidad debe ser mayor a cero")
-        if producto.stock_actual < data.cantidad:
-            raise ValueError(
-                f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual}"
-            )
+        producto = ValidacionesSistema.validar_stock(data.producto_id, data.cantidad, db)
 
         stock_anterior = producto.stock_actual
         valor_oro = CalculosMonetarios.redondear(producto.precio_venta_oro * data.cantidad)

@@ -233,6 +233,8 @@ def actualizar_producto(producto_id: int, data: ProductoUpdate, db: Session = De
         if data.stock_actual is not None and data.stock_actual != producto.stock_actual:
             stock_anterior = producto.stock_actual
             producto.stock_actual = data.stock_actual
+            if producto.stock_actual < 0:
+                raise ValueError("Invariante stock: el stock del producto no puede ser negativo")
             diferencia = abs(data.stock_actual - stock_anterior)
             db.add(
                 MovimientoInventario(

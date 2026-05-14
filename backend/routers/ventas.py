@@ -17,6 +17,35 @@ from services.validaciones import ValidacionesSistema
 router = APIRouter(prefix="/ventas", tags=["Ventas"])
 
 
+def _validar_invariante_venta_balanceada(
+    *,
+    tipo_pago: str,
+    consolidados: dict[int, float],
+    subtotales_oro: dict[int, float],
+    total_oro: float,
+    total_reales: float,
+    total_reales_directo: float,
+    tasa,
+    db: Session,
+) -> None:
+    suma_det_oro = CalculosMonetarios.redondear(sum(subtotales_oro[pid] for pid in consolidados))
+    if tipo_pago == "reales":
+        if abs(total_oro) > 1e-5:
+            raise ValueError("Invariante venta balanceada: con pago en reales total_oro debe ser cero")
+        if abs(total_reales - total_reales_directo) > 0.05:
+            raise ValueError("Invariante venta balanceada: total_reales no coincide con la suma de lineas")
+        return
+    if not tasa:
+        raise ValueError("Invariante venta balanceada: falta tasa para validar totales en oro/mixto")
+    if abs(total_oro - suma_det_oro) > 0.05:
+        raise ValueError("Invariante venta balanceada: total_oro debe coincidir con la suma de subtotales oro")
+    esperado_reales = CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa)
+    if abs(float(total_reales) - float(esperado_reales)) > 0.15:
+        raise ValueError(
+            "Invariante venta balanceada: total_reales no coincide con total_oro valorizado a la tasa del cobro"
+        )
+
+
 @router.post("")
 def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     try:
@@ -64,6 +93,17 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 tasa_reales=tasa.tasa_reales,
             )
 
+        _validar_invariante_venta_balanceada(
+            tipo_pago=tipo_pago,
+            consolidados=consolidados,
+            subtotales_oro=subtotales_oro,
+            total_oro=total_oro,
+            total_reales=total_reales,
+            total_reales_directo=total_reales_directo,
+            tasa=tasa,
+            db=db,
+        )
+
         nueva = Venta(
             cliente=venta.cliente,
             total_oro=total_oro,
@@ -83,6 +123,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
         for producto_id, cantidad in consolidados.items():
             producto = productos[producto_id]
             subtotal_oro = subtotales_oro[producto_id]
+            ValidacionesSistema.validar_descuento_stock_antes_de_aplicar(producto, cantidad)
             stock_anterior = producto.stock_actual
             producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual - cantidad)
 

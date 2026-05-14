@@ -61,8 +61,22 @@ class ValidacionesSistema:
             raise ValueError("La cantidad debe ser mayor a cero")
         producto = ValidacionesSistema.obtener_producto_activo(producto_id, db)
         if producto.stock_actual < cantidad:
-            raise ValueError(f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual}")
+            raise ValueError(
+                "Invariante stock: no se puede descontar mas del disponible (el stock no puede quedar negativo). "
+                f"{producto.nombre}: stock_actual={producto.stock_actual}, solicitado={cantidad}"
+            )
         return producto
+
+    @staticmethod
+    def validar_descuento_stock_antes_de_aplicar(producto: Producto, cantidad: float) -> None:
+        """Doble chequeo antes de mutar stock (ventas concurrentes)."""
+        if cantidad <= 0:
+            raise ValueError("La cantidad debe ser mayor a cero")
+        if producto.stock_actual < cantidad:
+            raise ValueError(
+                "Invariante stock: stock insuficiente en el momento del descuento "
+                f"({producto.nombre}: {producto.stock_actual} < {cantidad})"
+            )
 
     @staticmethod
     def consolidar_items(items: list) -> dict[int, float]:
@@ -116,5 +130,8 @@ class ValidacionesSistema:
         if litros <= 0:
             raise ValueError("Los litros deben ser mayores a cero")
         if gasolina.litros_disponibles < litros:
-            raise ValueError(f"Stock insuficiente de gasolina. Disponible: {gasolina.litros_disponibles} litros")
+            raise ValueError(
+                "Invariante stock: litros de gasolina insuficientes (no puede quedar stock negativo). "
+                f"Disponible: {gasolina.litros_disponibles}, solicitado: {litros}"
+            )
         return gasolina

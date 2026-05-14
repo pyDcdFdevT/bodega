@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -328,6 +329,19 @@ class Salida(Base):
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
 
     producto = relationship("Producto", back_populates="salidas")
+
+
+class CierreDiario(Base):
+    __tablename__ = "cierres_diarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(Date, unique=True, nullable=False, index=True)
+    total_oro = Column(Float, nullable=False)
+    total_reales = Column(Float, nullable=False)
+    gastos = Column(Float, nullable=False)
+    ganancia_neta = Column(Float, nullable=False)
+    cerrado_por = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
 
 class Transaccion(Base):
