@@ -7,11 +7,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import DetalleVenta, MovimientoInventario, PagoVenta, Producto, Venta
+from models import DetalleVenta, MovimientoInventario, PagoVenta, Producto, TasaCambio, Venta
+from routers.deps import require_admin
 from schemas import VentaCreate
 from services.apertura_context import exigir_apertura_del_dia
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
+from services.query_operativa import venta_no_anulada
 from services.validaciones import ValidacionesSistema
 
 
@@ -296,6 +298,80 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="No fue posible registrar la venta") from exc
 
 
+@router.put("/{venta_id}/anular")
+def anular_venta(
+    venta_id: int,
+    _rol: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        venta = (
+            db.query(Venta)
+            .options(joinedload(Venta.detalles).joinedload(DetalleVenta.producto))
+            .filter(Venta.id == venta_id)
+            .first()
+        )
+        if not venta:
+            raise HTTPException(status_code=404, detail="Venta no encontrada")
+        if (venta.estado or "VIGENTE") == "ANULADA":
+            raise ValueError("La venta ya esta anulada")
+
+        for det in venta.detalles:
+            producto = det.producto
+            if not producto:
+                producto = db.query(Producto).filter(Producto.id == det.producto_id).first()
+            if not producto:
+                raise ValueError("Producto de un detalle de venta no encontrado")
+            cant = float(det.cantidad)
+            stock_ant = float(producto.stock_actual)
+            producto.stock_actual = CalculosMonetarios.redondear(stock_ant + cant)
+            db.add(
+                MovimientoInventario(
+                    producto_id=producto.id,
+                    tipo="entrada",
+                    cantidad=cant,
+                    stock_anterior=stock_ant,
+                    stock_nuevo=producto.stock_actual,
+                    motivo=f"Anulacion venta #{venta_id}",
+                )
+            )
+
+        venta.estado = "ANULADA"
+        venta.saldo_pendiente = 0.0
+        venta.estado_pago = "ANULADA"
+
+        moneda_led = venta.tipo_pago if venta.tipo_pago in ("reales", "oro", "mixto") else "reales"
+        tasa_row = None
+        if venta.tasa_cambio_id:
+            tasa_row = db.query(TasaCambio).filter(TasaCambio.id == venta.tasa_cambio_id).first()
+        tasa_usada = float(tasa_row.tasa_reales) if tasa_row and tasa_row.tasa_reales else None
+
+        registrar_transaccion(
+            db,
+            tipo="correccion",
+            modulo_origen="bodega",
+            referencia_id=venta.id,
+            moneda=moneda_led,
+            monto_reales=-float(venta.total_reales),
+            gramos_oro=-float(venta.total_oro),
+            tipo_oro=venta.tipo_oro,
+            tasa_usada=tasa_usada,
+            descripcion=f"Anulacion venta #{venta.id}",
+        )
+        db.commit()
+        db.refresh(venta)
+        return {"status": "success", "venta_id": venta.id, "estado": venta.estado}
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible anular la venta") from exc
+
+
 @router.get("")
 def listar_ventas(
     limit: int = Query(default=50, ge=1, le=200),
@@ -321,6 +397,7 @@ def listar_ventas(
             "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
             "tipo_venta": venta.tipo_venta,
             "estado_pago": venta.estado_pago,
+            "estado": venta.estado or "VIGENTE",
             "saldo_pendiente": float(venta.saldo_pendiente or 0),
         }
         for venta in ventas
@@ -336,7 +413,7 @@ def resumen_ventas_hoy(db: Session = Depends(get_db)):
             func.coalesce(func.sum(Venta.total_reales), 0),
             func.count(Venta.id),
         )
-        .filter(Venta.fecha >= inicio)
+        .filter(Venta.fecha >= inicio, venta_no_anulada())
         .one()
     )
     return {

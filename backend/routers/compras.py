@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import Compra, DetalleCompra, MovimientoInventario, Producto
+from routers.deps import require_admin
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
@@ -107,6 +108,75 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="No fue posible registrar la compra") from exc
 
 
+@router.put("/{compra_id}/anular")
+def anular_compra(
+    compra_id: int,
+    _rol: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        compra = (
+            db.query(Compra)
+            .options(joinedload(Compra.detalles).joinedload(DetalleCompra.producto))
+            .filter(Compra.id == compra_id)
+            .first()
+        )
+        if not compra:
+            raise HTTPException(status_code=404, detail="Compra no encontrada")
+        if (compra.estado or "VIGENTE") == "ANULADA":
+            raise ValueError("La compra ya esta anulada")
+        if not compra.detalles:
+            raise ValueError("La compra no tiene detalle asociado")
+
+        for det in compra.detalles:
+            producto = det.producto
+            if not producto:
+                producto = db.query(Producto).filter(Producto.id == det.producto_id).first()
+            if not producto:
+                raise ValueError("Producto de la compra no encontrado")
+            cant = float(det.cantidad)
+            stock_ant = float(producto.stock_actual)
+            if stock_ant + 1e-9 < cant:
+                raise ValueError("Stock insuficiente para revertir la compra (no se puede anular)")
+            producto.stock_actual = CalculosMonetarios.redondear(stock_ant - cant)
+            db.add(
+                MovimientoInventario(
+                    producto_id=producto.id,
+                    tipo="salida",
+                    cantidad=cant,
+                    stock_anterior=stock_ant,
+                    stock_nuevo=producto.stock_actual,
+                    motivo=f"Anulacion compra #{compra_id}",
+                )
+            )
+
+        compra.estado = "ANULADA"
+        registrar_transaccion(
+            db,
+            tipo="correccion",
+            modulo_origen="bodega",
+            referencia_id=compra.id,
+            moneda="mixto",
+            monto_reales=-float(compra.total_reales),
+            gramos_oro=-float(compra.total_oro),
+            tipo_oro=None,
+            tasa_usada=float(compra.tasa_cambio_usada),
+            descripcion=f"Anulacion compra #{compra.id}",
+        )
+        db.commit()
+        db.refresh(compra)
+        return {"status": "success", "compra_id": compra.id, "estado": compra.estado}
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible anular la compra") from exc
+
+
 @router.get("")
 def listar_compras(
     limit: int = Query(default=50, ge=1, le=200),
@@ -133,6 +203,8 @@ def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depen
         )
         if not compra:
             raise HTTPException(status_code=404, detail="Compra no encontrada")
+        if (compra.estado or "VIGENTE") == "ANULADA":
+            raise ValueError("La compra esta anulada y no puede modificarse")
         if not compra.detalles:
             raise ValueError("La compra no tiene detalle asociado")
 

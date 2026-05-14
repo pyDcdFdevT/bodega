@@ -116,6 +116,7 @@ class Venta(Base):
         CheckConstraint("monto_recibido_reales >= 0", name="ck_venta_monto_recibido_reales"),
         CheckConstraint("vuelto_oro >= 0", name="ck_venta_vuelto_oro"),
         CheckConstraint("vuelto_reales >= 0", name="ck_venta_vuelto_reales"),
+        CheckConstraint("estado IN ('VIGENTE','ANULADA')", name="ck_venta_estado"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -136,6 +137,7 @@ class Venta(Base):
     cliente_fiado = Column(String(100), nullable=True)
     telefono_fiado = Column(String(20), nullable=True)
     tipo_venta = Column(String(20), default="contado", nullable=False)
+    estado = Column(String(20), default="VIGENTE", nullable=False)
 
     tasa_cambio = relationship("TasaCambio", back_populates="ventas")
     detalles = relationship("DetalleVenta", back_populates="venta", cascade="all, delete-orphan")
@@ -187,6 +189,7 @@ class Compra(Base):
         CheckConstraint("total_reales >= 0", name="ck_compra_total_reales"),
         CheckConstraint("total_oro >= 0", name="ck_compra_total_oro"),
         CheckConstraint("tasa_cambio_usada > 0", name="ck_compra_tasa_cambio"),
+        CheckConstraint("estado IN ('VIGENTE','ANULADA')", name="ck_compra_estado"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -196,6 +199,7 @@ class Compra(Base):
     total_oro = Column(Float, nullable=False)
     tasa_cambio_usada = Column(Float, nullable=False)
     observaciones = Column(Text)
+    estado = Column(String(20), default="VIGENTE", nullable=False)
 
     detalles = relationship("DetalleCompra", back_populates="compra", cascade="all, delete-orphan")
 

@@ -25,6 +25,7 @@ from routers.deps import require_admin
 from schemas import CierreGenerarCreate
 from services.apertura_context import build_apertura_pantalla_payload
 from services.calculos import CalculosMonetarios
+from services.query_operativa import compra_no_anulada, venta_no_anulada
 
 
 router = APIRouter(prefix="/cierre", tags=["Cierre"])
@@ -33,10 +34,16 @@ router = APIRouter(prefix="/cierre", tags=["Cierre"])
 def _ganancia_neta_dia(db: Session, inicio: datetime) -> float:
     """Misma formula que el dashboard de reportes para el dia `inicio`."""
     ventas_hoy_oro = float(
-        db.query(func.coalesce(func.sum(Venta.total_oro), 0)).filter(Venta.fecha >= inicio).scalar() or 0
+        db.query(func.coalesce(func.sum(Venta.total_oro), 0))
+        .filter(Venta.fecha >= inicio, venta_no_anulada())
+        .scalar()
+        or 0
     )
     compras_hoy_oro = float(
-        db.query(func.coalesce(func.sum(Compra.total_oro), 0)).filter(Compra.fecha >= inicio).scalar() or 0
+        db.query(func.coalesce(func.sum(Compra.total_oro), 0))
+        .filter(Compra.fecha >= inicio, compra_no_anulada())
+        .scalar()
+        or 0
     )
     salidas_hoy_oro = float(
         db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio).scalar() or 0
@@ -79,41 +86,53 @@ def construir_payload_cierre(
     oro_operativo_inicial: float = 0.0,
 ) -> dict:
     ventas_reales = float(
-        db.query(func.coalesce(func.sum(Venta.total_reales), 0)).filter(Venta.fecha >= inicio).scalar() or 0
+        db.query(func.coalesce(func.sum(Venta.total_reales), 0))
+        .filter(Venta.fecha >= inicio, venta_no_anulada())
+        .scalar()
+        or 0
     )
     ventas_oro = float(
-        db.query(func.coalesce(func.sum(Venta.total_oro), 0)).filter(Venta.fecha >= inicio).scalar() or 0
+        db.query(func.coalesce(func.sum(Venta.total_oro), 0))
+        .filter(Venta.fecha >= inicio, venta_no_anulada())
+        .scalar()
+        or 0
     )
     oro_araparita = float(
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "araparita")
+        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "araparita", venta_no_anulada())
         .scalar()
         or 0
     )
     oro_uruman = float(
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "uruman")
+        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "uruman", venta_no_anulada())
         .scalar()
         or 0
     )
     oro_se_min = float(
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "santa_elena_minero")
+        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "santa_elena_minero", venta_no_anulada())
         .scalar()
         or 0
     )
     oro_se_fun = float(
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "santa_elena_fundido")
+        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "santa_elena_fundido", venta_no_anulada())
         .scalar()
         or 0
     )
 
     compras_reales = float(
-        db.query(func.coalesce(func.sum(Compra.total_reales), 0)).filter(Compra.fecha >= inicio).scalar() or 0
+        db.query(func.coalesce(func.sum(Compra.total_reales), 0))
+        .filter(Compra.fecha >= inicio, compra_no_anulada())
+        .scalar()
+        or 0
     )
     compras_oro = float(
-        db.query(func.coalesce(func.sum(Compra.total_oro), 0)).filter(Compra.fecha >= inicio).scalar() or 0
+        db.query(func.coalesce(func.sum(Compra.total_oro), 0))
+        .filter(Compra.fecha >= inicio, compra_no_anulada())
+        .scalar()
+        or 0
     )
     salidas_oro = float(
         db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio).scalar() or 0
@@ -169,22 +188,23 @@ def construir_payload_cierre(
 
     ventas_contado_reales = float(
         db.query(func.coalesce(func.sum(Venta.total_reales), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_venta == "contado")
+        .filter(Venta.fecha >= inicio, Venta.tipo_venta == "contado", venta_no_anulada())
         .scalar()
         or 0
     )
 
     pagos_venta_rows = (
         db.query(PagoVenta)
+        .join(Venta, PagoVenta.venta_id == Venta.id)
         .options(joinedload(PagoVenta.venta).joinedload(Venta.tasa_cambio))
-        .filter(PagoVenta.fecha >= inicio)
+        .filter(PagoVenta.fecha >= inicio, venta_no_anulada())
         .all()
     )
     cobros_del_dia = sum(_equiv_pago_venta_row(db, p) for p in pagos_venta_rows)
 
     cuentas_por_cobrar = float(
         db.query(func.coalesce(func.sum(Venta.saldo_pendiente), 0))
-        .filter(Venta.saldo_pendiente > 0)
+        .filter(Venta.saldo_pendiente > 0, venta_no_anulada())
         .scalar()
         or 0
     )

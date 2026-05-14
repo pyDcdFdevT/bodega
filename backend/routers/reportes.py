@@ -21,6 +21,7 @@ from models import (
 )
 from routers.productos import serializar_producto
 from services.calculos import CalculosMonetarios
+from services.query_operativa import compra_no_anulada, venta_no_anulada
 
 
 router = APIRouter(prefix="/reportes", tags=["Dashboard"])
@@ -48,8 +49,18 @@ def dashboard(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
-    ventas_hoy_oro = db.query(func.coalesce(func.sum(Venta.total_oro), 0)).filter(Venta.fecha >= inicio_hoy).scalar() or 0
-    compras_hoy_oro = db.query(func.coalesce(func.sum(Compra.total_oro), 0)).filter(Compra.fecha >= inicio_hoy).scalar() or 0
+    ventas_hoy_oro = (
+        db.query(func.coalesce(func.sum(Venta.total_oro), 0))
+        .filter(Venta.fecha >= inicio_hoy, venta_no_anulada())
+        .scalar()
+        or 0
+    )
+    compras_hoy_oro = (
+        db.query(func.coalesce(func.sum(Compra.total_oro), 0))
+        .filter(Compra.fecha >= inicio_hoy, compra_no_anulada())
+        .scalar()
+        or 0
+    )
     salidas_hoy_oro = db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio_hoy).scalar() or 0
     gasolina_hoy_oro = (
         db.query(func.coalesce(func.sum(VentaGasolina.total_oro), 0))
@@ -59,31 +70,31 @@ def dashboard(db: Session = Depends(get_db)):
     )
     ventas_hoy_reales = (
         db.query(func.coalesce(func.sum(Venta.total_reales), 0))
-        .filter(Venta.fecha >= inicio_hoy)
+        .filter(Venta.fecha >= inicio_hoy, venta_no_anulada())
         .scalar()
         or 0
     )
     oro_araparita = (
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "araparita")
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "araparita", venta_no_anulada())
         .scalar()
         or 0
     )
     oro_uruman = (
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "uruman")
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "uruman", venta_no_anulada())
         .scalar()
         or 0
     )
     oro_santa_elena_minero = (
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "santa_elena_minero")
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "santa_elena_minero", venta_no_anulada())
         .scalar()
         or 0
     )
     oro_santa_elena_fundido = (
         db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "santa_elena_fundido")
+        .filter(Venta.fecha >= inicio_hoy, Venta.tipo_oro == "santa_elena_fundido", venta_no_anulada())
         .scalar()
         or 0
     )
@@ -108,7 +119,12 @@ def dashboard(db: Session = Depends(get_db)):
     )
 
     compras_hoy_reales = (
-        float(db.query(func.coalesce(func.sum(Compra.total_reales), 0)).filter(Compra.fecha >= inicio_hoy).scalar() or 0)
+        float(
+            db.query(func.coalesce(func.sum(Compra.total_reales), 0))
+            .filter(Compra.fecha >= inicio_hoy, compra_no_anulada())
+            .scalar()
+            or 0
+        )
     )
     stock_bajo_rows = (
         db.query(Producto)
@@ -130,6 +146,7 @@ def dashboard(db: Session = Depends(get_db)):
             "cliente": v.cliente,
             "total_reales": round(float(v.total_reales), 2),
             "total_oro": round(float(v.total_oro), 2),
+            "estado": v.estado or "VIGENTE",
             "fecha": v.fecha.isoformat() if v.fecha else None,
         }
         for v in ultimas_ventas
@@ -242,8 +259,8 @@ def reporte_inventario(db: Session = Depends(get_db)):
 def reporte_ventas(dias: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
     desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
     ventas = db.query(Venta).filter(Venta.fecha >= desde).order_by(Venta.fecha.desc()).all()
-    total_oro = sum(venta.total_oro for venta in ventas)
-    total_reales = sum(venta.total_reales for venta in ventas)
+    total_oro = sum(float(v.total_oro) for v in ventas if (v.estado or "VIGENTE") != "ANULADA")
+    total_reales = sum(float(v.total_reales) for v in ventas if (v.estado or "VIGENTE") != "ANULADA")
     return {
         "desde": desde.isoformat(),
         "cantidad": len(ventas),
@@ -257,8 +274,8 @@ def reporte_ventas(dias: int = Query(default=7, ge=1, le=90), db: Session = Depe
 def reporte_compras(dias: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
     desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
     compras = db.query(Compra).filter(Compra.fecha >= desde).order_by(Compra.fecha.desc()).all()
-    total_oro = sum(compra.total_oro for compra in compras)
-    total_reales = sum(compra.total_reales for compra in compras)
+    total_oro = sum(float(c.total_oro) for c in compras if (c.estado or "VIGENTE") != "ANULADA")
+    total_reales = sum(float(c.total_reales) for c in compras if (c.estado or "VIGENTE") != "ANULADA")
     return {
         "desde": desde.isoformat(),
         "cantidad": len(compras),

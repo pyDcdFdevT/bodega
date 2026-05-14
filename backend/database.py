@@ -596,6 +596,30 @@ CREATE TABLE IF NOT EXISTS pagos_venta (
         _migrate_pagos_venta_tipo_oro_column(conn, dialect)
 
 
+def _migrate_venta_compra_estado_anulacion(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn.engine)
+
+    if dialect == "postgresql":
+        if insp.has_table("ventas"):
+            conn.execute(text("ALTER TABLE ventas ADD COLUMN IF NOT EXISTS estado VARCHAR(20) NOT NULL DEFAULT 'VIGENTE'"))
+        if insp.has_table("compras"):
+            conn.execute(text("ALTER TABLE compras ADD COLUMN IF NOT EXISTS estado VARCHAR(20) NOT NULL DEFAULT 'VIGENTE'"))
+        return
+
+    if dialect == "sqlite":
+        if insp.has_table("ventas"):
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(ventas)"))}
+            if "estado" not in cols:
+                conn.execute(text("ALTER TABLE ventas ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'VIGENTE'"))
+        if insp.has_table("compras"):
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(compras)"))}
+            if "estado" not in cols:
+                conn.execute(text("ALTER TABLE compras ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'VIGENTE'"))
+        return
+
+
 def _migrate_pagos_venta_tipo_oro_column(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -649,6 +673,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_aperturas_caja_table(conn, dialect)
             _ensure_fundicion_tables(conn, dialect)
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
+            _migrate_venta_compra_estado_anulacion(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -677,4 +702,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_aperturas_caja_table(conn, dialect)
             _ensure_fundicion_tables(conn, dialect)
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
+            _migrate_venta_compra_estado_anulacion(conn, dialect)
         return

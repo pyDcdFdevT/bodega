@@ -12,6 +12,7 @@ from models import PagoVenta, TasaCambio, Venta
 from schemas import PagoVentaCreate
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
+from services.query_operativa import venta_no_anulada
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ def listar_pendientes(db: Session = Depends(get_db)):
     rows = (
         db.query(Venta)
         .options(joinedload(Venta.tasa_cambio))
-        .filter(Venta.saldo_pendiente > 0)
+        .filter(Venta.saldo_pendiente > 0, venta_no_anulada())
         .order_by(Venta.fecha.desc(), Venta.id.desc())
         .all()
     )
@@ -94,6 +95,7 @@ def deudas_por_cliente(nombre: str, db: Session = Depends(get_db)):
         .options(joinedload(Venta.tasa_cambio))
         .filter(
             Venta.saldo_pendiente > 0,
+            venta_no_anulada(),
             or_(
                 func.lower(Venta.cliente).like(like),
                 func.lower(func.coalesce(Venta.cliente_fiado, "")).like(like),
@@ -122,8 +124,9 @@ def pagos_recibidos_hoy(db: Session = Depends(get_db)):
     inicio = _inicio_dia_hoy()
     rows = (
         db.query(PagoVenta)
+        .join(Venta, PagoVenta.venta_id == Venta.id)
         .options(joinedload(PagoVenta.venta))
-        .filter(PagoVenta.fecha >= inicio)
+        .filter(PagoVenta.fecha >= inicio, venta_no_anulada())
         .order_by(PagoVenta.fecha.desc(), PagoVenta.id.desc())
         .all()
     )
@@ -159,6 +162,8 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         )
         if not venta:
             raise HTTPException(status_code=404, detail="Venta no encontrada")
+        if (venta.estado or "VIGENTE") == "ANULADA":
+            raise ValueError("La venta fue anulada")
         if float(venta.saldo_pendiente) <= 0:
             raise ValueError("La venta no tiene saldo pendiente")
 
