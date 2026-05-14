@@ -119,6 +119,63 @@ CREATE TABLE IF NOT EXISTS gastos_operativos (
         )
 
 
+def _ensure_transacciones_table(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        stmts = [
+            """
+CREATE TABLE IF NOT EXISTS transacciones (
+    id SERIAL PRIMARY KEY,
+    uuid VARCHAR(36) NOT NULL UNIQUE,
+    tipo VARCHAR(30) NOT NULL,
+    modulo_origen VARCHAR(30) NOT NULL,
+    referencia_id INTEGER,
+    moneda VARCHAR(10) NOT NULL,
+    monto_reales DOUBLE PRECISION NOT NULL DEFAULT 0,
+    gramos_oro DOUBLE PRECISION NOT NULL DEFAULT 0,
+    tipo_oro VARCHAR(50),
+    tasa_usada DOUBLE PRECISION,
+    descripcion VARCHAR(255),
+    fecha TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_transacciones_tipo ON transacciones (tipo)",
+            "CREATE INDEX IF NOT EXISTS ix_transacciones_modulo ON transacciones (modulo_origen)",
+            "CREATE INDEX IF NOT EXISTS ix_transacciones_fecha ON transacciones (fecha)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql))
+        return
+
+    if dialect == "sqlite":
+        stmts = [
+            """
+CREATE TABLE IF NOT EXISTS transacciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid VARCHAR(36) NOT NULL UNIQUE,
+    tipo VARCHAR(30) NOT NULL,
+    modulo_origen VARCHAR(30) NOT NULL,
+    referencia_id INTEGER,
+    moneda VARCHAR(10) NOT NULL,
+    monto_reales REAL NOT NULL DEFAULT 0,
+    gramos_oro REAL NOT NULL DEFAULT 0,
+    tipo_oro VARCHAR(50),
+    tasa_usada REAL,
+    descripcion VARCHAR(255),
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_transacciones_tipo ON transacciones (tipo)",
+            "CREATE INDEX IF NOT EXISTS ix_transacciones_modulo ON transacciones (modulo_origen)",
+            "CREATE INDEX IF NOT EXISTS ix_transacciones_fecha ON transacciones (fecha)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql))
+
+
 def apply_schema_patches() -> None:
     """Migraciones ligeras tras create_all (columnas/tablas que faltan en bases ya existentes)."""
     from sqlalchemy import inspect, text
@@ -151,6 +208,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
 );
 """
             conn.execute(text(create_reposiciones))
+            _ensure_transacciones_table(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -173,4 +231,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
                     stmts.append("ALTER TABLE ventas_gasolina ADD COLUMN precio_litro_venta REAL DEFAULT 0")
                 for sql in stmts:
                     conn.execute(text(sql))
+            _ensure_transacciones_table(conn, dialect)
         return

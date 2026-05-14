@@ -5,6 +5,7 @@ from database import get_db
 from models import MovimientoInventario, Producto, Salida
 from schemas import SalidaCreate
 from services.calculos import CalculosMonetarios
+from services.ledger import registrar_transaccion
 
 
 router = APIRouter(prefix="/salidas", tags=["Salidas"])
@@ -49,6 +50,19 @@ def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
             motivo=f"Salida: {data.motivo}",
         )
         db.add(movimiento)
+
+        registrar_transaccion(
+            db,
+            tipo="salida",
+            modulo_origen="bodega",
+            referencia_id=salida.id,
+            moneda="oro",
+            monto_reales=0.0,
+            gramos_oro=float(valor_oro),
+            tipo_oro=None,
+            tasa_usada=None,
+            descripcion=f"Salida #{salida.id} {producto.nombre}: {data.motivo}"[:255],
+        )
 
         db.commit()
         db.refresh(salida)

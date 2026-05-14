@@ -10,6 +10,7 @@ from database import get_db
 from models import DetalleVenta, MovimientoInventario, Producto, Venta
 from schemas import VentaCreate
 from services.calculos import CalculosMonetarios
+from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
 
 
@@ -112,6 +113,19 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                     "subtotal_oro": subtotal_oro,
                 }
             )
+
+        registrar_transaccion(
+            db,
+            tipo="venta",
+            modulo_origen="bodega",
+            referencia_id=nueva.id,
+            moneda=tipo_pago,
+            monto_reales=float(total_reales),
+            gramos_oro=float(total_oro),
+            tipo_oro=tipo_oro,
+            tasa_usada=float(tasa.tasa_reales) if tasa else None,
+            descripcion=f"Venta #{nueva.id} {venta.cliente}",
+        )
 
         db.commit()
         db.refresh(nueva)

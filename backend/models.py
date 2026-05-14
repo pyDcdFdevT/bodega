@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import (
@@ -21,6 +22,10 @@ from database import Base
 
 def utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _nuevo_uuid_transaccion() -> str:
+    return str(uuid.uuid4())
 
 
 class Categoria(Base):
@@ -323,3 +328,35 @@ class Salida(Base):
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
 
     producto = relationship("Producto", back_populates="salidas")
+
+
+class Transaccion(Base):
+    __tablename__ = "transacciones"
+    __table_args__ = (
+        CheckConstraint(
+            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion')",
+            name="ck_transaccion_tipo",
+        ),
+        CheckConstraint(
+            "modulo_origen IN ('bodega','gasolina','oro','gastos')",
+            name="ck_transaccion_modulo",
+        ),
+        CheckConstraint(
+            "moneda IN ('reales','oro','mixto')",
+            name="ck_transaccion_moneda",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, nullable=False, default=_nuevo_uuid_transaccion)
+    tipo = Column(String(30), nullable=False, index=True)
+    modulo_origen = Column(String(30), nullable=False, index=True)
+    referencia_id = Column(Integer, nullable=True)
+    moneda = Column(String(10), nullable=False)
+    monto_reales = Column(Float, default=0, nullable=False)
+    gramos_oro = Column(Float, default=0, nullable=False)
+    tipo_oro = Column(String(50), nullable=True)
+    tasa_usada = Column(Float, nullable=True)
+    descripcion = Column(String(255), nullable=True)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)

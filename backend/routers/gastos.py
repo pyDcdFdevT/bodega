@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import GastoOperativo
 from schemas import GastoCreate
+from services.ledger import registrar_transaccion
 
 
 router = APIRouter(prefix="/gastos", tags=["Gastos"])
@@ -22,6 +23,19 @@ def registrar_gasto(data: GastoCreate, db: Session = Depends(get_db)):
         monto_reales=float(data.monto_reales),
     )
     db.add(g)
+    db.flush()
+    registrar_transaccion(
+        db,
+        tipo="gasto",
+        modulo_origen="gastos",
+        referencia_id=g.id,
+        moneda="reales",
+        monto_reales=float(g.monto_reales),
+        gramos_oro=0.0,
+        tipo_oro=None,
+        tasa_usada=None,
+        descripcion=f"Gasto {g.categoria}: {g.descripcion}"[:255],
+    )
     db.commit()
     db.refresh(g)
     return {"status": "success", "id": g.id}

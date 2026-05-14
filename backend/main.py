@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from database import Base, apply_schema_patches, engine
 from init_data import inicializar_datos
-from routers import auth, categorias, cierre, compras, compras_oro, gasolina, gastos, productos, reportes, salidas, tasas, ventas
+from routers import auth, categorias, cierre, compras, compras_oro, gasolina, gastos, productos, reportes, salidas, tasas, transacciones, ventas
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -59,6 +59,7 @@ app.include_router(gastos.router, prefix="/api")
 app.include_router(cierre.router, prefix="/api")
 app.include_router(reportes.router, prefix="/api")
 app.include_router(tasas.router, prefix="/api")
+app.include_router(transacciones.router, prefix="/api")
 
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

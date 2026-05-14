@@ -7,6 +7,7 @@ from database import get_db
 from models import CompraOro
 from schemas import CompraOroCreate
 from services.calculos import CalculosMonetarios
+from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
 
 
@@ -26,6 +27,19 @@ def registrar_compra_oro(data: CompraOroCreate, db: Session = Depends(get_db)):
             total_reales=total_reales,
         )
         db.add(compra)
+        db.flush()
+        registrar_transaccion(
+            db,
+            tipo="compra_oro",
+            modulo_origen="oro",
+            referencia_id=compra.id,
+            moneda="mixto",
+            monto_reales=float(compra.total_reales),
+            gramos_oro=float(compra.gramos),
+            tipo_oro=compra.tipo_oro,
+            tasa_usada=float(compra.tasa_compra_reales),
+            descripcion=f"Compra oro #{compra.id} {compra.tipo_oro}",
+        )
         db.commit()
         db.refresh(compra)
 

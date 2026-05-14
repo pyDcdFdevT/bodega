@@ -7,6 +7,7 @@ from database import get_db
 from models import Gasolina, GasolinaReposicion, TasaCambio, VentaGasolina
 from schemas import GasolinaConfigUpdate, GasolinaReposicionCreate, GasolinaVenta
 from services.calculos import CalculosMonetarios
+from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
 
 
@@ -77,6 +78,19 @@ def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_d
             tasa_cambio_id=tasa.id,
         )
         db.add(registro)
+        db.flush()
+        registrar_transaccion(
+            db,
+            tipo="reposicion_gasolina",
+            modulo_origen="gasolina",
+            referencia_id=registro.id,
+            moneda="mixto",
+            monto_reales=float(total_reales),
+            gramos_oro=float(total_oro),
+            tipo_oro=None,
+            tasa_usada=float(tasa.tasa_reales),
+            descripcion=f"Reposicion gasolina #{registro.id} {data.litros}L",
+        )
         db.commit()
         db.refresh(registro)
         return {
@@ -159,6 +173,19 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
             vuelto_reales=vuelto_reales,
         )
         db.add(venta)
+        db.flush()
+        registrar_transaccion(
+            db,
+            tipo="venta_gasolina",
+            modulo_origen="gasolina",
+            referencia_id=venta.id,
+            moneda=tipo_pago,
+            monto_reales=float(total_reales),
+            gramos_oro=float(total_oro),
+            tipo_oro=tipo_oro,
+            tasa_usada=float(tasa.tasa_reales),
+            descripcion=f"Venta gasolina #{venta.id} {data.litros}L",
+        )
         db.commit()
         db.refresh(venta)
 

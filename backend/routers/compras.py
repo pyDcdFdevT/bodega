@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import Compra, DetalleCompra, MovimientoInventario, Producto
 from services.calculos import CalculosMonetarios
+from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
 from schemas import CompraCreate, CompraUpdate
 
@@ -64,6 +65,19 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
                 stock_nuevo=producto.stock_actual,
                 motivo=f"Compra registrada #{nueva.id}",
             )
+        )
+
+        registrar_transaccion(
+            db,
+            tipo="compra",
+            modulo_origen="bodega",
+            referencia_id=nueva.id,
+            moneda="mixto",
+            monto_reales=float(nueva.total_reales),
+            gramos_oro=float(nueva.total_oro),
+            tipo_oro=None,
+            tasa_usada=float(tasa.tasa_reales),
+            descripcion=f"Compra #{nueva.id} {compra.proveedor}",
         )
 
         db.commit()
