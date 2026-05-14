@@ -23,6 +23,7 @@ from models import (
 )
 from routers.deps import require_admin
 from schemas import CierreGenerarCreate
+from services.apertura_context import build_apertura_pantalla_payload
 from services.calculos import CalculosMonetarios
 
 
@@ -274,6 +275,12 @@ def construir_payload_cierre(
 def _inicio_dia_hoy() -> datetime:
     d = datetime.now(UTC).replace(tzinfo=None)
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+@router.get("/apertura")
+def cierre_apertura_contexto(db: Session = Depends(get_db)):
+    """Sugerencia de apertura desde `se_deja_*` del cierre del día anterior; apertura ya registrada hoy si existe."""
+    return build_apertura_pantalla_payload(db)
 
 
 @router.get("/dia")

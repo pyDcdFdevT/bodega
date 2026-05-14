@@ -1,7 +1,6 @@
 import { api, showToast } from "./api.js";
 
 let lastPayload = null;
-let inputsPrimed = false;
 
 function setEstado(text) {
   const el = document.getElementById("apertura-estado");
@@ -18,29 +17,43 @@ function setCamposBloqueados(bloquear) {
 
 export async function loadApertura() {
   try {
-    lastPayload = await api.get("/apertura/");
+    lastPayload = await api.get("/cierre/apertura");
     const ap = lastPayload;
     const cajaIn = document.getElementById("apertura-caja");
     const oroIn = document.getElementById("apertura-oro");
+
     if (ap.apertura_hoy) {
-      setEstado(`Apertura registrada (${ap.apertura_hoy.abierto_por}).`);
+      const a = ap.apertura_hoy;
+      setEstado(`Apertura de hoy ya registrada (${a.abierto_por || "—"}). No se puede registrar otra.`);
       if (cajaIn) {
-        cajaIn.value = String(ap.apertura_hoy.caja_inicial_reales);
+        cajaIn.value = String(Number(a.caja_inicial_reales ?? 0).toFixed(2));
       }
       if (oroIn) {
-        oroIn.value = String(ap.apertura_hoy.oro_operativo_inicial);
+        oroIn.value = String(Number(a.oro_operativo_inicial ?? 0).toFixed(4));
       }
-      inputsPrimed = true;
       setCamposBloqueados(true);
-    } else {
-      setEstado("Sugerencia desde el cierre de ayer (se deja en caja). Registre la apertura para operar el dia.");
-      if (cajaIn && oroIn && !inputsPrimed) {
-        cajaIn.value = String(ap.sugerencia?.caja_inicial_reales ?? 0);
-        oroIn.value = String(ap.sugerencia?.oro_operativo_inicial ?? 0);
-        inputsPrimed = true;
-      }
-      setCamposBloqueados(false);
+      return;
     }
+
+    const sug = ap.sugerencia;
+    if (sug) {
+      setEstado("Sugerencia desde el cierre de ayer (se deja en caja / oro). Ajuste si hace falta y registre.");
+      if (cajaIn) {
+        cajaIn.value = String(Number(sug.caja_inicial_reales ?? 0).toFixed(2));
+      }
+      if (oroIn) {
+        oroIn.value = String(Number(sug.oro_operativo_inicial ?? 0).toFixed(4));
+      }
+    } else {
+      setEstado("No hay cierre de ayer: indique caja y oro operativo inicial (0 por defecto).");
+      if (cajaIn) {
+        cajaIn.value = "0";
+      }
+      if (oroIn) {
+        oroIn.value = "0";
+      }
+    }
+    setCamposBloqueados(false);
   } catch (e) {
     showToast(e.message, "error");
   }
@@ -48,10 +61,13 @@ export async function loadApertura() {
 
 export function initApertura() {
   document.getElementById("btn-apertura-actualizar")?.addEventListener("click", () => {
-    inputsPrimed = false;
     loadApertura();
   });
   document.getElementById("btn-apertura-registrar")?.addEventListener("click", async () => {
+    if (lastPayload?.apertura_hoy) {
+      showToast("La apertura de hoy ya fue registrada", "error");
+      return;
+    }
     const caja = Number(document.getElementById("apertura-caja")?.value || 0);
     const oro = Number(document.getElementById("apertura-oro")?.value || 0);
     try {
@@ -61,7 +77,6 @@ export function initApertura() {
         { headers: { "X-Bodega-Rol": "admin" } }
       );
       showToast("Apertura registrada", "success");
-      inputsPrimed = true;
       await loadApertura();
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
