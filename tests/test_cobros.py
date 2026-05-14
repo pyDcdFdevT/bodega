@@ -1,9 +1,11 @@
-def _producto_arroz(client):
+def _producto_arroz(client_with_apertura):
+    client = client_with_apertura
     productos = client.get("/api/productos").json()
     return next(p for p in productos if p["nombre"] == "Arroz")
 
 
-def _crear_venta_fiado_total_pendiente(client):
+def _crear_venta_fiado_total_pendiente(client_with_apertura):
+    client = client_with_apertura
     arroz = _producto_arroz(client)
     r = client.post(
         "/api/ventas",
@@ -21,7 +23,8 @@ def _crear_venta_fiado_total_pendiente(client):
     return r.json()
 
 
-def test_fiado_aparece_en_pendientes(client):
+def test_fiado_aparece_en_pendientes(client_with_apertura):
+    client = client_with_apertura
     venta = _crear_venta_fiado_total_pendiente(client)
     vid = venta["data"]["venta_id"]
     pend = client.get("/api/cobros/pendientes").json()
@@ -32,7 +35,8 @@ def test_fiado_aparece_en_pendientes(client):
     assert match["estado_pago"] == "PENDIENTE"
 
 
-def test_registrar_pago_efectivo_liquida_fiado(client):
+def test_registrar_pago_efectivo_liquida_fiado(client_with_apertura):
+    client = client_with_apertura
     venta = _crear_venta_fiado_total_pendiente(client)
     vid = venta["data"]["venta_id"]
     saldo = float(venta["data"]["saldo_pendiente"])
@@ -56,7 +60,8 @@ def test_registrar_pago_efectivo_liquida_fiado(client):
     assert all(p["id"] != vid for p in pend)
 
 
-def test_registrar_pago_oro_parcial_actualiza_saldo(client):
+def test_registrar_pago_oro_parcial_actualiza_saldo(client_with_apertura):
+    client = client_with_apertura
     venta = _crear_venta_fiado_total_pendiente(client)
     vid = venta["data"]["venta_id"]
     saldo = float(venta["data"]["saldo_pendiente"])
@@ -85,7 +90,8 @@ def test_registrar_pago_oro_parcial_actualiza_saldo(client):
     assert row["saldo_pendiente"] == p1.json()["saldo_pendiente"]
 
 
-def test_deudas_por_cliente_y_pagos_hoy(client):
+def test_deudas_por_cliente_y_pagos_hoy(client_with_apertura):
+    client = client_with_apertura
     venta = _crear_venta_fiado_total_pendiente(client)
     vid = venta["data"]["venta_id"]
     saldo = float(venta["data"]["saldo_pendiente"])

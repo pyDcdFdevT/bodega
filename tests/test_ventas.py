@@ -1,4 +1,5 @@
-def test_venta_exitosa_descuenta_stock(client):
+def test_venta_exitosa_descuenta_stock(client_with_apertura):
+    client = client_with_apertura
     productos = client.get("/api/productos").json()
     tasas = client.get("/api/tasas").json()
     tasa_id = tasas[0]["id"]
@@ -23,7 +24,8 @@ def test_venta_exitosa_descuenta_stock(client):
     assert actualizado["stock_actual"] == stock_inicial - 2
 
 
-def test_venta_fallida_hace_rollback_de_stock(client):
+def test_venta_fallida_hace_rollback_de_stock(client_with_apertura):
+    client = client_with_apertura
     productos = client.get("/api/productos").json()
     tasas = client.get("/api/tasas").json()
     tasa_id = tasas[0]["id"]

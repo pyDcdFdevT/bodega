@@ -13,6 +13,13 @@ def fecha_operativa_hoy() -> date:
     return datetime.now(UTC).replace(tzinfo=None).date()
 
 
+def exigir_apertura_del_dia(db: Session) -> None:
+    """Ventas y movimientos de caja del día operativo requieren apertura registrada."""
+    hoy = fecha_operativa_hoy()
+    if db.query(AperturaCaja).filter(AperturaCaja.fecha_operativa == hoy).first() is None:
+        raise ValueError("Debe registrar la apertura del día antes de vender")
+
+
 def build_apertura_pantalla_payload(db: Session) -> dict:
     hoy = fecha_operativa_hoy()
     ayer = hoy - timedelta(days=1)

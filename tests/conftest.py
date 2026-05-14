@@ -56,3 +56,22 @@ def client(tmp_path):
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
     engine.dispose()
+
+
+ADMIN_HEADERS = {"X-Bodega-Rol": "admin"}
+
+
+@pytest.fixture()
+def client_with_apertura(client):
+    """Cliente con apertura del día ya registrada (requerida para ventas, gasolina/venta y salidas)."""
+    r = client.post(
+        "/api/apertura/",
+        headers=ADMIN_HEADERS,
+        json={
+            "caja_inicial_reales": 5000.0,
+            "oro_operativo_inicial": 100.0,
+            "abierto_por": "pytest",
+        },
+    )
+    assert r.status_code == 200, r.text
+    return client

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import Gasolina, GasolinaReposicion, TasaCambio, VentaGasolina
 from schemas import GasolinaConfigUpdate, GasolinaReposicionCreate, GasolinaVenta
+from services.apertura_context import exigir_apertura_del_dia
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
@@ -115,6 +116,7 @@ def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_d
 @router.post("/venta")
 def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
     try:
+        exigir_apertura_del_dia(db)
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(data.tipo_pago)
         tasa: TasaCambio | None = None
         tipo_oro: str | None = None
