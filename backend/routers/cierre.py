@@ -219,7 +219,7 @@ def construir_payload_cierre(
     bruto_total_gramos = round(oro_recolectado_bruto + co_gramos, 2)
     salidas_oro_r = round(salidas_oro, 2)
     oro_ini = float(oro_operativo_inicial or 0)
-    oro_esperado = round(oro_ini + bruto_total_gramos - salidas_oro_r, 2)
+    oro_esperado = round(oro_ini + bruto_total_gramos, 2)
 
     oro_block = {
         "araparita": round(oro_araparita, 2),
