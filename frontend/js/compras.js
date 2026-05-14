@@ -29,7 +29,7 @@ export async function loadCompras() {
   const tbody = document.getElementById("tabla-compras");
 
   if (!compras.length) {
-    tbody.innerHTML = renderEmptyRow(6, "No hay compras registradas.");
+    tbody.innerHTML = renderEmptyRow(5, "No hay compras registradas.");
     return;
   }
 
@@ -41,7 +41,6 @@ export async function loadCompras() {
           <td>${formatDate(compra.fecha)}</td>
           <td>${compra.proveedor}</td>
           <td>${formatMoney(compra.total_reales, "reales")}</td>
-          <td>${formatMoney(compra.total_oro)}</td>
           <td><button type="button" class="btn-icon" data-edit-compra="${compra.id}" title="Editar">✏️</button></td>
         </tr>
       `
