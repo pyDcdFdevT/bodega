@@ -551,6 +551,7 @@ CREATE TABLE IF NOT EXISTS pagos_venta (
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_venta ON pagos_venta (venta_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_fecha ON pagos_venta (fecha)"))
+        _migrate_pagos_venta_tipo_oro_column(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -592,6 +593,22 @@ CREATE TABLE IF NOT EXISTS pagos_venta (
         )
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_venta ON pagos_venta (venta_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_fecha ON pagos_venta (fecha)"))
+        _migrate_pagos_venta_tipo_oro_column(conn, dialect)
+
+
+def _migrate_pagos_venta_tipo_oro_column(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("pagos_venta"):
+        return
+    if dialect == "postgresql":
+        conn.execute(text("ALTER TABLE pagos_venta ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)"))
+        return
+    result = conn.execute(text("PRAGMA table_info(pagos_venta)"))
+    cols = {row[1] for row in result}
+    if "tipo_oro" not in cols:
+        conn.execute(text("ALTER TABLE pagos_venta ADD COLUMN tipo_oro VARCHAR(50)"))
 
 
 def apply_schema_patches() -> None:

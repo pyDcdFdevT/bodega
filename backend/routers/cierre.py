@@ -17,6 +17,7 @@ from models import (
     GasolinaReposicion,
     PagoVenta,
     Salida,
+    TasaCambio,
     Venta,
     VentaGasolina,
 )
@@ -58,13 +59,16 @@ def _ganancia_neta_dia(db: Session, inicio: datetime) -> float:
     return round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro + gasolina_hoy_oro - gastos_hoy_oro, 2)
 
 
-def _pago_venta_equiv_reales(venta: Venta, monto: float, moneda: str) -> float:
-    m = (moneda or "reales").lower().strip()
-    if m == "reales":
-        return CalculosMonetarios.redondear(float(monto), 2)
-    if m == "oro" and venta.tasa_cambio:
-        return CalculosMonetarios.redondear(float(monto) * float(venta.tasa_cambio.tasa_reales), 2)
-    return 0.0
+def _equiv_pago_venta_row(db: Session, p: PagoVenta) -> float:
+    if (p.moneda or "reales").lower() == "reales":
+        return CalculosMonetarios.redondear(float(p.monto), 2)
+    nombre = getattr(p, "tipo_oro", None) or (p.venta.tipo_oro if p.venta else None)
+    if not nombre:
+        return 0.0
+    tasa = db.query(TasaCambio).filter(TasaCambio.nombre == nombre).first()
+    if not tasa or float(tasa.tasa_reales) <= 0:
+        return 0.0
+    return CalculosMonetarios.redondear(float(p.monto) * float(tasa.tasa_reales), 2)
 
 
 def construir_payload_cierre(
@@ -160,7 +164,7 @@ def construir_payload_cierre(
         .filter(PagoVenta.fecha >= inicio)
         .all()
     )
-    cobros_del_dia = sum(_pago_venta_equiv_reales(p.venta, float(p.monto), p.moneda) for p in pagos_venta_rows)
+    cobros_del_dia = sum(_equiv_pago_venta_row(db, p) for p in pagos_venta_rows)
 
     cuentas_por_cobrar = float(
         db.query(func.coalesce(func.sum(Venta.saldo_pendiente), 0))

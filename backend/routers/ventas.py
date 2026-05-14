@@ -254,6 +254,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                     monto=float(monto_inicial_registrado),
                     moneda="reales",
                     tipo_pago="inicial",
+                    tipo_oro=None,
                     registrado_por="Admin",
                 )
             )

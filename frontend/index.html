@@ -974,18 +974,35 @@
       <h3>Registrar pago</h3>
       <input type="hidden" name="venta_id" id="cobro-pago-venta-id">
       <p class="muted small" id="cobro-pago-resumen"></p>
-      <label>Monto a pagar
-        <input type="number" name="monto" id="cobro-pago-monto" min="0.01" step="0.01" required>
-      </label>
-      <label>Moneda
-        <select name="moneda" id="cobro-pago-moneda">
-          <option value="reales">Reales (R$)</option>
-          <option value="oro">Oro (g)</option>
+      <label>Forma de cobro
+        <select id="cobro-pago-canal" name="tipo_pago" required>
+          <option value="" selected disabled>Seleccione...</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="oro">Oro</option>
         </select>
       </label>
-      <label>Tipo de pago
-        <input type="text" name="tipo_pago" id="cobro-pago-tipo" maxlength="30" placeholder="Efectivo, PIX, transferencia..." required>
-      </label>
+      <div id="cobro-pago-reales-wrap" class="stack-form">
+        <label id="cobro-pago-label-monto-real">Monto (R$)
+          <input type="number" name="monto" id="cobro-pago-monto" min="0.01" step="0.01" value="">
+        </label>
+      </div>
+      <div id="cobro-pago-oro-wrap" class="stack-form" style="display: none;">
+        <label>Tipo de oro
+          <select id="cobro-pago-tipo-oro" name="tipo_oro">
+            <option value="">Seleccione tipo...</option>
+            <option value="araparita">Araparita</option>
+            <option value="uruman">Uruman</option>
+            <option value="santa_elena_minero">Santa Elena Minero</option>
+            <option value="santa_elena_fundido">Santa Elena Fundido</option>
+          </select>
+        </label>
+        <p class="report-item">Tasa operativa: <strong id="cobro-pago-tasa-valor">—</strong> R$/g</p>
+        <label>Monto en oro (gramos)
+          <input type="number" id="cobro-pago-monto-oro" min="0.0001" step="0.0001" value="">
+        </label>
+        <p class="muted small" id="cobro-pago-equiv-reales" aria-live="polite"></p>
+      </div>
       <div class="modal-actions">
         <button type="button" id="btn-cobro-pago-cancelar">Cancelar</button>
         <button type="submit">Registrar pago</button>

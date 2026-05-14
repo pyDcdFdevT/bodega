@@ -154,6 +154,7 @@ class PagoVenta(Base):
     monto = Column(Float, nullable=False)
     moneda = Column(String(10), nullable=False)
     tipo_pago = Column(String(30), nullable=False)
+    tipo_oro = Column(String(50), nullable=True)
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
     registrado_por = Column(String(100), nullable=False, default="Admin")
     created_at = Column(DateTime, default=utc_now, nullable=False)

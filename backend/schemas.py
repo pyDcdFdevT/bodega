@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from services.calculos import CalculosMonetarios
 
 
 class ORMModel(BaseModel):
@@ -142,19 +144,39 @@ class VentaCreate(BaseModel):
 class PagoVentaCreate(BaseModel):
     venta_id: int = Field(..., gt=0)
     monto: float = Field(..., gt=0)
-    moneda: str = Field(..., min_length=3, max_length=10)
-    tipo_pago: str = Field(..., min_length=2, max_length=30)
+    tipo_pago: str = Field(..., min_length=3, max_length=30)
+    tipo_oro: Optional[str] = Field(default=None, max_length=50)
     registrado_por: str = Field(default="Admin", max_length=100)
 
-    _tipo_pago = field_validator("tipo_pago")(_texto_requerido)
-
-    @field_validator("moneda")
+    @field_validator("tipo_pago")
     @classmethod
-    def limpiar_moneda_pago(cls, valor: str) -> str:
+    def limpiar_canal_pago(cls, valor: str) -> str:
         n = _texto_requerido(valor).lower()
-        if n not in ("reales", "oro"):
-            raise ValueError("moneda debe ser reales u oro")
+        if n not in ("efectivo", "transferencia", "oro"):
+            raise ValueError("tipo_pago debe ser efectivo, transferencia u oro")
         return n
+
+    @field_validator("tipo_oro")
+    @classmethod
+    def limpiar_tipo_oro_pago(cls, valor: Optional[str]) -> Optional[str]:
+        if valor is None:
+            return None
+        v = str(valor).strip()
+        if not v:
+            return None
+        return _texto_requerido(v).lower()
+
+    @model_validator(mode="after")
+    def validar_pago_oro(self):
+        if self.tipo_pago == "oro":
+            if not self.tipo_oro:
+                raise ValueError("Indique el tipo de oro para el pago en oro")
+            permitidos = set(CalculosMonetarios.TASAS_PREDEFINIDAS.keys())
+            if self.tipo_oro not in permitidos:
+                raise ValueError("Tipo de oro invalido para el pago")
+        else:
+            self.tipo_oro = None
+        return self
 
 
 class CompraCreate(BaseModel):

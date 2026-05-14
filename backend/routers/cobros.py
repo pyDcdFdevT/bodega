@@ -7,7 +7,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import PagoVenta, Venta
+from models import PagoVenta, TasaCambio, Venta
 from schemas import PagoVentaCreate
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -15,31 +15,40 @@ from services.ledger import registrar_transaccion
 
 router = APIRouter(prefix="/cobros", tags=["Cobros"])
 
+_CANAL_ETIQUETA = {"efectivo": "Efectivo", "transferencia": "Transferencia", "oro": "Oro"}
+
 
 def _inicio_dia_hoy() -> datetime:
     d = datetime.now(UTC).replace(tzinfo=None)
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _monto_pago_a_reales(venta: Venta, monto: float, moneda: str) -> float:
-    m = moneda.lower().strip()
-    if m == "reales":
-        return CalculosMonetarios.redondear(float(monto), 2)
-    if m == "oro":
-        tasa = venta.tasa_cambio
-        if not tasa:
-            return 0.0
-        return CalculosMonetarios.redondear(float(monto) * float(tasa.tasa_reales), 2)
-    return 0.0
+def _tasa_por_nombre(db: Session, nombre: str) -> TasaCambio | None:
+    return db.query(TasaCambio).filter(TasaCambio.nombre == nombre).first()
 
 
-def _abono_en_reales(venta: Venta, body: PagoVentaCreate) -> float:
-    m = body.moneda.lower().strip()
-    if m not in ("reales", "oro"):
-        raise ValueError("Moneda invalida")
-    if m == "oro" and not venta.tasa_cambio:
-        raise ValueError("La venta no tiene tasa de cambio asociada; no se puede registrar pago en oro")
-    return _monto_pago_a_reales(venta, body.monto, body.moneda)
+def _equiv_pago_reales(db: Session, p: PagoVenta) -> float:
+    if (p.moneda or "reales").lower() == "reales":
+        return CalculosMonetarios.redondear(float(p.monto), 2)
+    nombre = getattr(p, "tipo_oro", None) or (p.venta.tipo_oro if p.venta else None)
+    if not nombre:
+        return 0.0
+    tasa = _tasa_por_nombre(db, nombre)
+    if not tasa or float(tasa.tasa_reales) <= 0:
+        return 0.0
+    return CalculosMonetarios.redondear(float(p.monto) * float(tasa.tasa_reales), 2)
+
+
+def _abono_en_reales(db: Session, body: PagoVentaCreate) -> float:
+    if body.tipo_pago in ("efectivo", "transferencia"):
+        return CalculosMonetarios.redondear(float(body.monto), 2)
+    tasa = _tasa_por_nombre(db, body.tipo_oro or "")
+    if not tasa:
+        raise ValueError("No hay tasa operativa registrada para ese tipo de oro")
+    tr = float(tasa.tasa_reales)
+    if tr <= 0:
+        raise ValueError("La tasa operativa es invalida (cero o negativa)")
+    return CalculosMonetarios.redondear(float(body.monto) * tr, 2)
 
 
 @router.get("/pendientes")
@@ -118,7 +127,7 @@ def pagos_recibidos_hoy(db: Session = Depends(get_db)):
     out = []
     for p in rows:
         v = p.venta
-        equiv = _monto_pago_a_reales(v, float(p.monto), p.moneda)
+        equiv = _equiv_pago_reales(db, p)
         out.append(
             {
                 "id": p.id,
@@ -126,6 +135,7 @@ def pagos_recibidos_hoy(db: Session = Depends(get_db)):
                 "monto": float(p.monto),
                 "moneda": p.moneda,
                 "tipo_pago": p.tipo_pago,
+                "tipo_oro": getattr(p, "tipo_oro", None),
                 "fecha": p.fecha,
                 "registrado_por": p.registrado_por,
                 "cliente": v.cliente if v else "",
@@ -149,7 +159,7 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         if float(venta.saldo_pendiente) <= 0:
             raise ValueError("La venta no tiene saldo pendiente")
 
-        abono_reales = _abono_en_reales(venta, body)
+        abono_reales = _abono_en_reales(db, body)
         if abono_reales <= 0:
             raise ValueError("El monto del abono debe ser mayor a cero")
         saldo = float(venta.saldo_pendiente)
@@ -164,34 +174,37 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         else:
             venta.estado_pago = "PARCIAL"
 
-        tipo_pago_txt = body.tipo_pago.strip()[:30]
-        if not tipo_pago_txt:
-            raise ValueError("Indique el tipo de pago")
+        moneda_val = "oro" if body.tipo_pago == "oro" else "reales"
+        etiqueta = _CANAL_ETIQUETA[body.tipo_pago]
+        reg = (body.registrado_por or "Admin").strip() or "Admin"
 
         db.add(
             PagoVenta(
                 venta_id=venta.id,
                 monto=float(body.monto),
-                moneda=body.moneda.lower().strip(),
-                tipo_pago=tipo_pago_txt,
-                registrado_por=body.registrado_por.strip() or "Admin",
+                moneda=moneda_val,
+                tipo_pago=etiqueta,
+                tipo_oro=body.tipo_oro if body.tipo_pago == "oro" else None,
+                registrado_por=reg,
             )
         )
 
-        moneda_ledger = body.moneda.lower().strip()
-        gramos = float(body.monto) if moneda_ledger == "oro" else 0.0
+        gramos = float(body.monto) if body.tipo_pago == "oro" else 0.0
+        ledger_tipo_oro = body.tipo_oro if body.tipo_pago == "oro" else venta.tipo_oro
+        tasa_row = _tasa_por_nombre(db, body.tipo_oro) if body.tipo_pago == "oro" else venta.tasa_cambio
+        tasa_usada = float(tasa_row.tasa_reales) if tasa_row and tasa_row.tasa_reales else None
 
         registrar_transaccion(
             db,
             tipo="cobro_fiado",
             modulo_origen="bodega",
             referencia_id=venta.id,
-            moneda=moneda_ledger,
+            moneda=moneda_val,
             monto_reales=float(abono_reales),
             gramos_oro=gramos,
-            tipo_oro=venta.tipo_oro,
-            tasa_usada=float(venta.tasa_cambio.tasa_reales) if venta.tasa_cambio else None,
-            descripcion=f"Cobro fiado venta #{venta.id} ({tipo_pago_txt})",
+            tipo_oro=ledger_tipo_oro,
+            tasa_usada=tasa_usada,
+            descripcion=f"Cobro fiado venta #{venta.id} ({etiqueta})",
         )
 
         db.commit()
@@ -201,6 +214,7 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
             "estado_pago": venta.estado_pago,
             "monto_pagado": float(venta.monto_pagado),
             "saldo_pendiente": float(venta.saldo_pendiente),
+            "abono_reales": float(abono_reales),
         }
     except ValueError as exc:
         db.rollback()
@@ -210,4 +224,4 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         raise
     except Exception as exc:
         db.rollback()
-        raise HTTPException(status_code=500, detail="No fue posible registrar el pago") from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
