@@ -87,35 +87,59 @@ export function formatRate(value) {
   return formatNumber(value, 2);
 }
 
-function parseFechaLocal(value) {
+/** Indica si la cadena ISO ya trae zona (Z o ±hh:mm). */
+function tieneIndicadorZona(iso) {
+  return /[zZ]\s*$/i.test(iso) || /[+-]\d{2}:\d{2}\s*$/.test(iso) || /[+-]\d{2}\d{2}\s*$/.test(iso);
+}
+
+/**
+ * Instante en el eje temporal correcto: el backend envía UTC.
+ * Si el ISO lleva "T" pero sin Z ni offset, el motor lo interpretaría como hora local (p. ej. España);
+ * en ese caso se fuerza "Z" para leer con getUTC* el UTC real.
+ */
+function parseInstanteUtc(value) {
   if (value === null || value === undefined || value === "") {
     return null;
   }
-  const d = new Date(value);
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  let s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s) && !tieneIndicadorZona(s)) {
+    s = `${s}Z`;
+  }
+  const d = new Date(s);
   if (Number.isNaN(d.getTime())) {
     return null;
   }
   return d;
 }
 
-/** Desfase Venezuela (sin DST): UTC−4 respecto al instante almacenado en UTC. */
-const VENEZUELA_OFFSET_MS = 4 * 60 * 60 * 1000;
-
+/** Venezuela UTC−4: componentes UTC del instante, menos 4 h en el reloj (con arrastre de día vía Date.UTC). */
 function partesFechaHoraVenezuela(value) {
-  const d = parseFechaLocal(value);
-  if (!d || Number.isNaN(d.getTime())) {
+  const d = parseInstanteUtc(value);
+  if (!d) {
     return null;
   }
-  const a = new Date(d.getTime() - VENEZUELA_OFFSET_MS);
-  const dia = String(a.getUTCDate()).padStart(2, "0");
-  const mes = String(a.getUTCMonth() + 1).padStart(2, "0");
-  const anio = String(a.getUTCFullYear()).slice(-2);
-  const hora = String(a.getUTCHours()).padStart(2, "0");
-  const minuto = String(a.getUTCMinutes()).padStart(2, "0");
+  const ms = Date.UTC(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    d.getUTCHours() - 4,
+    d.getUTCMinutes(),
+    d.getUTCSeconds(),
+    d.getUTCMilliseconds()
+  );
+  const v = new Date(ms);
+  const dia = String(v.getUTCDate()).padStart(2, "0");
+  const mes = String(v.getUTCMonth() + 1).padStart(2, "0");
+  const anio = String(v.getUTCFullYear()).slice(-2);
+  const hora = String(v.getUTCHours()).padStart(2, "0");
+  const minuto = String(v.getUTCMinutes()).padStart(2, "0");
   return { fecha: `${dia}/${mes}/${anio}`, hora: `${hora}:${minuto}` };
 }
 
-/** Fecha y hora: "13/05/26 10:31" (sin coma, sin segundos). Instant UTC del backend mostrado como UTC−4 (Venezuela). */
+/** Fecha y hora: "13/05/26 10:31" (sin coma, sin segundos). Instant UTC del backend → reloj Venezuela (UTC−4). */
 export function formatDate(value) {
   const partes = partesFechaHoraVenezuela(value);
   if (!partes) {
