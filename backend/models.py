@@ -370,6 +370,87 @@ class CierreDiario(Base):
     snapshot_json = Column(Text, nullable=True)
 
 
+class LoteOro(Base):
+    __tablename__ = "lotes_oro"
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('ACUMULANDO','ENVIADO','FUNDIDO','VENDIDO','CERRADO')",
+            name="ck_lote_oro_estado",
+        ),
+        CheckConstraint("gramos_brutos >= 0", name="ck_lote_oro_gramos"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+    gramos_brutos = Column(Float, nullable=False)
+    origen = Column(String(255), nullable=False, default="")
+    estado = Column(String(20), nullable=False, default="ACUMULANDO")
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    fundiciones = relationship("Fundicion", back_populates="lote")
+
+
+class Fundicion(Base):
+    __tablename__ = "fundiciones"
+    __table_args__ = (
+        CheckConstraint("gramos_brutos >= 0", name="ck_fundicion_brutos"),
+        CheckConstraint("ley >= 0", name="ck_fundicion_ley"),
+        CheckConstraint("gramos_finos >= 0", name="ck_fundicion_finos"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    lote_oro_id = Column(Integer, ForeignKey("lotes_oro.id"), nullable=False, index=True)
+    gramos_brutos = Column(Float, nullable=False)
+    ley = Column(Float, nullable=False)
+    gramos_finos = Column(Float, nullable=False)
+    casa_fundicion = Column(String(200), nullable=False, default="")
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    lote = relationship("LoteOro", back_populates="fundiciones")
+    venta_pieza = relationship("VentaPieza", back_populates="fundicion", uselist=False)
+
+
+class VentaPieza(Base):
+    __tablename__ = "ventas_pieza"
+    __table_args__ = (
+        CheckConstraint("gramos_vendidos > 0", name="ck_venta_pieza_gramos"),
+        CheckConstraint("tasa_venta >= 0", name="ck_venta_pieza_tasa"),
+        CheckConstraint("monto_total >= 0", name="ck_venta_pieza_monto"),
+        CheckConstraint("moneda IN ('reales','USD')", name="ck_venta_pieza_moneda"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    fundicion_id = Column(Integer, ForeignKey("fundiciones.id"), nullable=False, index=True)
+    gramos_vendidos = Column(Float, nullable=False)
+    tasa_venta = Column(Float, nullable=False)
+    monto_total = Column(Float, nullable=False)
+    moneda = Column(String(10), nullable=False, default="reales")
+    comprador = Column(String(200), nullable=False, default="")
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    fundicion = relationship("Fundicion", back_populates="venta_pieza")
+    distribuciones = relationship("DistribucionFondos", back_populates="venta_pieza")
+
+
+class DistribucionFondos(Base):
+    __tablename__ = "distribuciones_fondos"
+    __table_args__ = (
+        CheckConstraint("monto >= 0", name="ck_distrib_monto"),
+        CheckConstraint(
+            "tipo IN ('reposicion_bodega','reposicion_gasolina','gastos_operativos','pago_socio','ganancia_dueno','se_deja_caja')",
+            name="ck_distrib_tipo",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    venta_pieza_id = Column(Integer, ForeignKey("ventas_pieza.id"), nullable=False, index=True)
+    tipo = Column(String(40), nullable=False)
+    monto = Column(Float, nullable=False)
+    descripcion = Column(String(255), nullable=True)
+
+    venta_pieza = relationship("VentaPieza", back_populates="distribuciones")
+
+
 class Transaccion(Base):
     __tablename__ = "transacciones"
     __table_args__ = (

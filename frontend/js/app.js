@@ -1,12 +1,14 @@
 import { showToast } from "./api.js";
 import { getRol, initAuth } from "./auth.js";
+import { initApertura, loadApertura } from "./apertura.js";
 import { initCierre, loadCierre } from "./cierre.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
+import { loadDashboard } from "./dashboard.js";
+import { initFundicion, loadFundicion } from "./fundicion.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
 import { initGastos, loadGastos } from "./gastos.js";
 import { initInventario, loadInventario, loadProductoOptions } from "./inventario.js";
-import { loadReportes } from "./reportes.js";
 import { initSalidas, loadSalidas } from "./salidas.js";
 import { initTasas, loadTasas } from "./tasas.js";
 import { initVentas, loadVentas } from "./ventas.js";
@@ -66,14 +68,16 @@ async function refreshAll() {
     await Promise.all([loadInventario(), loadTasas()]);
     await loadProductoOptions(["compra-producto", "salida-producto"]);
     await Promise.all([
+      loadApertura(),
       loadVentas(),
       loadCompras(),
       loadSalidas(),
       loadGasolina(),
       loadComprasOro(),
-      loadReportes(),
+      loadDashboard(),
       loadGastos(),
       loadCierre(),
+      loadFundicion(),
     ]);
   } catch (error) {
     showToast(error.message, "error");
@@ -90,6 +94,7 @@ function registerServiceWorker() {
 
 async function init() {
   initTabs();
+  initApertura();
   initInventario();
   initVentas();
   initCompras();
@@ -99,6 +104,7 @@ async function init() {
   initTasas();
   initGastos();
   initCierre();
+  initFundicion();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", refreshAll);
   document.addEventListener("bodega:unlocked", () => {

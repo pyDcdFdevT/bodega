@@ -53,6 +53,23 @@ export function initCompras() {
   const form = document.getElementById("form-compra");
   const tbody = document.getElementById("tabla-compras");
 
+  function actualizarPrecioUnitarioCompra() {
+    const cant = Number(form.cantidad?.value || 0);
+    const pr = Number(form.precio_reales?.value || 0);
+    const el = document.getElementById("compra-precio-unitario");
+    if (!el) {
+      return;
+    }
+    if (cant > 0 && pr >= 0) {
+      el.textContent = formatMoney(pr / cant, "reales");
+    } else {
+      el.textContent = formatMoney(0, "reales");
+    }
+  }
+  form.cantidad?.addEventListener("input", actualizarPrecioUnitarioCompra);
+  form.precio_reales?.addEventListener("input", actualizarPrecioUnitarioCompra);
+  actualizarPrecioUnitarioCompra();
+
   tbody.addEventListener("click", (event) => {
     const boton = event.target.closest("[data-edit-compra]");
     if (!boton) {
@@ -73,6 +90,7 @@ export function initCompras() {
     form.proveedor.value = compra.proveedor || "Proveedor";
     form.observaciones.value = compra.observaciones || "";
     form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    actualizarPrecioUnitarioCompra();
   });
 
   form.addEventListener("submit", async (event) => {

@@ -246,3 +246,37 @@ class AperturaCajaCreate(BaseModel):
     abierto_por: str = Field(..., min_length=1, max_length=100)
 
     _abierto_por = field_validator("abierto_por")(_texto_requerido)
+
+
+class LoteOroCreate(BaseModel):
+    gramos_brutos: float = Field(..., gt=0)
+    origen: str = Field(default="", max_length=255)
+    estado: str = Field(default="ACUMULANDO", max_length=20)
+
+
+class FundicionCreate(BaseModel):
+    lote_oro_id: int = Field(..., gt=0)
+    gramos_brutos: float = Field(..., gt=0)
+    ley: float = Field(..., ge=0)
+    gramos_finos: float = Field(..., gt=0)
+    casa_fundicion: str = Field(..., min_length=1, max_length=200)
+
+
+class VentaPiezaCreate(BaseModel):
+    fundicion_id: int = Field(..., gt=0)
+    gramos_vendidos: float = Field(..., gt=0)
+    tasa_venta: float = Field(..., ge=0)
+    monto_total: float = Field(..., ge=0)
+    moneda: str = Field(default="reales", max_length=10)
+    comprador: str = Field(..., min_length=1, max_length=200)
+
+
+class DistribLineaCreate(BaseModel):
+    tipo: str = Field(..., max_length=50)
+    monto: float = Field(..., ge=0)
+    descripcion: Optional[str] = Field(default=None, max_length=255)
+
+
+class DistribucionFondosCreate(BaseModel):
+    venta_pieza_id: int = Field(..., gt=0)
+    lineas: List[DistribLineaCreate] = Field(..., min_length=1)

@@ -52,7 +52,7 @@
         <p class="eyebrow">Bodega POS v3.0</p>
         <h1>Bodega Operativa</h1>
         <p class="hero-copy">
-          Inventario, ventas tipo POS, gasolina en reales por litro, gastos operativos, cierre diario y reportes unificados.
+          Inventario, ventas tipo POS, gasolina en R$/L, gastos, apertura/cierre, fundicion y dashboard del dia.
         </p>
       </div>
       <div class="hero-stats" id="hero-stats-wrap">
@@ -72,20 +72,44 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab active solo-admin" data-target="panel-inventario">Inventario</button>
-      <button class="tab" data-target="panel-ventas">Ventas</button>
+      <button class="tab active solo-admin" data-target="panel-apertura">Apertura</button>
+      <button class="tab solo-admin" data-target="panel-tasas">Tasas</button>
+      <button class="tab solo-admin" data-target="panel-inventario">Inventario</button>
       <button class="tab solo-admin" data-target="panel-compras">Compras</button>
+      <button class="tab" data-target="panel-ventas">Ventas</button>
       <button class="tab" data-target="panel-salidas">Salidas</button>
       <button class="tab" data-target="panel-gasolina">Gasolina</button>
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
-      <button class="tab solo-admin" data-target="panel-tasas">Tasas</button>
-      <button class="tab solo-admin" data-target="panel-reportes">Reportes</button>
       <button class="tab solo-admin" data-target="panel-gastos">Gastos</button>
+      <button class="tab solo-admin" data-target="panel-dashboard">Dashboard</button>
       <button class="tab solo-admin" data-target="panel-cierre">Cierre</button>
+      <button class="tab solo-admin" data-target="panel-fundicion">Fundicion</button>
     </nav>
 
     <main class="layout">
-      <section class="panel active solo-admin" id="panel-inventario">
+      <section class="panel active solo-admin" id="panel-apertura">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Apertura</p>
+            <h2>Apertura de caja del dia</h2>
+          </div>
+          <button type="button" class="btn-refresh" id="btn-apertura-actualizar">Actualizar</button>
+        </div>
+        <article class="card">
+          <p class="muted small" id="apertura-estado"></p>
+          <div class="stack-form" style="max-width: 420px;">
+            <label>Caja inicial (R$)
+              <input type="number" id="apertura-caja" min="0" step="0.01" value="0">
+            </label>
+            <label>Oro operativo inicial (g)
+              <input type="number" id="apertura-oro" min="0" step="0.01" value="0">
+            </label>
+            <button type="button" class="btn-cobrar" id="btn-apertura-registrar">Registrar apertura</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel solo-admin" id="panel-inventario">
         <div class="panel-header">
           <div>
             <p class="eyebrow">Inventario</p>
@@ -237,6 +261,7 @@
               <label>Precio total (R$)
                 <input name="precio_reales" type="number" min="0.01" step="0.01" required>
               </label>
+              <p class="report-item" id="compra-precio-unitario-wrap">Precio unitario: <strong id="compra-precio-unitario">R$ 0.00</strong></p>
               <label>Proveedor
                 <input name="proveedor" value="Proveedor">
               </label>
@@ -554,53 +579,66 @@
         </article>
       </section>
 
-      <section class="panel solo-admin" id="panel-reportes">
+      <section class="panel solo-admin" id="panel-dashboard">
         <div class="panel-header">
           <div>
-            <p class="eyebrow">Analitica</p>
-            <h2>Reportes unificados</h2>
+            <p class="eyebrow">Resumen</p>
+            <h2>Dashboard del dia</h2>
           </div>
         </div>
 
         <div class="pill-grid" id="dashboard-cards"></div>
 
-        <div class="grid two">
-          <article class="card">
-            <h3>Resumen ventas 7 dias</h3>
-            <div id="reporte-ventas-resumen" class="report-block"></div>
-          </article>
-
-          <article class="card">
-            <h3>Resumen compras 7 dias</h3>
-            <div id="reporte-compras-resumen" class="report-block"></div>
-          </article>
-        </div>
-
         <article class="card">
-          <h3>Reporte gasolina (hoy)</h3>
-          <div id="reporte-gasolina-bloque" class="report-block"></div>
-        </article>
-
-        <article class="card">
-          <h3>Movimientos recientes</h3>
+          <h3>Stock bajo (alertas)</h3>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Fecha</th>
-                  <th>Hora</th>
                   <th>Producto</th>
-                  <th>Tipo</th>
-                  <th>Cantidad</th>
-                  <th>Stock anterior</th>
-                  <th>Stock nuevo</th>
-                  <th>Motivo</th>
+                  <th>Stock</th>
+                  <th>Minimo</th>
                 </tr>
               </thead>
-              <tbody id="tabla-movimientos"></tbody>
+              <tbody id="tabla-dashboard-stock-bajo"></tbody>
             </table>
           </div>
         </article>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>Ultimas 5 ventas (hoy)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Cliente</th>
+                    <th>R$</th>
+                    <th>Oro</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-dashboard-ventas"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Ultimos 5 movimientos (hoy)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Producto</th>
+                    <th>Tipo</th>
+                    <th>Cant.</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-dashboard-movimientos"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="panel solo-admin" id="panel-gastos">
@@ -656,26 +694,12 @@
         </div>
 
         <article class="card">
-          <h3>1. Apertura</h3>
-          <p class="muted small" id="cierre-apertura-estado"></p>
-          <div class="stack-form" style="max-width: 420px;">
-            <label>Caja inicial (R$)
-              <input type="number" id="cierre-apertura-caja" min="0" step="0.01" value="0">
-            </label>
-            <label>Oro operativo inicial (g)
-              <input type="number" id="cierre-apertura-oro" min="0" step="0.01" value="0">
-            </label>
-            <button type="button" class="btn-cobrar" id="btn-cierre-registrar-apertura">Registrar apertura</button>
-          </div>
-        </article>
-
-        <article class="card">
-          <h3>2. Operaciones del dia</h3>
+          <h3>1. Operaciones del dia</h3>
           <div id="cierre-contenido" class="cierre-root"></div>
         </article>
 
         <article class="card">
-          <h3>3. Conciliacion</h3>
+          <h3>2. Conciliacion</h3>
           <div class="stack-form" style="max-width: 480px;">
             <p>Reales esperados: <strong id="cierre-conc-real-esp">—</strong></p>
             <label>Reales contados
@@ -694,7 +718,7 @@
         </article>
 
         <article class="card">
-          <h3>4. Generar cierre</h3>
+          <h3>3. Generar cierre</h3>
           <div class="stack-form" style="max-width: 420px;">
             <label>Retiro dueno (R$)
               <input type="number" id="cierre-retiro-reales" min="0" step="0.01" value="0">
@@ -715,6 +739,118 @@
         <article class="card" id="cierre-snapshot-wrap" style="display: none;">
           <h3>Cierre guardado (snapshot)</h3>
           <pre id="cierre-snapshot-pre" class="cierre-snapshot-pre"></pre>
+        </article>
+      </section>
+
+      <section class="panel solo-admin" id="panel-fundicion">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Oro</p>
+            <h2>Fundicion y piezas</h2>
+          </div>
+          <button type="button" class="btn-refresh" id="btn-fund-refresh">Actualizar</button>
+        </div>
+
+        <article class="card">
+          <h3>1. Registrar lote de oro</h3>
+          <div class="stack-form" style="max-width: 440px;">
+            <label>Oro bruto (g)
+              <input type="number" id="fund-lote-brutos" min="0.001" step="0.001" value="">
+            </label>
+            <label>Origen
+              <input type="text" id="fund-lote-origen" maxlength="255" placeholder="Ej. compras del dia">
+            </label>
+            <label>Estado
+              <select id="fund-lote-estado">
+                <option value="ACUMULANDO">ACUMULANDO</option>
+                <option value="ENVIADO">ENVIADO</option>
+                <option value="FUNDIDO">FUNDIDO</option>
+                <option value="VENDIDO">VENDIDO</option>
+                <option value="CERRADO">CERRADO</option>
+              </select>
+            </label>
+            <button type="button" class="btn-cobrar" id="btn-fund-lote-registrar">Registrar lote</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>2. Registrar fundicion</h3>
+          <div class="stack-form" style="max-width: 440px;">
+            <label>Lote
+              <select id="fund-sel-lote"></select>
+            </label>
+            <label>Gramos brutos (lote)
+              <input type="number" id="fund-fund-brutos" readonly>
+            </label>
+            <label>Ley (del papel)
+              <input type="number" id="fund-fund-ley" min="0" step="0.0001" value="0">
+            </label>
+            <label>Gramos finos (del papel)
+              <input type="number" id="fund-fund-finos" min="0.001" step="0.001" value="">
+            </label>
+            <label>Casa de fundicion
+              <input type="text" id="fund-fund-casa" maxlength="200" required>
+            </label>
+            <button type="button" class="btn-cobrar" id="btn-fund-registrar">Registrar fundicion</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>3. Venta de pieza</h3>
+          <div class="stack-form" style="max-width: 440px;">
+            <label>Fundicion (sin vender)
+              <select id="fund-sel-fundicion"></select>
+            </label>
+            <p class="report-item">Gramos finos disponibles: <strong id="fund-vp-finos-disp">—</strong></p>
+            <label>Gramos a vender
+              <input type="number" id="fund-vp-gramos" min="0.001" step="0.001" value="">
+            </label>
+            <label>Tasa (R$/g o USD/g)
+              <input type="number" id="fund-vp-tasa" min="0" step="0.01" value="">
+            </label>
+            <label>Moneda
+              <select id="fund-vp-moneda">
+                <option value="reales">Reales</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
+            <label>Comprador
+              <input type="text" id="fund-vp-comprador" maxlength="200">
+            </label>
+            <p class="report-item">Total: <strong id="fund-vp-total">R$ 0.00</strong></p>
+            <button type="button" class="btn-cobrar" id="btn-fund-vp-registrar">Registrar venta</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>4. Distribucion de fondos</h3>
+          <div class="stack-form" style="max-width: 480px;">
+            <label>Venta de pieza
+              <select id="fund-dist-sel-venta"></select>
+            </label>
+            <input type="hidden" id="fund-dist-total-num" value="0">
+            <p class="report-item">Total recibido: <strong id="fund-dist-total">R$ 0.00</strong></p>
+            <label>Reposicion bodega (R$)
+              <input type="number" id="fund-dist-bodega" min="0" step="0.01" value="0">
+            </label>
+            <label>Reposicion gasolina (R$)
+              <input type="number" id="fund-dist-gasolina" min="0" step="0.01" value="0">
+            </label>
+            <label>Gastos operativos (R$)
+              <input type="number" id="fund-dist-gastos" min="0" step="0.01" value="0">
+            </label>
+            <label>Pago socio (R$)
+              <input type="number" id="fund-dist-socio" min="0" step="0.01" value="0">
+            </label>
+            <label>Ganancia dueno (R$)
+              <input type="number" id="fund-dist-dueno" min="0" step="0.01" value="0">
+            </label>
+            <label>Se deja en caja (R$)
+              <input type="number" id="fund-dist-caja" min="0" step="0.01" value="0">
+            </label>
+            <p class="report-item">Resto (debe ser 0): <strong id="fund-dist-resto">R$ 0.00</strong></p>
+            <button type="button" class="btn-cobrar" id="btn-fund-dist-registrar">Registrar distribucion</button>
+          </div>
         </article>
       </section>
     </main>

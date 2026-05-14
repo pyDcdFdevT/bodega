@@ -7,12 +7,23 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import Compra, Gasolina, GasolinaReposicion, GastoOperativo, LogTasaCambio, MovimientoInventario, Producto, Salida, Venta, VentaGasolina
+from models import (
+    Compra,
+    Gasolina,
+    GasolinaReposicion,
+    GastoOperativo,
+    LogTasaCambio,
+    MovimientoInventario,
+    Producto,
+    Salida,
+    Venta,
+    VentaGasolina,
+)
 from routers.productos import serializar_producto
 from services.calculos import CalculosMonetarios
 
 
-router = APIRouter(prefix="/reportes", tags=["Reportes"])
+router = APIRouter(prefix="/reportes", tags=["Dashboard"])
 
 
 @router.get("/dashboard")
@@ -40,7 +51,6 @@ def dashboard(db: Session = Depends(get_db)):
     ventas_hoy_oro = db.query(func.coalesce(func.sum(Venta.total_oro), 0)).filter(Venta.fecha >= inicio_hoy).scalar() or 0
     compras_hoy_oro = db.query(func.coalesce(func.sum(Compra.total_oro), 0)).filter(Compra.fecha >= inicio_hoy).scalar() or 0
     salidas_hoy_oro = db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio_hoy).scalar() or 0
-    gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
     gasolina_hoy_oro = (
         db.query(func.coalesce(func.sum(VentaGasolina.total_oro), 0))
         .filter(VentaGasolina.fecha >= inicio_hoy)
@@ -97,11 +107,58 @@ def dashboard(db: Session = Depends(get_db)):
         2,
     )
 
+    compras_hoy_reales = (
+        float(db.query(func.coalesce(func.sum(Compra.total_reales), 0)).filter(Compra.fecha >= inicio_hoy).scalar() or 0)
+    )
+    stock_bajo_rows = (
+        db.query(Producto)
+        .filter(Producto.activo.is_(True), Producto.stock_actual <= Producto.stock_minimo)
+        .order_by(Producto.stock_actual.asc())
+        .limit(15)
+        .all()
+    )
+    stock_bajo_alertas = [
+        {"nombre": p.nombre, "stock": round(float(p.stock_actual), 3), "minimo": round(float(p.stock_minimo), 3)}
+        for p in stock_bajo_rows
+    ]
+    ultimas_ventas = (
+        db.query(Venta).filter(Venta.fecha >= inicio_hoy).order_by(Venta.fecha.desc(), Venta.id.desc()).limit(5).all()
+    )
+    ultimas_ventas_out = [
+        {
+            "id": v.id,
+            "cliente": v.cliente,
+            "total_reales": round(float(v.total_reales), 2),
+            "total_oro": round(float(v.total_oro), 2),
+            "fecha": v.fecha.isoformat() if v.fecha else None,
+        }
+        for v in ultimas_ventas
+    ]
+    ultimos_mov = (
+        db.query(MovimientoInventario)
+        .options(joinedload(MovimientoInventario.producto))
+        .filter(MovimientoInventario.fecha >= inicio_hoy)
+        .order_by(MovimientoInventario.fecha.desc(), MovimientoInventario.id.desc())
+        .limit(5)
+        .all()
+    )
+    ultimos_mov_out = [
+        {
+            "id": m.id,
+            "producto": m.producto.nombre if m.producto else None,
+            "tipo": m.tipo,
+            "cantidad": m.cantidad,
+            "fecha": m.fecha.isoformat() if m.fecha else None,
+        }
+        for m in ultimos_mov
+    ]
+
     return {
         "fecha": inicio_hoy.date().isoformat(),
         "inventario": {
             "productos_activos": total_productos,
             "stock_bajo": stock_bajo,
+            "stock_bajo_alertas": stock_bajo_alertas,
             "valor_stock_reales": round(valor_stock_reales, 2),
             "valor_stock_oro": round(valor_stock_oro, 2),
         },
@@ -109,6 +166,7 @@ def dashboard(db: Session = Depends(get_db)):
             "ventas_oro": round(ventas_hoy_oro, 2),
             "ventas_reales": round(ventas_hoy_reales, 2),
             "compras_oro": round(compras_hoy_oro, 2),
+            "compras_reales": round(compras_hoy_reales, 2),
             "salidas_oro": round(salidas_hoy_oro, 2),
             "gasolina_oro": round(gasolina_hoy_oro, 2),
             "oro_araparita": round(oro_araparita, 2),
@@ -120,12 +178,8 @@ def dashboard(db: Session = Depends(get_db)):
             "gastos_oro_equiv": round(gastos_hoy_oro, 2),
             "ganancia_neta": ganancia_neta,
         },
-        "gasolina": {
-            "litros_disponibles": gasolina.litros_disponibles if gasolina else 0,
-            "precio_por_litro_reales": getattr(gasolina, "precio_por_litro_reales", None)
-            if gasolina
-            else 0,
-        },
+        "ultimas_ventas": ultimas_ventas_out,
+        "ultimos_movimientos": ultimos_mov_out,
     }
 
 

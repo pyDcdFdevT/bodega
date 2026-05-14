@@ -404,6 +404,113 @@ FROM cierres_diarios
             conn.execute(text(sql.strip()))
 
 
+def _ensure_fundicion_tables(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        stmts = [
+            """
+CREATE TABLE IF NOT EXISTS lotes_oro (
+    id SERIAL PRIMARY KEY,
+    fecha TIMESTAMP NOT NULL DEFAULT NOW(),
+    gramos_brutos DOUBLE PRECISION NOT NULL,
+    origen VARCHAR(255) NOT NULL DEFAULT '',
+    estado VARCHAR(20) NOT NULL DEFAULT 'ACUMULANDO',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)
+""",
+            """
+CREATE TABLE IF NOT EXISTS fundiciones (
+    id SERIAL PRIMARY KEY,
+    lote_oro_id INTEGER NOT NULL REFERENCES lotes_oro(id),
+    gramos_brutos DOUBLE PRECISION NOT NULL,
+    ley DOUBLE PRECISION NOT NULL,
+    gramos_finos DOUBLE PRECISION NOT NULL,
+    casa_fundicion VARCHAR(200) NOT NULL DEFAULT '',
+    fecha TIMESTAMP NOT NULL DEFAULT NOW()
+)
+""",
+            """
+CREATE TABLE IF NOT EXISTS ventas_pieza (
+    id SERIAL PRIMARY KEY,
+    fundicion_id INTEGER NOT NULL REFERENCES fundiciones(id),
+    gramos_vendidos DOUBLE PRECISION NOT NULL,
+    tasa_venta DOUBLE PRECISION NOT NULL,
+    monto_total DOUBLE PRECISION NOT NULL,
+    moneda VARCHAR(10) NOT NULL DEFAULT 'reales',
+    comprador VARCHAR(200) NOT NULL DEFAULT '',
+    fecha TIMESTAMP NOT NULL DEFAULT NOW()
+)
+""",
+            """
+CREATE TABLE IF NOT EXISTS distribuciones_fondos (
+    id SERIAL PRIMARY KEY,
+    venta_pieza_id INTEGER NOT NULL REFERENCES ventas_pieza(id),
+    tipo VARCHAR(50) NOT NULL,
+    monto DOUBLE PRECISION NOT NULL,
+    descripcion VARCHAR(255)
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_fundiciones_lote ON fundiciones (lote_oro_id)",
+            "CREATE INDEX IF NOT EXISTS ix_ventas_pieza_fund ON ventas_pieza (fundicion_id)",
+            "CREATE INDEX IF NOT EXISTS ix_distrib_venta ON distribuciones_fondos (venta_pieza_id)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql.strip()))
+        return
+
+    if dialect == "sqlite":
+        stmts = [
+            """
+CREATE TABLE IF NOT EXISTS lotes_oro (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    gramos_brutos REAL NOT NULL,
+    origen VARCHAR(255) NOT NULL DEFAULT '',
+    estado VARCHAR(20) NOT NULL DEFAULT 'ACUMULANDO',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""",
+            """
+CREATE TABLE IF NOT EXISTS fundiciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lote_oro_id INTEGER NOT NULL REFERENCES lotes_oro(id),
+    gramos_brutos REAL NOT NULL,
+    ley REAL NOT NULL,
+    gramos_finos REAL NOT NULL,
+    casa_fundicion VARCHAR(200) NOT NULL DEFAULT '',
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""",
+            """
+CREATE TABLE IF NOT EXISTS ventas_pieza (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fundicion_id INTEGER NOT NULL REFERENCES fundiciones(id),
+    gramos_vendidos REAL NOT NULL,
+    tasa_venta REAL NOT NULL,
+    monto_total REAL NOT NULL,
+    moneda VARCHAR(10) NOT NULL DEFAULT 'reales',
+    comprador VARCHAR(200) NOT NULL DEFAULT '',
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""",
+            """
+CREATE TABLE IF NOT EXISTS distribuciones_fondos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_pieza_id INTEGER NOT NULL REFERENCES ventas_pieza(id),
+    tipo VARCHAR(50) NOT NULL,
+    monto REAL NOT NULL,
+    descripcion VARCHAR(255)
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_fundiciones_lote ON fundiciones (lote_oro_id)",
+            "CREATE INDEX IF NOT EXISTS ix_ventas_pieza_fund ON ventas_pieza (fundicion_id)",
+            "CREATE INDEX IF NOT EXISTS ix_distrib_venta ON distribuciones_fondos (venta_pieza_id)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql.strip()))
+
+
 def apply_schema_patches() -> None:
     """Migraciones ligeras tras create_all (columnas/tablas que faltan en bases ya existentes)."""
     from sqlalchemy import inspect, text
@@ -440,6 +547,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_cierres_diarios_legacy(conn, dialect)
             _ensure_cierres_diarios_table(conn, dialect)
             _ensure_aperturas_caja_table(conn, dialect)
+            _ensure_fundicion_tables(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -466,4 +574,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_cierres_diarios_legacy(conn, dialect)
             _ensure_cierres_diarios_table(conn, dialect)
             _ensure_aperturas_caja_table(conn, dialect)
+            _ensure_fundicion_tables(conn, dialect)
         return

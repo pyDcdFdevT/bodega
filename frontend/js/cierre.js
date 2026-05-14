@@ -1,9 +1,6 @@
 import { api, formatMoney, showToast } from "./api.js";
 
 let lastCierreData = null;
-let lastAperturaPayload = null;
-let aperturaInputsPrimed = false;
-const manual = { ley: 0, fino: 0, tasa: 0 };
 
 function bloque(titulo, html) {
   return `<article class="card cierre-bloque"><h3>${titulo}</h3><div class="cierre-body">${html}</div></article>`;
@@ -25,17 +22,7 @@ function renderCierre() {
   const gast = data.gastos || {};
   const oro = data.oro_recolectado || {};
   const caja = data.caja || {};
-  const fund = data.fundicion || {};
-  const pieza = data.venta_pieza || {};
   const gn = data.ganancia_neta_dia;
-
-  const ley = Number(manual.ley) || 0;
-  const brutoFund = Number(fund.bruto_gramos || 0);
-  const finoCalc = ley > 0 ? (brutoFund * ley).toFixed(2) : "0.00";
-
-  const finoPieza = Number(manual.fino) || 0;
-  const tasaPieza = Number(manual.tasa) || 0;
-  const ventaPiezaVal = finoPieza > 0 && tasaPieza > 0 ? (finoPieza * tasaPieza).toFixed(2) : "0.00";
 
   root.innerHTML = `
     <div class="grid two">
@@ -94,52 +81,7 @@ function renderCierre() {
     `
     )}
     ${gn != null ? bloque("Referencia", `${fila("Ganancia neta oro (dia, ref.)", `${formatMoney(gn)} g equiv.`)}`) : ""}
-    ${bloque(
-      "Fundicion (manual)",
-      `
-      ${fila("Bruto (desde oro recolectado ventas)", `${formatMoney(fund.bruto_gramos)} g`)}
-      <label class="cierre-inline">Ley (0-1)
-        <input type="number" id="cierre-fundicion-ley" min="0" max="1" step="0.001" value="${manual.ley || ""}">
-      </label>
-      ${fila("Fino estimado", `${finoCalc} g`)}
-      <p class="muted small">${fund.nota || ""}</p>
-    `
-    )}
-    ${bloque(
-      "Venta pieza (manual)",
-      `
-      <label class="cierre-inline">Fino (g)
-        <input type="number" id="cierre-pieza-fino" min="0" step="0.01" value="${manual.fino || ""}">
-      </label>
-      <label class="cierre-inline">Tasa R$/g
-        <input type="number" id="cierre-pieza-tasa" min="0" step="0.01" value="${manual.tasa || ""}">
-      </label>
-      ${fila("Fino x Tasa", `R$ ${ventaPiezaVal}`)}
-      <p class="muted small">${pieza.nota || ""}</p>
-    `
-    )}
   `;
-
-  const bind = (id, key) => {
-    const el = document.getElementById(id);
-    if (!el) {
-      return;
-    }
-    el.addEventListener("input", () => {
-      manual[key] = Number(el.value);
-      renderCierre();
-    });
-  };
-  bind("cierre-fundicion-ley", "ley");
-  bind("cierre-pieza-fino", "fino");
-  bind("cierre-pieza-tasa", "tasa");
-}
-
-function setAperturaEstado(text) {
-  const el = document.getElementById("cierre-apertura-estado");
-  if (el) {
-    el.textContent = text;
-  }
 }
 
 function updateConciliacionUi() {
@@ -173,12 +115,6 @@ function updateConciliacionUi() {
   }
 }
 
-function setAperturaCerradaMode(registrada) {
-  document.getElementById("cierre-apertura-caja")?.toggleAttribute("disabled", registrada);
-  document.getElementById("cierre-apertura-oro")?.toggleAttribute("disabled", registrada);
-  document.getElementById("btn-cierre-registrar-apertura")?.toggleAttribute("disabled", registrada);
-}
-
 function setCierreCerradoMode(cerrado) {
   const ids = [
     "cierre-conc-real-contado",
@@ -202,7 +138,6 @@ function renderSnapshotGuardado() {
   const wrap = document.getElementById("cierre-snapshot-wrap");
   const pre = document.getElementById("cierre-snapshot-pre");
   const cg = lastCierreData?.cierre_guardado;
-  setAperturaCerradaMode(!!lastAperturaPayload?.apertura_hoy);
   if (!wrap || !pre) {
     return;
   }
@@ -219,50 +154,9 @@ function renderSnapshotGuardado() {
   }
 }
 
-async function cargarAperturaUi() {
-  try {
-    lastAperturaPayload = await api.get("/cierre/apertura");
-    const ap = lastAperturaPayload;
-    const cajaIn = document.getElementById("cierre-apertura-caja");
-    const oroIn = document.getElementById("cierre-apertura-oro");
-    if (ap.apertura_hoy) {
-      setAperturaEstado(`Apertura registrada (${ap.apertura_hoy.abierto_por}).`);
-      if (cajaIn) {
-        cajaIn.value = String(ap.apertura_hoy.caja_inicial_reales);
-      }
-      if (oroIn) {
-        oroIn.value = String(ap.apertura_hoy.oro_operativo_inicial);
-      }
-      aperturaInputsPrimed = true;
-    } else {
-      setAperturaEstado("Indique saldos iniciales y registre la apertura (sugerencia desde el cierre de ayer).");
-      if (cajaIn && oroIn && !aperturaInputsPrimed) {
-        cajaIn.value = String(ap.sugerencia?.caja_inicial_reales ?? 0);
-        oroIn.value = String(ap.sugerencia?.oro_operativo_inicial ?? 0);
-        aperturaInputsPrimed = true;
-      }
-    }
-  } catch (e) {
-    showToast(e.message, "error");
-  }
-}
-
 export async function loadCierre() {
   try {
-    await cargarAperturaUi();
-    const params = new URLSearchParams();
-    if (!lastAperturaPayload?.apertura_hoy) {
-      const c = document.getElementById("cierre-apertura-caja")?.value;
-      const o = document.getElementById("cierre-apertura-oro")?.value;
-      if (c !== undefined && c !== "") {
-        params.set("caja_inicial_reales", String(Number(c)));
-      }
-      if (o !== undefined && o !== "") {
-        params.set("oro_operativo_inicial", String(Number(o)));
-      }
-    }
-    const qs = params.toString();
-    lastCierreData = await api.get(`/cierre/dia${qs ? `?${qs}` : ""}`);
+    lastCierreData = await api.get("/cierre/dia");
     const cg = lastCierreData.cierre_guardado;
     if (cg) {
       const rin = document.getElementById("cierre-conc-real-contado");
@@ -303,40 +197,7 @@ export async function loadCierre() {
 }
 
 export function initCierre() {
-  document.getElementById("btn-cierre-actualizar")?.addEventListener("click", () => {
-    aperturaInputsPrimed = false;
-    loadCierre();
-  });
-
-  ["cierre-apertura-caja", "cierre-apertura-oro"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("input", () => {
-      if (!lastAperturaPayload?.apertura_hoy) {
-        loadCierre();
-      }
-    });
-  });
-
-  document.getElementById("btn-cierre-registrar-apertura")?.addEventListener("click", async () => {
-    const caja = Number(document.getElementById("cierre-apertura-caja")?.value || 0);
-    const oro = Number(document.getElementById("cierre-apertura-oro")?.value || 0);
-    try {
-      await api.post(
-        "/cierre/apertura",
-        { caja_inicial_reales: caja, oro_operativo_inicial: oro, abierto_por: "Admin" },
-        { headers: { "X-Bodega-Rol": "admin" } }
-      );
-      showToast("Apertura registrada", "success");
-      aperturaInputsPrimed = true;
-      await loadCierre();
-    } catch (error) {
-      const msg = String(error.message || "");
-      if (msg.includes("ya fue registrada")) {
-        showToast("La apertura de hoy ya fue registrada", "error");
-      } else {
-        showToast(msg, "error");
-      }
-    }
-  });
+  document.getElementById("btn-cierre-actualizar")?.addEventListener("click", () => loadCierre());
 
   ["cierre-conc-real-contado", "cierre-conc-oro-contado"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", () => updateConciliacionUi());

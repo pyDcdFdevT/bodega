@@ -10,7 +10,23 @@ from fastapi.staticfiles import StaticFiles
 
 from database import Base, apply_schema_patches, engine
 from init_data import inicializar_datos
-from routers import auth, categorias, cierre, compras, compras_oro, gasolina, gastos, productos, reportes, salidas, tasas, transacciones, ventas
+from routers import (
+    apertura,
+    auth,
+    categorias,
+    cierre,
+    compras,
+    compras_oro,
+    fundicion,
+    gasolina,
+    gastos,
+    productos,
+    reportes,
+    salidas,
+    tasas,
+    transacciones,
+    ventas,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -57,6 +73,8 @@ app.include_router(salidas.router, prefix="/api")
 app.include_router(gasolina.router, prefix="/api")
 app.include_router(gastos.router, prefix="/api")
 app.include_router(cierre.router, prefix="/api")
+app.include_router(apertura.router, prefix="/api")
+app.include_router(fundicion.router, prefix="/api")
 app.include_router(reportes.router, prefix="/api")
 app.include_router(tasas.router, prefix="/api")
 app.include_router(transacciones.router, prefix="/api")
