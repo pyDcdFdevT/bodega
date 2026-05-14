@@ -115,9 +115,21 @@ class VentaCreate(BaseModel):
     cliente: str = Field(default="Mostrador", max_length=100)
     monto_recibido_oro: float = Field(default=0, ge=0)
     monto_recibido_reales: float = Field(default=0, ge=0)
+    tipo_venta: str = Field(default="contado", max_length=20)
+    cliente_fiado: Optional[str] = Field(default=None, max_length=100)
+    telefono_fiado: Optional[str] = Field(default=None, max_length=20)
+    monto_inicial: float = Field(default=0, ge=0)
 
     _tipo_pago = field_validator("tipo_pago")(_texto_requerido)
     _cliente = field_validator("cliente")(_texto_requerido)
+
+    @field_validator("tipo_venta")
+    @classmethod
+    def limpiar_tipo_venta(cls, valor: str) -> str:
+        n = _texto_requerido(valor).lower()
+        if n not in ("contado", "fiado"):
+            raise ValueError("tipo_venta debe ser contado o fiado")
+        return n
 
     @field_validator("tipo_oro")
     @classmethod
@@ -125,6 +137,24 @@ class VentaCreate(BaseModel):
         if valor is None:
             return valor
         return _texto_requerido(valor).lower()
+
+
+class PagoVentaCreate(BaseModel):
+    venta_id: int = Field(..., gt=0)
+    monto: float = Field(..., gt=0)
+    moneda: str = Field(..., min_length=3, max_length=10)
+    tipo_pago: str = Field(..., min_length=2, max_length=30)
+    registrado_por: str = Field(default="Admin", max_length=100)
+
+    _tipo_pago = field_validator("tipo_pago")(_texto_requerido)
+
+    @field_validator("moneda")
+    @classmethod
+    def limpiar_moneda_pago(cls, valor: str) -> str:
+        n = _texto_requerido(valor).lower()
+        if n not in ("reales", "oro"):
+            raise ValueError("moneda debe ser reales u oro")
+        return n
 
 
 class CompraCreate(BaseModel):

@@ -2,6 +2,7 @@ import { showToast } from "./api.js";
 import { getRol, initAuth } from "./auth.js";
 import { initApertura, loadApertura } from "./apertura.js";
 import { initCierre, loadCierre } from "./cierre.js";
+import { initCobros, loadCobros } from "./cobros.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
 import { loadDashboard } from "./dashboard.js";
@@ -78,6 +79,7 @@ async function refreshAll() {
       loadGastos(),
       loadCierre(),
       loadFundicion(),
+      loadCobros(),
     ]);
   } catch (error) {
     showToast(error.message, "error");
@@ -104,6 +106,7 @@ async function init() {
   initTasas();
   initGastos();
   initCierre();
+  initCobros();
   initFundicion();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", refreshAll);

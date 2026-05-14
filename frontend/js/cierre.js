@@ -75,6 +75,8 @@ function renderCierre() {
       ${fila("Saldo inicial", formatMoney(caja.saldo_inicial_reales, "reales"))}
       ${fila("Oro operativo inicial", `${Number(caja.oro_operativo_inicial ?? 0).toFixed(2)} g`)}
       ${fila("+ Ingresos (bodega + gasolina)", formatMoney(caja.ingresos_reales, "reales"))}
+      ${fila("Cobros del dia (ventas fiadas)", formatMoney(data.cobros_del_dia ?? 0, "reales"))}
+      ${fila("Cuentas por cobrar (total pendiente)", formatMoney(data.cuentas_por_cobrar ?? 0, "reales"))}
       ${fila("- Egresos", formatMoney(caja.egresos_reales, "reales"))}
       <div class="cierre-sep"></div>
       ${fila("Saldo final esperado", formatMoney(caja.saldo_final_reales, "reales"))}

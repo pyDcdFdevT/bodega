@@ -130,9 +130,35 @@ class Venta(Base):
     vuelto_oro = Column(Float, default=0, nullable=False)
     vuelto_reales = Column(Float, default=0, nullable=False)
     tasa_cambio_id = Column(Integer, ForeignKey("tasas_cambio.id"), nullable=True)
+    estado_pago = Column(String(20), default="PAGADO", nullable=False)
+    monto_pagado = Column(Float, default=0, nullable=False)
+    saldo_pendiente = Column(Float, default=0, nullable=False)
+    cliente_fiado = Column(String(100), nullable=True)
+    telefono_fiado = Column(String(20), nullable=True)
+    tipo_venta = Column(String(20), default="contado", nullable=False)
 
     tasa_cambio = relationship("TasaCambio", back_populates="ventas")
     detalles = relationship("DetalleVenta", back_populates="venta", cascade="all, delete-orphan")
+    pagos = relationship("PagoVenta", back_populates="venta", cascade="all, delete-orphan")
+
+
+class PagoVenta(Base):
+    __tablename__ = "pagos_venta"
+    __table_args__ = (
+        CheckConstraint("monto > 0", name="ck_pago_venta_monto"),
+        CheckConstraint("moneda IN ('reales','oro')", name="ck_pago_venta_moneda"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    venta_id = Column(Integer, ForeignKey("ventas.id"), nullable=False, index=True)
+    monto = Column(Float, nullable=False)
+    moneda = Column(String(10), nullable=False)
+    tipo_pago = Column(String(30), nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+    registrado_por = Column(String(100), nullable=False, default="Admin")
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    venta = relationship("Venta", back_populates="pagos")
 
 
 class DetalleVenta(Base):
@@ -455,7 +481,7 @@ class Transaccion(Base):
     __tablename__ = "transacciones"
     __table_args__ = (
         CheckConstraint(
-            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion')",
+            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado')",
             name="ck_transaccion_tipo",
         ),
         CheckConstraint(

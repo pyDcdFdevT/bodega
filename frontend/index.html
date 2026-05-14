@@ -82,6 +82,7 @@
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
       <button class="tab solo-admin" data-target="panel-gastos">Gastos</button>
       <button class="tab solo-admin" data-target="panel-dashboard">Dashboard</button>
+      <button class="tab solo-admin" data-target="panel-cobros">Cobros</button>
       <button class="tab solo-admin" data-target="panel-cierre">Cierre</button>
       <button class="tab solo-admin" data-target="panel-fundicion">Fundicion</button>
     </nav>
@@ -232,6 +233,9 @@
                   <th>Tasa</th>
                   <th>Tipo oro</th>
                   <th>Pago</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th>Saldo R$</th>
                 </tr>
               </thead>
               <tbody id="tabla-ventas"></tbody>
@@ -684,6 +688,52 @@
         </div>
       </section>
 
+      <section class="panel solo-admin" id="panel-cobros">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Cuentas por cobrar</p>
+            <h2>Cobros de ventas fiadas</h2>
+          </div>
+          <button type="button" class="btn-refresh" id="btn-cobros-actualizar">Actualizar</button>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>Pendientes</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Total</th>
+                    <th>Saldo</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-cobros-pendientes"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Pagos recibidos hoy</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Venta</th>
+                    <th>Cliente</th>
+                    <th>Monto</th>
+                    <th>Tipo</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-cobros-pagos-hoy"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section class="panel solo-admin" id="panel-cierre">
         <div class="panel-header">
           <div>
@@ -859,7 +909,25 @@
   <dialog id="dialog-cobro-venta" class="modal-cobro">
     <form id="form-venta" class="modal-cobro-inner">
       <h3>Cobro</h3>
-      <label>Cliente
+      <label>Tipo de venta
+        <select id="venta-tipo-venta" name="tipo_venta">
+          <option value="contado" selected>Contado</option>
+          <option value="fiado">Fiado</option>
+        </select>
+      </label>
+      <div id="venta-fiado-extra" class="stack-form" style="display: none;">
+        <label>Cliente (fiado)
+          <input type="text" id="venta-cliente-fiado" name="cliente_fiado" maxlength="100" placeholder="Nombre del cliente">
+        </label>
+        <label>Telefono
+          <input type="text" id="venta-telefono-fiado" name="telefono_fiado" maxlength="20" placeholder="Opcional">
+        </label>
+        <label>Monto inicial (R$, opcional)
+          <input type="number" id="venta-monto-inicial" name="monto_inicial" min="0" step="0.01" value="0">
+        </label>
+        <p class="muted small">La venta fiada solo se registra en reales. El stock se descuenta al confirmar.</p>
+      </div>
+      <label id="venta-label-cliente-contado">Cliente
         <input name="cliente" value="Mostrador">
       </label>
       <label id="venta-tasa-wrap">Tasa de conversion
@@ -893,6 +961,30 @@
       <div class="modal-actions">
         <button type="button" id="btn-cerrar-cobro">Cancelar</button>
         <button type="submit">Confirmar cobro</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialog-registrar-pago-cobro" class="modal-cobro">
+    <form id="form-registrar-pago-cobro" class="modal-cobro-inner">
+      <h3>Registrar pago</h3>
+      <input type="hidden" name="venta_id" id="cobro-pago-venta-id">
+      <p class="muted small" id="cobro-pago-resumen"></p>
+      <label>Monto a pagar
+        <input type="number" name="monto" id="cobro-pago-monto" min="0.01" step="0.01" required>
+      </label>
+      <label>Moneda
+        <select name="moneda" id="cobro-pago-moneda">
+          <option value="reales">Reales (R$)</option>
+          <option value="oro">Oro (g)</option>
+        </select>
+      </label>
+      <label>Tipo de pago
+        <input type="text" name="tipo_pago" id="cobro-pago-tipo" maxlength="30" placeholder="Efectivo, PIX, transferencia..." required>
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="btn-cobro-pago-cancelar">Cancelar</button>
+        <button type="submit">Registrar pago</button>
       </div>
     </form>
   </dialog>

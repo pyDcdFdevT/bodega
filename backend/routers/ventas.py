@@ -7,7 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
-from models import DetalleVenta, MovimientoInventario, Producto, Venta
+from models import DetalleVenta, MovimientoInventario, PagoVenta, Producto, Venta
 from schemas import VentaCreate
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -49,10 +49,17 @@ def _validar_invariante_venta_balanceada(
 @router.post("")
 def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     try:
+        es_fiado = venta.tipo_venta == "fiado"
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(venta.tipo_pago)
+        if es_fiado and tipo_pago != "reales":
+            raise ValueError("La venta fiada solo esta disponible con tipo de pago en reales")
+        cli_fiado_nombre = (venta.cliente_fiado or "").strip()
+        if es_fiado and not cli_fiado_nombre:
+            raise ValueError("Indique el nombre del cliente para venta fiada")
+
         tipo_oro = None
         tasa = None
-        if tipo_pago in {"oro", "mixto"}:
+        if not es_fiado and tipo_pago in {"oro", "mixto"}:
             if not venta.tipo_oro:
                 raise ValueError("Debe seleccionar el tipo de oro")
             tipo_oro = venta.tipo_oro.strip().lower()
@@ -74,7 +81,44 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
         )
         total_reales_directo = CalculosMonetarios.redondear(sum(subtotales_reales.values()), 2)
 
-        if tipo_pago == "reales":
+        monto_inicial_registrado = 0.0
+        if es_fiado:
+            total_oro = 0.0
+            total_reales = total_reales_directo
+            monto_inicial = CalculosMonetarios.redondear(float(venta.monto_inicial), 2)
+            if monto_inicial < 0:
+                monto_inicial = 0.0
+            if monto_inicial > total_reales + 0.02:
+                raise ValueError("El monto inicial no puede superar el total de la venta")
+            monto_inicial = min(monto_inicial, total_reales)
+            monto_rec_oro = 0.0
+            monto_rec_reales = monto_inicial
+            vuelto_oro = 0.0
+            vuelto_reales = 0.0
+            if total_reales <= monto_inicial + 1e-6:
+                estado_pago = "PAGADO"
+                saldo_pendiente = 0.0
+                monto_pagado = total_reales
+            elif monto_inicial > 1e-6:
+                estado_pago = "PARCIAL"
+                saldo_pendiente = CalculosMonetarios.redondear(total_reales - monto_inicial, 2)
+                monto_pagado = monto_inicial
+            else:
+                estado_pago = "PENDIENTE"
+                saldo_pendiente = total_reales
+                monto_pagado = 0.0
+            monto_inicial_registrado = monto_inicial
+            _validar_invariante_venta_balanceada(
+                tipo_pago="reales",
+                consolidados=consolidados,
+                subtotales_oro=subtotales_oro,
+                total_oro=total_oro,
+                total_reales=total_reales,
+                total_reales_directo=total_reales_directo,
+                tasa=None,
+                db=db,
+            )
+        elif tipo_pago == "reales":
             total_oro = 0.0
             total_reales = total_reales_directo
             if venta.monto_recibido_reales <= 0:
@@ -83,6 +127,11 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 raise ValueError("Monto recibido insuficiente para completar la operacion")
             vuelto_oro = 0.0
             vuelto_reales = CalculosMonetarios.redondear(venta.monto_recibido_reales - total_reales, 2)
+            monto_rec_oro = venta.monto_recibido_oro
+            monto_rec_reales = venta.monto_recibido_reales
+            estado_pago = "PAGADO"
+            monto_pagado = total_reales
+            saldo_pendiente = 0.0
         else:
             total_reales = total_reales_convertido
             vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
@@ -92,29 +141,44 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 monto_recibido_reales=venta.monto_recibido_reales,
                 tasa_reales=tasa.tasa_reales,
             )
+            monto_rec_oro = venta.monto_recibido_oro
+            monto_rec_reales = venta.monto_recibido_reales
+            estado_pago = "PAGADO"
+            monto_pagado = total_reales
+            saldo_pendiente = 0.0
 
-        _validar_invariante_venta_balanceada(
-            tipo_pago=tipo_pago,
-            consolidados=consolidados,
-            subtotales_oro=subtotales_oro,
-            total_oro=total_oro,
-            total_reales=total_reales,
-            total_reales_directo=total_reales_directo,
-            tasa=tasa,
-            db=db,
-        )
+        if not es_fiado:
+            _validar_invariante_venta_balanceada(
+                tipo_pago=tipo_pago,
+                consolidados=consolidados,
+                subtotales_oro=subtotales_oro,
+                total_oro=total_oro,
+                total_reales=total_reales,
+                total_reales_directo=total_reales_directo,
+                tasa=tasa,
+                db=db,
+            )
+
+        tel_f = (venta.telefono_fiado or "").strip() or None
+        cliente_nombre = cli_fiado_nombre if es_fiado else venta.cliente.strip()
 
         nueva = Venta(
-            cliente=venta.cliente,
+            cliente=cliente_nombre,
             total_oro=total_oro,
             total_reales=total_reales,
             tipo_pago=tipo_pago,
             tipo_oro=tipo_oro,
-            monto_recibido_oro=venta.monto_recibido_oro,
-            monto_recibido_reales=venta.monto_recibido_reales,
+            monto_recibido_oro=monto_rec_oro,
+            monto_recibido_reales=monto_rec_reales,
             vuelto_oro=vuelto_oro,
             vuelto_reales=vuelto_reales,
             tasa_cambio_id=tasa.id if tasa else None,
+            estado_pago=estado_pago,
+            monto_pagado=monto_pagado,
+            saldo_pendiente=saldo_pendiente,
+            cliente_fiado=cli_fiado_nombre if es_fiado else None,
+            telefono_fiado=tel_f if es_fiado else None,
+            tipo_venta="fiado" if es_fiado else "contado",
         )
         db.add(nueva)
         db.flush()
@@ -155,18 +219,44 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 }
             )
 
-        registrar_transaccion(
-            db,
-            tipo="venta",
-            modulo_origen="bodega",
-            referencia_id=nueva.id,
-            moneda=tipo_pago,
-            monto_reales=float(total_reales),
-            gramos_oro=float(total_oro),
-            tipo_oro=tipo_oro,
-            tasa_usada=float(tasa.tasa_reales) if tasa else None,
-            descripcion=f"Venta #{nueva.id} {venta.cliente}",
-        )
+        if es_fiado:
+            if monto_pagado > 0:
+                registrar_transaccion(
+                    db,
+                    tipo="cobro_fiado",
+                    modulo_origen="bodega",
+                    referencia_id=nueva.id,
+                    moneda="reales",
+                    monto_reales=float(monto_pagado),
+                    gramos_oro=0.0,
+                    tipo_oro=None,
+                    tasa_usada=None,
+                    descripcion=f"Cobro fiado venta #{nueva.id} {cliente_nombre}",
+                )
+        else:
+            registrar_transaccion(
+                db,
+                tipo="venta",
+                modulo_origen="bodega",
+                referencia_id=nueva.id,
+                moneda=tipo_pago,
+                monto_reales=float(total_reales),
+                gramos_oro=float(total_oro),
+                tipo_oro=tipo_oro,
+                tasa_usada=float(tasa.tasa_reales) if tasa else None,
+                descripcion=f"Venta #{nueva.id} {venta.cliente}",
+            )
+
+        if es_fiado and monto_inicial_registrado > 1e-6:
+            db.add(
+                PagoVenta(
+                    venta_id=nueva.id,
+                    monto=float(monto_inicial_registrado),
+                    moneda="reales",
+                    tipo_pago="inicial",
+                    registrado_por="Admin",
+                )
+            )
 
         db.commit()
         db.refresh(nueva)
@@ -186,6 +276,10 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 "vuelto_oro": vuelto_oro,
                 "vuelto_reales": vuelto_reales,
                 "detalles": detalles_resumen,
+                "tipo_venta": nueva.tipo_venta,
+                "estado_pago": nueva.estado_pago,
+                "saldo_pendiente": nueva.saldo_pendiente,
+                "monto_pagado": nueva.monto_pagado,
             },
         }
     except ValueError as exc:
@@ -222,6 +316,9 @@ def listar_ventas(
             "tipo_oro": venta.tipo_oro,
             "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,
             "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
+            "tipo_venta": venta.tipo_venta,
+            "estado_pago": venta.estado_pago,
+            "saldo_pendiente": float(venta.saldo_pendiente or 0),
         }
         for venta in ventas
     ]

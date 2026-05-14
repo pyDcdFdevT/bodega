@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import (
@@ -15,6 +15,7 @@ from models import (
     CompraOro,
     GastoOperativo,
     GasolinaReposicion,
+    PagoVenta,
     Salida,
     Venta,
     VentaGasolina,
@@ -55,6 +56,15 @@ def _ganancia_neta_dia(db: Session, inicio: datetime) -> float:
         float(CalculosMonetarios.reales_a_oro(gastos_hoy_reales, db, tasa=tasa_ref)) if gastos_hoy_reales > 0 else 0.0
     )
     return round(ventas_hoy_oro - compras_hoy_oro - salidas_hoy_oro + gasolina_hoy_oro - gastos_hoy_oro, 2)
+
+
+def _pago_venta_equiv_reales(venta: Venta, monto: float, moneda: str) -> float:
+    m = (moneda or "reales").lower().strip()
+    if m == "reales":
+        return CalculosMonetarios.redondear(float(monto), 2)
+    if m == "oro" and venta.tasa_cambio:
+        return CalculosMonetarios.redondear(float(monto) * float(venta.tasa_cambio.tasa_reales), 2)
+    return 0.0
 
 
 def construir_payload_cierre(
@@ -137,8 +147,30 @@ def construir_payload_cierre(
         or 0
     )
 
+    ventas_contado_reales = float(
+        db.query(func.coalesce(func.sum(Venta.total_reales), 0))
+        .filter(Venta.fecha >= inicio, Venta.tipo_venta == "contado")
+        .scalar()
+        or 0
+    )
+
+    pagos_venta_rows = (
+        db.query(PagoVenta)
+        .options(joinedload(PagoVenta.venta).joinedload(Venta.tasa_cambio))
+        .filter(PagoVenta.fecha >= inicio)
+        .all()
+    )
+    cobros_del_dia = sum(_pago_venta_equiv_reales(p.venta, float(p.monto), p.moneda) for p in pagos_venta_rows)
+
+    cuentas_por_cobrar = float(
+        db.query(func.coalesce(func.sum(Venta.saldo_pendiente), 0))
+        .filter(Venta.saldo_pendiente > 0)
+        .scalar()
+        or 0
+    )
+
     oro_recolectado_bruto = oro_araparita + oro_uruman + oro_se_min + oro_se_fun
-    ingresos_reales = ventas_reales + gas_ventas_reales
+    ingresos_reales = ventas_contado_reales + gas_ventas_reales + cobros_del_dia
     egresos_reales = compras_reales + co_reales + gas_repo_reales + gastos_total
     saldo_final = round(saldo_inicial_reales + ingresos_reales - egresos_reales, 2)
 
@@ -210,6 +242,8 @@ def construir_payload_cierre(
             "oro_recolectado_gramos": bruto_total_gramos,
         },
         "ganancia_neta_dia": _ganancia_neta_dia(db, inicio),
+        "cuentas_por_cobrar": round(cuentas_por_cobrar, 2),
+        "cobros_del_dia": round(cobros_del_dia, 2),
     }
 
 

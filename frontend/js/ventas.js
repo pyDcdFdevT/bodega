@@ -32,6 +32,31 @@ function textoVuelto(data) {
   return partes.join(" · ");
 }
 
+function esVentaFiada() {
+  return document.getElementById("venta-tipo-venta")?.value === "fiado";
+}
+
+function actualizarVistaTipoVenta() {
+  const fiado = esVentaFiada();
+  const extra = document.getElementById("venta-fiado-extra");
+  const labelCli = document.getElementById("venta-label-cliente-contado");
+  const tipoPago = document.getElementById("venta-tipo-pago");
+  if (extra) {
+    extra.style.display = fiado ? "grid" : "none";
+  }
+  if (labelCli) {
+    labelCli.style.display = fiado ? "none" : "";
+  }
+  if (fiado && tipoPago) {
+    tipoPago.value = "reales";
+    tipoPago.disabled = true;
+  } else if (tipoPago) {
+    tipoPago.disabled = false;
+  }
+  actualizarVisibilidadCamposPago();
+  sincronizarModalCobro();
+}
+
 function actualizarVisibilidadCamposPago() {
   const tipoPago = document.getElementById("venta-tipo-pago")?.value;
   const tasaWrap = document.getElementById("venta-tasa-wrap");
@@ -43,12 +68,16 @@ function actualizarVisibilidadCamposPago() {
   if (!tasaWrap || !tipoOroWrap || !tasaSelect || !tipoOroSelect) {
     return;
   }
-  const requiereConversion = tipoPago !== "reales";
+  const fiado = esVentaFiada();
+  const requiereConversion = !fiado && tipoPago !== "reales";
   tasaWrap.style.display = requiereConversion ? "grid" : "none";
   tipoOroWrap.style.display = requiereConversion ? "grid" : "none";
   tipoOroSelect.required = requiereConversion;
   if (wrapMontoOro && wrapMontoReales) {
-    if (tipoPago === "reales") {
+    if (fiado) {
+      wrapMontoOro.style.display = "none";
+      wrapMontoReales.style.display = "none";
+    } else if (tipoPago === "reales") {
       wrapMontoOro.style.display = "none";
       wrapMontoReales.style.display = "grid";
     } else if (tipoPago === "oro") {
@@ -59,7 +88,7 @@ function actualizarVisibilidadCamposPago() {
       wrapMontoReales.style.display = "grid";
     }
   }
-  if (!requiereConversion) {
+  if (!requiereConversion && !fiado) {
     tipoOroSelect.value = "";
     tasaSelect.value = "";
   }
@@ -105,6 +134,10 @@ function actualizarModalVueltoPreview() {
     return;
   }
   el.classList.remove("insuficiente");
+  if (esVentaFiada()) {
+    el.textContent = "Venta fiada: el cobro total no aplica en este momento.";
+    return;
+  }
   const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
   const mOro = Number(document.getElementById("venta-input-monto-oro")?.value || 0);
   const mReales = Number(document.getElementById("venta-input-monto-reales")?.value || 0);
@@ -312,7 +345,7 @@ export async function loadVentas() {
   const tbody = document.getElementById("tabla-ventas");
   if (tbody) {
     if (!ventas.length) {
-      tbody.innerHTML = renderEmptyRow(9, "No hay ventas registradas.");
+      tbody.innerHTML = renderEmptyRow(12, "No hay ventas registradas.");
     } else {
       tbody.innerHTML = ventas
         .map(
@@ -327,6 +360,9 @@ export async function loadVentas() {
             <td>${getRateLabel(venta.tasa_nombre)}</td>
             <td>${venta.tipo_oro ? getRateLabel(venta.tipo_oro) : "-"}</td>
             <td>${venta.tipo_pago}</td>
+            <td>${venta.tipo_venta || "contado"}</td>
+            <td>${venta.estado_pago || "PAGADO"}</td>
+            <td>${formatMoney(Number(venta.saldo_pendiente || 0), "reales")}</td>
           </tr>
         `
         )
@@ -348,6 +384,7 @@ function abrirCobro() {
   }
   actualizarVisibilidadCamposPago();
   fillTasaSelect("venta-tasa");
+  actualizarVistaTipoVenta();
   dlg.showModal();
   sincronizarModalCobro();
 }
@@ -367,6 +404,11 @@ export function initVentas() {
   const btnCerrarModal = document.getElementById("btn-cerrar-cobro");
   const inputMontoOro = document.getElementById("venta-input-monto-oro");
   const inputMontoReales = document.getElementById("venta-input-monto-reales");
+
+  const tipoVentaSel = document.getElementById("venta-tipo-venta");
+  const montoInicial = document.getElementById("venta-monto-inicial");
+
+  tipoVentaSel?.addEventListener("change", actualizarVistaTipoVenta);
 
   filtro?.addEventListener("change", () => {
     categoriaFiltro = filtro.value;
@@ -399,6 +441,7 @@ export function initVentas() {
   });
   inputMontoOro?.addEventListener("input", sincronizarModalCobro);
   inputMontoReales?.addEventListener("input", sincronizarModalCobro);
+  montoInicial?.addEventListener("input", sincronizarModalCobro);
   actualizarVisibilidadCamposPago();
 
   formVenta?.addEventListener("submit", async (event) => {
@@ -410,16 +453,28 @@ export function initVentas() {
       showToast("Agrega al menos un producto al carrito", "error");
       return;
     }
+    const tipoVenta = tipoVentaSel?.value || "contado";
     const tipoPago = tipoPagoSelect.value;
     const tasaId = Number(tasaSelect.value);
-    if (tipoPago !== "reales" && !tasaId) {
+
+    if (tipoVenta === "fiado") {
+      const cliFiado = String(formVenta.querySelector('[name="cliente_fiado"]')?.value || "").trim();
+      if (!cliFiado) {
+        showToast("Indique el cliente para la venta fiada", "error");
+        return;
+      }
+    } else if (tipoPago !== "reales" && !tasaId) {
       showToast("Selecciona una tasa para calcular la venta", "error");
       return;
     }
+
     const formData = new FormData(formVenta);
     let montoOro = Number(formData.get("monto_recibido_oro"));
     let montoReales = Number(formData.get("monto_recibido_reales"));
-    if (tipoPago === "reales") {
+    if (tipoVenta === "fiado") {
+      montoOro = 0;
+      montoReales = 0;
+    } else if (tipoPago === "reales") {
       montoOro = 0;
     } else if (tipoPago === "oro") {
       montoReales = 0;
@@ -430,13 +485,17 @@ export function initVentas() {
         cantidad: item.cantidad,
       })),
       cliente: formData.get("cliente"),
-      tasa_cambio_id: tipoPago === "reales" ? null : tasaId,
-      tipo_pago: tipoPago,
-      tipo_oro: tipoPago === "reales" ? null : formData.get("tipo_oro") || null,
+      tasa_cambio_id: tipoVenta === "fiado" || tipoPago === "reales" ? null : tasaId,
+      tipo_pago: tipoVenta === "fiado" ? "reales" : tipoPago,
+      tipo_oro: tipoVenta === "fiado" || tipoPago === "reales" ? null : formData.get("tipo_oro") || null,
       monto_recibido_oro: montoOro,
       monto_recibido_reales: montoReales,
+      tipo_venta: tipoVenta,
+      cliente_fiado: tipoVenta === "fiado" ? String(formData.get("cliente_fiado") || "").trim() : null,
+      telefono_fiado: tipoVenta === "fiado" ? String(formData.get("telefono_fiado") || "").trim() || null : null,
+      monto_inicial: tipoVenta === "fiado" ? Number(formData.get("monto_inicial") || 0) : 0,
     };
-    if (payload.tipo_pago !== "reales" && !payload.tipo_oro) {
+    if (tipoVenta !== "fiado" && payload.tipo_pago !== "reales" && !payload.tipo_oro) {
       showToast("Selecciona el tipo de oro para el cobro", "error");
       return;
     }
@@ -456,6 +515,22 @@ export function initVentas() {
       formVenta.tipo_oro.value = "";
       formVenta.monto_recibido_oro.value = "0.00";
       formVenta.monto_recibido_reales.value = "0.00";
+      if (tipoVentaSel) {
+        tipoVentaSel.value = "contado";
+      }
+      const fiCli = formVenta.querySelector('[name="cliente_fiado"]');
+      if (fiCli) {
+        fiCli.value = "";
+      }
+      const fiTel = formVenta.querySelector('[name="telefono_fiado"]');
+      if (fiTel) {
+        fiTel.value = "";
+      }
+      const fiMon = formVenta.querySelector('[name="monto_inicial"]');
+      if (fiMon) {
+        fiMon.value = "0";
+      }
+      actualizarVistaTipoVenta();
       actualizarVisibilidadCamposPago();
       fillTasaSelect("venta-tasa");
       renderCarrito();

@@ -15,6 +15,7 @@ from routers import (
     auth,
     categorias,
     cierre,
+    cobros,
     compras,
     compras_oro,
     fundicion,
@@ -69,6 +70,7 @@ app.include_router(categorias.router, prefix="/api")
 app.include_router(compras.router, prefix="/api")
 app.include_router(compras_oro.router, prefix="/api")
 app.include_router(ventas.router, prefix="/api")
+app.include_router(cobros.router, prefix="/api")
 app.include_router(salidas.router, prefix="/api")
 app.include_router(gasolina.router, prefix="/api")
 app.include_router(gastos.router, prefix="/api")

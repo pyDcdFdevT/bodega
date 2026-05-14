@@ -511,6 +511,89 @@ CREATE TABLE IF NOT EXISTS distribuciones_fondos (
             conn.execute(text(sql.strip()))
 
 
+def _migrate_ventas_fiado_y_pagos_venta(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+
+    if dialect == "postgresql":
+        if not insp.has_table("ventas"):
+            return
+        for stmt in (
+            "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS estado_pago VARCHAR(20) NOT NULL DEFAULT 'PAGADO'",
+            "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS monto_pagado DOUBLE PRECISION NOT NULL DEFAULT 0",
+            "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS saldo_pendiente DOUBLE PRECISION NOT NULL DEFAULT 0",
+            "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS cliente_fiado VARCHAR(100)",
+            "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS telefono_fiado VARCHAR(20)",
+            "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(20) NOT NULL DEFAULT 'contado'",
+        ):
+            conn.execute(text(stmt))
+        conn.execute(
+            text(
+                "UPDATE ventas SET tipo_venta = 'contado' WHERE tipo_venta IS NULL OR tipo_venta = ''"
+            )
+        )
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS pagos_venta (
+    id SERIAL PRIMARY KEY,
+    venta_id INTEGER NOT NULL REFERENCES ventas(id),
+    monto DOUBLE PRECISION NOT NULL,
+    moneda VARCHAR(10) NOT NULL,
+    tipo_pago VARCHAR(30) NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT NOW(),
+    registrado_por VARCHAR(100) NOT NULL DEFAULT 'Admin',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)
+"""
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_venta ON pagos_venta (venta_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_fecha ON pagos_venta (fecha)"))
+        return
+
+    if dialect == "sqlite":
+        if not insp.has_table("ventas"):
+            return
+        result = conn.execute(text("PRAGMA table_info(ventas)"))
+        cols = {row[1] for row in result}
+        alters: list[str] = []
+        if "estado_pago" not in cols:
+            alters.append("ALTER TABLE ventas ADD COLUMN estado_pago VARCHAR(20) NOT NULL DEFAULT 'PAGADO'")
+        if "monto_pagado" not in cols:
+            alters.append("ALTER TABLE ventas ADD COLUMN monto_pagado REAL NOT NULL DEFAULT 0")
+        if "saldo_pendiente" not in cols:
+            alters.append("ALTER TABLE ventas ADD COLUMN saldo_pendiente REAL NOT NULL DEFAULT 0")
+        if "cliente_fiado" not in cols:
+            alters.append("ALTER TABLE ventas ADD COLUMN cliente_fiado VARCHAR(100)")
+        if "telefono_fiado" not in cols:
+            alters.append("ALTER TABLE ventas ADD COLUMN telefono_fiado VARCHAR(20)")
+        if "tipo_venta" not in cols:
+            alters.append("ALTER TABLE ventas ADD COLUMN tipo_venta VARCHAR(20) NOT NULL DEFAULT 'contado'")
+        for sql in alters:
+            conn.execute(text(sql))
+        conn.execute(text("UPDATE ventas SET tipo_venta = 'contado' WHERE tipo_venta IS NULL OR tipo_venta = ''"))
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS pagos_venta (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL REFERENCES ventas(id),
+    monto REAL NOT NULL,
+    moneda VARCHAR(10) NOT NULL,
+    tipo_pago VARCHAR(30) NOT NULL,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    registrado_por VARCHAR(100) NOT NULL DEFAULT 'Admin',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_venta ON pagos_venta (venta_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_venta_fecha ON pagos_venta (fecha)"))
+
+
 def apply_schema_patches() -> None:
     """Migraciones ligeras tras create_all (columnas/tablas que faltan en bases ya existentes)."""
     from sqlalchemy import inspect, text
@@ -548,6 +631,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_cierres_diarios_table(conn, dialect)
             _ensure_aperturas_caja_table(conn, dialect)
             _ensure_fundicion_tables(conn, dialect)
+            _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -575,4 +659,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_cierres_diarios_table(conn, dialect)
             _ensure_aperturas_caja_table(conn, dialect)
             _ensure_fundicion_tables(conn, dialect)
+            _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
         return
