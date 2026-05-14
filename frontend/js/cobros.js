@@ -2,6 +2,28 @@ import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow, showT
 import { ensureTasas, findTasaByNombre, getRateLabel } from "./tasas.js";
 
 let pendientesCache = [];
+/** Saldo en R$ de la venta abierta en el modal (para confirmar exceso). */
+let modalSaldoPendienteReales = 0;
+
+function redondear2(n) {
+  return Math.round(Number(n) * 100) / 100;
+}
+
+/** Replica la lógica de abono en reales del backend para el modal. */
+function abonoRealesEstimado(canal, monto, tipoOro) {
+  if (canal === "efectivo") {
+    return redondear2(monto);
+  }
+  if (canal === "oro") {
+    const t = tipoOro ? findTasaByNombre(tipoOro) : null;
+    const tr = t ? Number(t.tasa_reales) : 0;
+    if (!Number.isFinite(tr) || tr <= 0) {
+      return NaN;
+    }
+    return redondear2(Number(monto) * tr);
+  }
+  return NaN;
+}
 
 function cerrarModalPago() {
   document.getElementById("dialog-registrar-pago-cobro")?.close();
@@ -135,7 +157,7 @@ async function abrirModalPago(ventaId) {
   const inpOro = document.getElementById("cobro-pago-monto-oro");
   if (inpReal) {
     inpReal.value = String(Number(v.saldo_pendiente).toFixed(2));
-    inpReal.max = String(Number(v.saldo_pendiente) + 0.01);
+    inpReal.removeAttribute("max");
     inpReal.name = "monto";
   }
   if (inpOro) {
@@ -147,6 +169,23 @@ async function abrirModalPago(ventaId) {
   const res = document.getElementById("cobro-pago-resumen");
   if (res) {
     res.textContent = `Venta #${v.id} — ${v.cliente}. Saldo: ${formatMoney(v.saldo_pendiente, "reales")}.`;
+  }
+  modalSaldoPendienteReales = redondear2(v.saldo_pendiente);
+  const lineOro = document.getElementById("cobro-pago-saldo-oro-line");
+  if (lineOro) {
+    const nombre = String(v.tipo_oro || "").trim();
+    if (!nombre) {
+      lineOro.textContent = "Saldo en oro: — (venta sin tipo de oro en la tasa de la venta).";
+    } else {
+      const t = findTasaByNombre(nombre);
+      const tr = t ? Number(t.tasa_reales) : 0;
+      if (!Number.isFinite(tr) || tr <= 0) {
+        lineOro.textContent = `Saldo en oro: — (sin tasa operativa para ${getRateLabel(nombre) || nombre}).`;
+      } else {
+        const g = Number(v.saldo_pendiente) / tr;
+        lineOro.textContent = `Saldo en oro: ${g.toFixed(4)} g (${getRateLabel(nombre) || nombre}).`;
+      }
+    }
   }
   dlg.showModal();
 }
@@ -173,15 +212,16 @@ export function initCobros() {
     const form = ev.target;
     const fd = new FormData(form);
     const canal = String(fd.get("tipo_pago") || "").trim().toLowerCase();
-    if (!canal || !["efectivo", "transferencia", "oro"].includes(canal)) {
+    if (!canal || !["efectivo", "oro"].includes(canal)) {
       showToast("Seleccione la forma de cobro", "error");
       return;
     }
     let monto = 0;
+    let tipoOroPago = null;
     if (canal === "oro") {
       monto = Number(document.getElementById("cobro-pago-monto-oro")?.value || 0);
-      const to = String(fd.get("tipo_oro") || "").trim();
-      if (!to) {
+      tipoOroPago = String(fd.get("tipo_oro") || "").trim();
+      if (!tipoOroPago) {
         showToast("Seleccione el tipo de oro", "error");
         return;
       }
@@ -192,18 +232,40 @@ export function initCobros() {
       showToast("Indique un monto valido", "error");
       return;
     }
+    const abonoEst = abonoRealesEstimado(canal, monto, tipoOroPago);
+    if (!Number.isFinite(abonoEst) || abonoEst <= 0) {
+      showToast("No se pudo calcular el abono en reales (revise tasa y montos).", "error");
+      return;
+    }
+    if (abonoEst > modalSaldoPendienteReales + 0.01) {
+      const solo = formatMoney(modalSaldoPendienteReales, "reales");
+      const ok = window.confirm(
+        `El abono supera el saldo pendiente (${solo}). ¿Registrar solo lo pendiente (${solo})?`
+      );
+      if (!ok) {
+        return;
+      }
+    }
+    const ventaId = Number(document.getElementById("cobro-pago-venta-id")?.value || fd.get("venta_id"));
     const payload = {
-      venta_id: Number(fd.get("venta_id")),
+      venta_id: ventaId,
       monto,
       tipo_pago: canal,
-      tipo_oro: canal === "oro" ? String(fd.get("tipo_oro") || "").trim() || null : null,
+      tipo_oro: canal === "oro" ? tipoOroPago : null,
       registrado_por: "Admin",
     };
     try {
       const data = await api.post("/cobros/registrar-pago", payload);
       const abono = data.abono_reales != null ? formatMoney(data.abono_reales, "reales") : "";
       const saldo = data.saldo_pendiente != null ? formatMoney(data.saldo_pendiente, "reales") : "";
-      showToast(`Pago registrado. Abono ${abono}. Saldo pendiente: ${saldo}. Estado: ${data.estado_pago || ""}.`, "success");
+      const cap =
+        data.abono_capado_a_saldo === true
+          ? " Se aplicó solo hasta el saldo pendiente."
+          : "";
+      showToast(
+        `Pago registrado. Abono ${abono}. Saldo pendiente: ${saldo}. Estado: ${data.estado_pago || ""}.${cap}`,
+        "success"
+      );
       cerrarModalPago();
       await loadCobros();
       document.dispatchEvent(new CustomEvent("bodega:refresh"));

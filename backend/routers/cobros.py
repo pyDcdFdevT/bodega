@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/cobros", tags=["Cobros"])
 
-_CANAL_ETIQUETA = {"efectivo": "Efectivo", "transferencia": "Transferencia", "oro": "Oro"}
+_CANAL_ETIQUETA = {"efectivo": "Efectivo", "oro": "Oro"}
 
 
 def _inicio_dia_hoy() -> datetime:
@@ -43,7 +43,7 @@ def _equiv_pago_reales(db: Session, p: PagoVenta) -> float:
 
 
 def _abono_en_reales(db: Session, body: PagoVentaCreate) -> float:
-    if body.tipo_pago in ("efectivo", "transferencia"):
+    if body.tipo_pago == "efectivo":
         return CalculosMonetarios.redondear(float(body.monto), 2)
     tasa = _tasa_por_nombre(db, body.tipo_oro or "")
     if not tasa:
@@ -166,11 +166,22 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         if abono_reales <= 0:
             raise ValueError("El monto del abono debe ser mayor a cero")
         saldo = float(venta.saldo_pendiente)
-        if abono_reales > saldo + 0.05:
-            raise ValueError("El monto supera el saldo pendiente")
+        applied_reales = min(abono_reales, saldo)
+        applied_reales = CalculosMonetarios.redondear(applied_reales, 2)
 
-        venta.monto_pagado = CalculosMonetarios.redondear(float(venta.monto_pagado) + abono_reales, 2)
-        venta.saldo_pendiente = CalculosMonetarios.redondear(saldo - abono_reales, 2)
+        if body.tipo_pago == "oro":
+            tasa_o = _tasa_por_nombre(db, body.tipo_oro or "")
+            if not tasa_o:
+                raise ValueError("No hay tasa operativa registrada para ese tipo de oro")
+            tr = float(tasa_o.tasa_reales)
+            if tr <= 0:
+                raise ValueError("La tasa operativa es invalida (cero o negativa)")
+            monto_registro = CalculosMonetarios.redondear(applied_reales / tr, 4)
+        else:
+            monto_registro = applied_reales
+
+        venta.monto_pagado = CalculosMonetarios.redondear(float(venta.monto_pagado) + applied_reales, 2)
+        venta.saldo_pendiente = CalculosMonetarios.redondear(saldo - applied_reales, 2)
         if venta.saldo_pendiente <= 0.009:
             venta.saldo_pendiente = 0.0
             venta.estado_pago = "PAGADO"
@@ -184,7 +195,7 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         db.add(
             PagoVenta(
                 venta_id=venta.id,
-                monto=float(body.monto),
+                monto=float(monto_registro),
                 moneda=moneda_val,
                 tipo_pago=etiqueta,
                 tipo_oro=body.tipo_oro if body.tipo_pago == "oro" else None,
@@ -192,7 +203,7 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
             )
         )
 
-        gramos = float(body.monto) if body.tipo_pago == "oro" else 0.0
+        gramos = float(monto_registro) if body.tipo_pago == "oro" else 0.0
         ledger_tipo_oro = body.tipo_oro if body.tipo_pago == "oro" else venta.tipo_oro
         tasa_row = _tasa_por_nombre(db, body.tipo_oro) if body.tipo_pago == "oro" else venta.tasa_cambio
         tasa_usada = float(tasa_row.tasa_reales) if tasa_row and tasa_row.tasa_reales else None
@@ -203,7 +214,7 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
             modulo_origen="bodega",
             referencia_id=venta.id,
             moneda=moneda_val,
-            monto_reales=float(abono_reales),
+            monto_reales=float(applied_reales),
             gramos_oro=gramos,
             tipo_oro=ledger_tipo_oro,
             tasa_usada=tasa_usada,
@@ -217,7 +228,8 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
             "estado_pago": venta.estado_pago,
             "monto_pagado": float(venta.monto_pagado),
             "saldo_pendiente": float(venta.saldo_pendiente),
-            "abono_reales": float(abono_reales),
+            "abono_reales": float(applied_reales),
+            "abono_capado_a_saldo": applied_reales + 0.001 < abono_reales,
         }
     except ValueError as exc:
         db.rollback()

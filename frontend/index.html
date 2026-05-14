@@ -970,15 +970,15 @@
   </dialog>
 
   <dialog id="dialog-registrar-pago-cobro" class="modal-cobro">
-    <form id="form-registrar-pago-cobro" class="modal-cobro-inner">
+    <form id="form-registrar-pago-cobro" class="modal-cobro-inner" novalidate>
       <h3>Registrar pago</h3>
       <input type="hidden" name="venta_id" id="cobro-pago-venta-id">
       <p class="muted small" id="cobro-pago-resumen"></p>
+      <p class="muted small" id="cobro-pago-saldo-oro-line" aria-live="polite"></p>
       <label>Forma de cobro
         <select id="cobro-pago-canal" name="tipo_pago" required>
           <option value="" selected disabled>Seleccione...</option>
           <option value="efectivo">Efectivo</option>
-          <option value="transferencia">Transferencia</option>
           <option value="oro">Oro</option>
         </select>
       </label>

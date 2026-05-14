@@ -152,8 +152,8 @@ class PagoVentaCreate(BaseModel):
     @classmethod
     def limpiar_canal_pago(cls, valor: str) -> str:
         n = _texto_requerido(valor).lower()
-        if n not in ("efectivo", "transferencia", "oro"):
-            raise ValueError("tipo_pago debe ser efectivo, transferencia u oro")
+        if n not in ("efectivo", "oro"):
+            raise ValueError("tipo_pago debe ser efectivo u oro")
         return n
 
     @field_validator("tipo_oro")
