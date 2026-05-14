@@ -1,5 +1,5 @@
 import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
-import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel } from "./tasas.js";
+import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel, RATE_ORDER } from "./tasas.js";
 
 let gasolinaConfigCache = null;
 
@@ -133,17 +133,24 @@ function actualizarResumenCobroGasolina() {
 function actualizarPreviewRepo() {
   const litros = Number(document.querySelector("#form-gasolina-reponer input[name=litros]")?.value);
   const precio = Number(document.querySelector("#form-gasolina-reponer input[name=precio_reales_litro]")?.value);
-  const tasaAra = findTasaByNombre("araparita");
   const totalReales = Number.isFinite(litros) && Number.isFinite(precio) ? litros * precio : 0;
-  const totalOro =
-    tasaAra && tasaAra.tasa_reales > 0 && Number.isFinite(totalReales) ? totalReales / tasaAra.tasa_reales : 0;
   const elR = document.getElementById("gasolina-repo-total-reales");
-  const elO = document.getElementById("gasolina-repo-total-oro");
+  const body = document.getElementById("gasolina-repo-equiv-oro-body");
   if (elR) {
     elR.value = Number.isFinite(totalReales) ? totalReales.toFixed(2) : "0.00";
   }
-  if (elO) {
-    elO.value = Number.isFinite(totalOro) ? totalOro.toFixed(4) : "0.0000";
+  if (body) {
+    if (!Number.isFinite(totalReales) || totalReales <= 0) {
+      body.innerHTML = "<p>Ingrese litros y precio para ver equivalentes.</p>";
+    } else {
+      body.innerHTML = RATE_ORDER.map((nombre) => {
+        const t = findTasaByNombre(nombre);
+        const tr = t ? Number(t.tasa_reales) : 0;
+        const g = tr > 0 ? totalReales / tr : null;
+        const txt = g != null ? `${g.toFixed(4)} g` : "—";
+        return `<div class="cierre-line"><span>${getRateLabel(nombre)}</span><strong>${txt}</strong></div>`;
+      }).join("");
+    }
   }
 }
 

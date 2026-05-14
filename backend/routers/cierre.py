@@ -144,6 +144,21 @@ def construir_payload_cierre(
         db.query(func.coalesce(func.sum(CompraOro.total_reales), 0)).filter(CompraOro.fecha >= inicio).scalar() or 0
     )
 
+    def _comprado_gramos_tipo(tipo_oro: str) -> float:
+        return float(
+            db.query(func.coalesce(func.sum(CompraOro.gramos), 0))
+            .filter(CompraOro.fecha >= inicio, CompraOro.tipo_oro == tipo_oro)
+            .scalar()
+            or 0
+        )
+
+    comprado_araparita = _comprado_gramos_tipo("araparita")
+    comprado_uruman = _comprado_gramos_tipo("uruman")
+    comprado_santa_elena_minero = _comprado_gramos_tipo("santa_elena_minero")
+    comprado_santa_elena_fundido = _comprado_gramos_tipo("santa_elena_fundido")
+    comprado_suma_tipos = comprado_araparita + comprado_uruman + comprado_santa_elena_minero + comprado_santa_elena_fundido
+    comprado_otros_tipos_gramos = max(0.0, co_gramos - comprado_suma_tipos)
+
     gastos_total = float(
         db.query(func.coalesce(func.sum(GastoOperativo.monto_reales), 0))
         .filter(GastoOperativo.fecha >= inicio)
@@ -190,6 +205,11 @@ def construir_payload_cierre(
         "uruman": round(oro_uruman, 2),
         "santa_elena_minero": round(oro_se_min, 2),
         "santa_elena_fundido": round(oro_se_fun, 2),
+        "comprado_araparita": round(comprado_araparita, 2),
+        "comprado_uruman": round(comprado_uruman, 2),
+        "comprado_santa_elena_minero": round(comprado_santa_elena_minero, 2),
+        "comprado_santa_elena_fundido": round(comprado_santa_elena_fundido, 2),
+        "comprado_otros_tipos_gramos": round(comprado_otros_tipos_gramos, 4),
         "comprado_gramos": co_gramos_r,
         "bruto_total_gramos": bruto_total_gramos,
     }

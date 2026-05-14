@@ -434,9 +434,10 @@
               <label>Total en reales (calculado)
                 <input id="gasolina-repo-total-reales" type="text" readonly value="0.00">
               </label>
-              <label>Total en oro — tasa Araparita (calculado)
-                <input id="gasolina-repo-total-oro" type="text" readonly value="0.00">
-              </label>
+              <details id="gasolina-repo-equiv-oro" class="gasolina-repo-equiv">
+                <summary>Equivalente en oro por tasa operativa (4 tasas)</summary>
+                <div id="gasolina-repo-equiv-oro-body" class="stack-form muted small" style="margin-top: 0.5rem;"></div>
+              </details>
               <button type="submit">Registrar reposicion</button>
             </form>
           </article>
@@ -752,7 +753,7 @@
           <div id="cierre-contenido" class="cierre-root"></div>
         </article>
 
-        <article class="card">
+        <article class="card" id="cierre-card-conciliacion">
           <h3>2. Conciliacion</h3>
           <div class="stack-form" style="max-width: 480px;">
             <p>Reales esperados: <strong id="cierre-conc-real-esp">—</strong></p>
@@ -771,7 +772,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card" id="cierre-card-generar">
           <h3>3. Generar cierre</h3>
           <div class="stack-form" style="max-width: 420px;">
             <label>Retiro dueno (R$)

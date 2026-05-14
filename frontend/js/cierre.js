@@ -64,7 +64,18 @@ function renderCierre() {
       ${fila("Uruman", `${formatMoney(oro.uruman)} g`)}
       ${fila("StaE Min", `${formatMoney(oro.santa_elena_minero)} g`)}
       ${fila("StaE Fun", `${formatMoney(oro.santa_elena_fundido)} g`)}
-      ${fila("Comprado", `${formatMoney(oro.comprado_gramos)} g`)}
+      <div class="cierre-sep"></div>
+      <p class="muted small" style="margin:0 0 0.35rem;">Oro comprado hoy (por tipo)</p>
+      ${fila("Comprado Araparita", `${formatMoney(oro.comprado_araparita ?? 0)} g`)}
+      ${fila("Comprado Uruman", `${formatMoney(oro.comprado_uruman ?? 0)} g`)}
+      ${fila("Comprado StaE Min", `${formatMoney(oro.comprado_santa_elena_minero ?? 0)} g`)}
+      ${fila("Comprado StaE Fun", `${formatMoney(oro.comprado_santa_elena_fundido ?? 0)} g`)}
+      ${
+        Number(oro.comprado_otros_tipos_gramos || 0) > 0.0001
+          ? fila("Comprado otros tipos", `${formatMoney(oro.comprado_otros_tipos_gramos)} g`)
+          : ""
+      }
+      ${fila("Comprado total", `${formatMoney(oro.comprado_gramos)} g`)}
       <div class="cierre-sep"></div>
       ${fila("Bruto total", `${formatMoney(oro.bruto_total_gramos)} g`)}
     `
@@ -118,7 +129,7 @@ function updateConciliacionUi() {
 }
 
 function setCierreCerradoMode(cerrado) {
-  const ids = [
+  const fieldIds = [
     "cierre-conc-real-contado",
     "cierre-conc-oro-contado",
     "cierre-conc-justif",
@@ -126,13 +137,25 @@ function setCierreCerradoMode(cerrado) {
     "cierre-retiro-oro",
     "cierre-se-deja-reales",
     "cierre-se-deja-oro",
-    "btn-cierre-generar",
   ];
-  for (const id of ids) {
+  for (const id of fieldIds) {
     const el = document.getElementById(id);
     if (el) {
       el.disabled = cerrado;
     }
+  }
+  const btn = document.getElementById("btn-cierre-generar");
+  if (btn) {
+    btn.disabled = cerrado;
+    btn.style.display = cerrado ? "none" : "";
+  }
+  const cardConc = document.getElementById("cierre-card-conciliacion");
+  const cardGen = document.getElementById("cierre-card-generar");
+  if (cardConc) {
+    cardConc.style.display = cerrado ? "none" : "";
+  }
+  if (cardGen) {
+    cardGen.style.display = cerrado ? "none" : "";
   }
 }
 
@@ -206,6 +229,10 @@ export function initCierre() {
   });
 
   document.getElementById("btn-cierre-generar")?.addEventListener("click", async () => {
+    if (lastCierreData?.cierre_guardado) {
+      showToast("El cierre de hoy ya fue generado", "error");
+      return;
+    }
     try {
       const body = {
         cerrado_por: "Admin",
