@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +13,8 @@ from schemas import PagoVentaCreate
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/cobros", tags=["Cobros"])
 
@@ -224,4 +227,5 @@ def registrar_pago(body: PagoVentaCreate, db: Session = Depends(get_db)):
         raise
     except Exception as exc:
         db.rollback()
+        logger.exception("registrar_pago failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc

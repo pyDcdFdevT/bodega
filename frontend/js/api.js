@@ -1,5 +1,35 @@
 const API_BASE = "/api";
 
+/** FastAPI puede devolver `detail` como string o como lista de errores de validación. */
+function formatApiErrorDetail(payload, isJson) {
+  if (!isJson) {
+    return typeof payload === "string" && payload.trim()
+      ? payload
+      : "Error en la solicitud";
+  }
+  if (payload == null || typeof payload !== "object") {
+    return "Error en la solicitud";
+  }
+  const d = payload.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) {
+    return d
+      .map((item) => {
+        if (item && typeof item === "object" && "msg" in item) {
+          const loc = Array.isArray(item.loc)
+            ? item.loc.filter((x) => x !== "body" && typeof x === "string").join(".")
+            : "";
+          return loc ? `${loc}: ${item.msg}` : String(item.msg);
+        }
+        return typeof item === "string" ? item : JSON.stringify(item);
+      })
+      .join("; ");
+  }
+  if (d != null && typeof d === "object") return JSON.stringify(d);
+  if (typeof payload.message === "string") return payload.message;
+  return "Error en la solicitud";
+}
+
 async function request(path, options = {}) {
   const { headers: extraHeaders, ...rest } = options;
   const response = await fetch(`${API_BASE}${path}`, {
@@ -14,7 +44,7 @@ async function request(path, options = {}) {
   const payload = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const detail = isJson ? payload.detail || payload.message : payload;
+    const detail = formatApiErrorDetail(payload, isJson);
     throw new Error(detail || "Error inesperado en la solicitud");
   }
 

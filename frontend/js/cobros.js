@@ -116,7 +116,8 @@ export async function loadCobros() {
         .join("");
     }
   } catch (e) {
-    showToast(e.message, "error");
+    const msg = e instanceof Error ? e.message : String(e);
+    showToast(msg || "Error al cargar cobros", "error");
   }
 }
 
@@ -207,7 +208,8 @@ export function initCobros() {
       await loadCobros();
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (e) {
-      showToast(e.message, "error");
+      const msg = e instanceof Error ? e.message : String(e);
+      showToast(msg || "Error al registrar el pago", "error");
     }
   });
 }
