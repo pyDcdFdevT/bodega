@@ -176,47 +176,232 @@ CREATE TABLE IF NOT EXISTS transacciones (
             conn.execute(text(sql))
 
 
-def _ensure_cierres_diarios_table(conn, dialect: str) -> None:
+def _ensure_aperturas_caja_table(conn, dialect: str) -> None:
     from sqlalchemy import text
 
     if dialect == "postgresql":
-        stmts = [
+        for stmt in (
             """
-CREATE TABLE IF NOT EXISTS cierres_diarios (
+CREATE TABLE IF NOT EXISTS aperturas_caja (
     id SERIAL PRIMARY KEY,
-    fecha DATE NOT NULL UNIQUE,
-    total_oro DOUBLE PRECISION NOT NULL,
-    total_reales DOUBLE PRECISION NOT NULL,
-    gastos DOUBLE PRECISION NOT NULL,
-    ganancia_neta DOUBLE PRECISION NOT NULL,
-    cerrado_por VARCHAR(100) NOT NULL,
+    fecha_operativa DATE NOT NULL UNIQUE,
+    caja_inicial_reales DOUBLE PRECISION NOT NULL,
+    oro_operativo_inicial DOUBLE PRECISION NOT NULL DEFAULT 0,
+    abierto_por VARCHAR(100) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 )
 """,
-            "CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha ON cierres_diarios (fecha)",
-        ]
-        for sql in stmts:
-            conn.execute(text(sql))
+            "CREATE INDEX IF NOT EXISTS ix_aperturas_caja_fecha ON aperturas_caja (fecha_operativa)",
+        ):
+            conn.execute(text(stmt.strip()))
+        return
+
+    if dialect == "sqlite":
+        for stmt in (
+            """
+CREATE TABLE IF NOT EXISTS aperturas_caja (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha_operativa DATE NOT NULL UNIQUE,
+    caja_inicial_reales REAL NOT NULL,
+    oro_operativo_inicial REAL NOT NULL DEFAULT 0,
+    abierto_por VARCHAR(100) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""",
+            "CREATE INDEX IF NOT EXISTS ix_aperturas_caja_fecha ON aperturas_caja (fecha_operativa)",
+        ):
+            conn.execute(text(stmt.strip()))
+
+
+def _ensure_cierres_diarios_table(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    ddl_pg = """
+CREATE TABLE IF NOT EXISTS cierres_diarios (
+    id SERIAL PRIMARY KEY,
+    fecha_operativa DATE NOT NULL UNIQUE,
+    ventas_reales DOUBLE PRECISION NOT NULL,
+    ventas_oro DOUBLE PRECISION NOT NULL,
+    compras_reales DOUBLE PRECISION NOT NULL,
+    gastos_reales DOUBLE PRECISION NOT NULL,
+    oro_recolectado DOUBLE PRECISION NOT NULL,
+    reales_esperados DOUBLE PRECISION NOT NULL,
+    oro_esperado DOUBLE PRECISION NOT NULL,
+    reales_contados DOUBLE PRECISION NOT NULL,
+    oro_contado DOUBLE PRECISION NOT NULL,
+    diferencia_reales DOUBLE PRECISION NOT NULL,
+    diferencia_oro DOUBLE PRECISION NOT NULL,
+    justificacion TEXT NOT NULL DEFAULT '',
+    retiro_dueno_reales DOUBLE PRECISION NOT NULL DEFAULT 0,
+    retiro_dueno_oro DOUBLE PRECISION NOT NULL DEFAULT 0,
+    se_deja_reales DOUBLE PRECISION NOT NULL DEFAULT 0,
+    se_deja_oro DOUBLE PRECISION NOT NULL DEFAULT 0,
+    cerrado_por VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    snapshot_json TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha_op ON cierres_diarios (fecha_operativa);
+"""
+
+    ddl_sqlite = """
+CREATE TABLE IF NOT EXISTS cierres_diarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha_operativa DATE NOT NULL UNIQUE,
+    ventas_reales REAL NOT NULL,
+    ventas_oro REAL NOT NULL,
+    compras_reales REAL NOT NULL,
+    gastos_reales REAL NOT NULL,
+    oro_recolectado REAL NOT NULL,
+    reales_esperados REAL NOT NULL,
+    oro_esperado REAL NOT NULL,
+    reales_contados REAL NOT NULL,
+    oro_contado REAL NOT NULL,
+    diferencia_reales REAL NOT NULL,
+    diferencia_oro REAL NOT NULL,
+    justificacion TEXT NOT NULL DEFAULT '',
+    retiro_dueno_reales REAL NOT NULL DEFAULT 0,
+    retiro_dueno_oro REAL NOT NULL DEFAULT 0,
+    se_deja_reales REAL NOT NULL DEFAULT 0,
+    se_deja_oro REAL NOT NULL DEFAULT 0,
+    cerrado_por VARCHAR(100) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    snapshot_json TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha_op ON cierres_diarios (fecha_operativa);
+"""
+
+    if dialect == "postgresql":
+        for stmt in ddl_pg.strip().split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(text(s))
+        return
+
+    if dialect == "sqlite":
+        for stmt in ddl_sqlite.strip().split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(text(s))
+
+
+def _migrate_cierres_diarios_legacy(conn, dialect: str) -> None:
+    """Reemplaza esquema antiguo (fecha, total_oro, ...) por reforma apertura/cierre."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn.engine)
+    if not insp.has_table("cierres_diarios"):
+        return
+
+    cols = {c["name"] for c in insp.get_columns("cierres_diarios")}
+    if "ventas_reales" in cols:
+        return
+    if "fecha" not in cols:
         return
 
     if dialect == "sqlite":
         stmts = [
             """
-CREATE TABLE IF NOT EXISTS cierres_diarios (
+CREATE TABLE cierres_diarios_new (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    fecha DATE NOT NULL UNIQUE,
-    total_oro REAL NOT NULL,
-    total_reales REAL NOT NULL,
-    gastos REAL NOT NULL,
-    ganancia_neta REAL NOT NULL,
+    fecha_operativa DATE NOT NULL UNIQUE,
+    ventas_reales REAL NOT NULL,
+    ventas_oro REAL NOT NULL,
+    compras_reales REAL NOT NULL,
+    gastos_reales REAL NOT NULL,
+    oro_recolectado REAL NOT NULL,
+    reales_esperados REAL NOT NULL,
+    oro_esperado REAL NOT NULL,
+    reales_contados REAL NOT NULL,
+    oro_contado REAL NOT NULL,
+    diferencia_reales REAL NOT NULL,
+    diferencia_oro REAL NOT NULL,
+    justificacion TEXT NOT NULL DEFAULT '',
+    retiro_dueno_reales REAL NOT NULL DEFAULT 0,
+    retiro_dueno_oro REAL NOT NULL DEFAULT 0,
+    se_deja_reales REAL NOT NULL DEFAULT 0,
+    se_deja_oro REAL NOT NULL DEFAULT 0,
     cerrado_por VARCHAR(100) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    snapshot_json TEXT
 )
 """,
-            "CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha ON cierres_diarios (fecha)",
+            """
+INSERT INTO cierres_diarios_new (
+    id, fecha_operativa, ventas_reales, ventas_oro, compras_reales, gastos_reales,
+    oro_recolectado, reales_esperados, oro_esperado, reales_contados, oro_contado,
+    diferencia_reales, diferencia_oro, justificacion,
+    retiro_dueno_reales, retiro_dueno_oro, se_deja_reales, se_deja_oro,
+    cerrado_por, created_at, snapshot_json
+)
+SELECT
+    id, fecha,
+    COALESCE(total_reales, 0), COALESCE(total_oro, 0), 0, COALESCE(gastos, 0),
+    COALESCE(total_oro, 0), COALESCE(total_reales, 0), COALESCE(total_oro, 0),
+    COALESCE(total_reales, 0), COALESCE(total_oro, 0),
+    0, 0, '',
+    0, 0, 0, 0,
+    cerrado_por, created_at, NULL
+FROM cierres_diarios
+""",
+            "DROP TABLE cierres_diarios",
+            "ALTER TABLE cierres_diarios_new RENAME TO cierres_diarios",
+            "CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha_op ON cierres_diarios (fecha_operativa)",
         ]
         for sql in stmts:
-            conn.execute(text(sql))
+            conn.execute(text(sql.strip()))
+        return
+
+    if dialect == "postgresql":
+        stmts = [
+            """
+CREATE TABLE cierres_diarios_new (
+    id SERIAL PRIMARY KEY,
+    fecha_operativa DATE NOT NULL UNIQUE,
+    ventas_reales DOUBLE PRECISION NOT NULL,
+    ventas_oro DOUBLE PRECISION NOT NULL,
+    compras_reales DOUBLE PRECISION NOT NULL,
+    gastos_reales DOUBLE PRECISION NOT NULL,
+    oro_recolectado DOUBLE PRECISION NOT NULL,
+    reales_esperados DOUBLE PRECISION NOT NULL,
+    oro_esperado DOUBLE PRECISION NOT NULL,
+    reales_contados DOUBLE PRECISION NOT NULL,
+    oro_contado DOUBLE PRECISION NOT NULL,
+    diferencia_reales DOUBLE PRECISION NOT NULL,
+    diferencia_oro DOUBLE PRECISION NOT NULL,
+    justificacion TEXT NOT NULL DEFAULT '',
+    retiro_dueno_reales DOUBLE PRECISION NOT NULL DEFAULT 0,
+    retiro_dueno_oro DOUBLE PRECISION NOT NULL DEFAULT 0,
+    se_deja_reales DOUBLE PRECISION NOT NULL DEFAULT 0,
+    se_deja_oro DOUBLE PRECISION NOT NULL DEFAULT 0,
+    cerrado_por VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    snapshot_json TEXT
+)
+""",
+            """
+INSERT INTO cierres_diarios_new (
+    id, fecha_operativa, ventas_reales, ventas_oro, compras_reales, gastos_reales,
+    oro_recolectado, reales_esperados, oro_esperado, reales_contados, oro_contado,
+    diferencia_reales, diferencia_oro, justificacion,
+    retiro_dueno_reales, retiro_dueno_oro, se_deja_reales, se_deja_oro,
+    cerrado_por, created_at, snapshot_json
+)
+SELECT
+    id, fecha,
+    COALESCE(total_reales, 0), COALESCE(total_oro, 0), 0, COALESCE(gastos, 0),
+    COALESCE(total_oro, 0), COALESCE(total_reales, 0), COALESCE(total_oro, 0),
+    COALESCE(total_reales, 0), COALESCE(total_oro, 0),
+    0, 0, '',
+    0, 0, 0, 0,
+    cerrado_por, created_at, NULL
+FROM cierres_diarios
+""",
+            "DROP TABLE cierres_diarios CASCADE",
+            "ALTER TABLE cierres_diarios_new RENAME TO cierres_diarios",
+            "CREATE INDEX IF NOT EXISTS ix_cierres_diarios_fecha_op ON cierres_diarios (fecha_operativa)",
+        ]
+        for sql in stmts:
+            conn.execute(text(sql.strip()))
 
 
 def apply_schema_patches() -> None:
@@ -252,7 +437,9 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
 """
             conn.execute(text(create_reposiciones))
             _ensure_transacciones_table(conn, dialect)
+            _migrate_cierres_diarios_legacy(conn, dialect)
             _ensure_cierres_diarios_table(conn, dialect)
+            _ensure_aperturas_caja_table(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -276,5 +463,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
                 for sql in stmts:
                     conn.execute(text(sql))
             _ensure_transacciones_table(conn, dialect)
+            _migrate_cierres_diarios_legacy(conn, dialect)
             _ensure_cierres_diarios_table(conn, dialect)
+            _ensure_aperturas_caja_table(conn, dialect)
         return

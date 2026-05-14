@@ -331,17 +331,43 @@ class Salida(Base):
     producto = relationship("Producto", back_populates="salidas")
 
 
-class CierreDiario(Base):
-    __tablename__ = "cierres_diarios"
+class AperturaCaja(Base):
+    __tablename__ = "aperturas_caja"
+    __table_args__ = (UniqueConstraint("fecha_operativa", name="uq_apertura_fecha_operativa"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    fecha = Column(Date, unique=True, nullable=False, index=True)
-    total_oro = Column(Float, nullable=False)
-    total_reales = Column(Float, nullable=False)
-    gastos = Column(Float, nullable=False)
-    ganancia_neta = Column(Float, nullable=False)
+    fecha_operativa = Column(Date, nullable=False, index=True)
+    caja_inicial_reales = Column(Float, nullable=False)
+    oro_operativo_inicial = Column(Float, nullable=False, default=0)
+    abierto_por = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class CierreDiario(Base):
+    __tablename__ = "cierres_diarios"
+    __table_args__ = (UniqueConstraint("fecha_operativa", name="uq_cierre_fecha_operativa"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    fecha_operativa = Column(Date, nullable=False, index=True)
+    ventas_reales = Column(Float, nullable=False)
+    ventas_oro = Column(Float, nullable=False)
+    compras_reales = Column(Float, nullable=False)
+    gastos_reales = Column(Float, nullable=False)
+    oro_recolectado = Column(Float, nullable=False)
+    reales_esperados = Column(Float, nullable=False)
+    oro_esperado = Column(Float, nullable=False)
+    reales_contados = Column(Float, nullable=False)
+    oro_contado = Column(Float, nullable=False)
+    diferencia_reales = Column(Float, nullable=False)
+    diferencia_oro = Column(Float, nullable=False)
+    justificacion = Column(Text, nullable=False, default="")
+    retiro_dueno_reales = Column(Float, nullable=False, default=0)
+    retiro_dueno_oro = Column(Float, nullable=False, default=0)
+    se_deja_reales = Column(Float, nullable=False, default=0)
+    se_deja_oro = Column(Float, nullable=False, default=0)
     cerrado_por = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
+    snapshot_json = Column(Text, nullable=True)
 
 
 class Transaccion(Base):

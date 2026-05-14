@@ -654,15 +654,68 @@
           </div>
           <button type="button" class="btn-refresh" id="btn-cierre-actualizar">Actualizar</button>
         </div>
+
         <article class="card">
-          <div class="stack-form" style="max-width: 320px;">
-            <label>Saldo inicial caja (R$)
-              <input type="number" id="cierre-saldo-inicial" min="0" step="0.01" value="0">
+          <h3>1. Apertura</h3>
+          <p class="muted small" id="cierre-apertura-estado"></p>
+          <div class="stack-form" style="max-width: 420px;">
+            <label>Caja inicial (R$)
+              <input type="number" id="cierre-apertura-caja" min="0" step="0.01" value="0">
             </label>
-            <button type="button" class="btn-cobrar" id="btn-cierre-generar">Generar cierre del día</button>
+            <label>Oro operativo inicial (g)
+              <input type="number" id="cierre-apertura-oro" min="0" step="0.01" value="0">
+            </label>
+            <button type="button" class="btn-cobrar" id="btn-cierre-registrar-apertura">Registrar apertura</button>
           </div>
         </article>
-        <div id="cierre-contenido" class="cierre-root"></div>
+
+        <article class="card">
+          <h3>2. Operaciones del dia</h3>
+          <div id="cierre-contenido" class="cierre-root"></div>
+        </article>
+
+        <article class="card">
+          <h3>3. Conciliacion</h3>
+          <div class="stack-form" style="max-width: 480px;">
+            <p>Reales esperados: <strong id="cierre-conc-real-esp">—</strong></p>
+            <label>Reales contados
+              <input type="number" id="cierre-conc-real-contado" min="0" step="0.01" value="0">
+            </label>
+            <p>Oro esperado (g): <strong id="cierre-conc-oro-esp">—</strong></p>
+            <label>Oro contado (g)
+              <input type="number" id="cierre-conc-oro-contado" min="0" step="0.01" value="0">
+            </label>
+            <p>Diferencia reales: <strong id="cierre-conc-diff-real">—</strong></p>
+            <p>Diferencia oro (g): <strong id="cierre-conc-diff-oro">—</strong></p>
+            <label>Justificacion (obligatoria si hay diferencia)
+              <textarea id="cierre-conc-justif" rows="3" maxlength="4000" placeholder=""></textarea>
+            </label>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>4. Generar cierre</h3>
+          <div class="stack-form" style="max-width: 420px;">
+            <label>Retiro dueno (R$)
+              <input type="number" id="cierre-retiro-reales" min="0" step="0.01" value="0">
+            </label>
+            <label>Retiro dueno (oro, g)
+              <input type="number" id="cierre-retiro-oro" min="0" step="0.01" value="0">
+            </label>
+            <label>Se deja en caja (R$)
+              <input type="number" id="cierre-se-deja-reales" min="0" step="0.01" value="0">
+            </label>
+            <label>Se deja en caja (oro, g)
+              <input type="number" id="cierre-se-deja-oro" min="0" step="0.01" value="0">
+            </label>
+            <button type="button" class="btn-cobrar" id="btn-cierre-generar">Generar cierre</button>
+          </div>
+        </article>
+
+        <article class="card" id="cierre-snapshot-wrap" style="display: none;">
+          <h3>Cierre guardado (snapshot)</h3>
+          <pre id="cierre-snapshot-pre" class="cierre-snapshot-pre"></pre>
+        </article>
       </section>
     </main>
   </div>

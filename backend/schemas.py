@@ -229,6 +229,20 @@ class SalidaOut(ORMModel):
 
 class CierreGenerarCreate(BaseModel):
     cerrado_por: str = Field(..., min_length=1, max_length=100)
-    saldo_inicial_reales: float = Field(default=0, ge=0)
+    reales_contados: float = Field(..., ge=0)
+    oro_contado: float = Field(..., ge=0)
+    justificacion: str = Field(default="", max_length=4000)
+    retiro_dueno_reales: float = Field(default=0, ge=0)
+    retiro_dueno_oro: float = Field(default=0, ge=0)
+    se_deja_reales: float = Field(default=0, ge=0)
+    se_deja_oro: float = Field(default=0, ge=0)
 
     _cerrado_por = field_validator("cerrado_por")(_texto_requerido)
+
+
+class AperturaCajaCreate(BaseModel):
+    caja_inicial_reales: float = Field(..., ge=0)
+    oro_operativo_inicial: float = Field(default=0, ge=0)
+    abierto_por: str = Field(..., min_length=1, max_length=100)
+
+    _abierto_por = field_validator("abierto_por")(_texto_requerido)
