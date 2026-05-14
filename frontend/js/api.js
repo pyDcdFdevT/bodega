@@ -111,9 +111,26 @@ function partesFechaHora(value) {
   return { fecha: `${dia}/${mes}/${anio}`, hora: `${hora}:${minuto}` };
 }
 
-/** Fecha y hora: "13/05/26 10:31" (sin coma, sin segundos). */
+/** Desfase Venezuela (sin DST): UTC−4 respecto al instante almacenado en UTC. */
+const VENEZUELA_OFFSET_MS = 4 * 60 * 60 * 1000;
+
+function partesFechaHoraVenezuela(value) {
+  const d = parseFechaLocal(value);
+  if (!d || Number.isNaN(d.getTime())) {
+    return null;
+  }
+  const a = new Date(d.getTime() - VENEZUELA_OFFSET_MS);
+  const dia = String(a.getUTCDate()).padStart(2, "0");
+  const mes = String(a.getUTCMonth() + 1).padStart(2, "0");
+  const anio = String(a.getUTCFullYear()).slice(-2);
+  const hora = String(a.getUTCHours()).padStart(2, "0");
+  const minuto = String(a.getUTCMinutes()).padStart(2, "0");
+  return { fecha: `${dia}/${mes}/${anio}`, hora: `${hora}:${minuto}` };
+}
+
+/** Fecha y hora: "13/05/26 10:31" (sin coma, sin segundos). Instant UTC del backend mostrado como UTC−4 (Venezuela). */
 export function formatDate(value) {
-  const partes = partesFechaHora(value);
+  const partes = partesFechaHoraVenezuela(value);
   if (!partes) {
     return "-";
   }
