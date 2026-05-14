@@ -98,19 +98,6 @@ function parseFechaLocal(value) {
   return d;
 }
 
-function partesFechaHora(value) {
-  const d = parseFechaLocal(value);
-  if (!d) {
-    return null;
-  }
-  const dia = String(d.getDate()).padStart(2, "0");
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const anio = String(d.getFullYear()).slice(-2);
-  const hora = String(d.getHours()).padStart(2, "0");
-  const minuto = String(d.getMinutes()).padStart(2, "0");
-  return { fecha: `${dia}/${mes}/${anio}`, hora: `${hora}:${minuto}` };
-}
-
 /** Desfase Venezuela (sin DST): UTC−4 respecto al instante almacenado en UTC. */
 const VENEZUELA_OFFSET_MS = 4 * 60 * 60 * 1000;
 
@@ -137,18 +124,18 @@ export function formatDate(value) {
   return `${partes.fecha} ${partes.hora}`;
 }
 
-/** Solo fecha: "13/05/26". */
+/** Solo fecha: "13/05/26" (UTC−4 Venezuela, coherente con formatDate). */
 export function formatDateOnly(value) {
-  const partes = partesFechaHora(value);
+  const partes = partesFechaHoraVenezuela(value);
   if (!partes) {
     return "-";
   }
   return partes.fecha;
 }
 
-/** Solo hora: "10:31". */
+/** Solo hora: "10:31" (UTC−4 Venezuela, coherente con formatDate). */
 export function formatTimeOnly(value) {
-  const partes = partesFechaHora(value);
+  const partes = partesFechaHoraVenezuela(value);
   if (!partes) {
     return "-";
   }
