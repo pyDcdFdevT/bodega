@@ -1,4 +1,5 @@
 import { api, formatMoney, renderEmptyRow, showToast } from "./api.js";
+import { dataCache, getCachedProductos } from "./app.js";
 import { RATE_ORDER, getRateLabel, getTasasCache } from "./tasas.js";
 
 let productosCache = [];
@@ -121,10 +122,21 @@ function renderStockBajo(items) {
 }
 
 export async function loadInventario() {
-  const [productos, stockBajo] = await Promise.all([
-    api.get("/productos"),
-    api.get("/productos/stock-bajo"),
-  ]);
+  const cached = getCachedProductos();
+  let productos;
+  let stockBajo;
+  if (cached) {
+    productos = cached;
+    stockBajo = dataCache.stockBajo ?? [];
+  } else {
+    [productos, stockBajo] = await Promise.all([
+      api.get("/productos"),
+      api.get("/productos/stock-bajo"),
+    ]);
+    dataCache.productos = productos;
+    dataCache.stockBajo = stockBajo;
+    dataCache.lastFetch.productos = Date.now();
+  }
   productosCache = productos;
   renderProductosAccordiones(productosCache);
   renderStockBajo(stockBajo);

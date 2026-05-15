@@ -29,7 +29,7 @@ router = APIRouter(prefix="/reportes", tags=["Dashboard"])
 
 @router.get("/dashboard")
 def dashboard(db: Session = Depends(get_db)):
-    inicio_hoy = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
+    inicio_hoy = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     total_productos = db.query(func.count(Producto.id)).filter(Producto.activo.is_(True)).scalar() or 0
     stock_bajo = (
         db.query(func.count(Producto.id))
@@ -201,7 +201,7 @@ def dashboard(db: Session = Depends(get_db)):
 
 @router.get("/gasolina")
 def reporte_gasolina(db: Session = Depends(get_db)):
-    inicio_hoy = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
+    inicio_hoy = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
     litros_disponibles = float(gasolina.litros_disponibles) if gasolina else 0.0
 
@@ -256,7 +256,7 @@ def reporte_inventario(db: Session = Depends(get_db)):
 
 @router.get("/ventas")
 def reporte_ventas(dias: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
-    desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
+    desde = datetime.now(UTC) - timedelta(days=dias)
     ventas = (
         db.query(Venta)
         .filter(Venta.fecha >= desde, venta_no_anulada())
@@ -276,7 +276,7 @@ def reporte_ventas(dias: int = Query(default=7, ge=1, le=90), db: Session = Depe
 
 @router.get("/compras")
 def reporte_compras(dias: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)):
-    desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=dias)
+    desde = datetime.now(UTC) - timedelta(days=dias)
     compras = (
         db.query(Compra)
         .filter(Compra.fecha >= desde, compra_no_anulada())

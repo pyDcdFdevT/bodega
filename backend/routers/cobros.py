@@ -23,7 +23,7 @@ _CANAL_ETIQUETA = {"efectivo": "Efectivo", "oro": "Oro"}
 
 
 def _inicio_dia_hoy() -> datetime:
-    d = datetime.now(UTC).replace(tzinfo=None)
+    d = datetime.now(UTC)
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
 

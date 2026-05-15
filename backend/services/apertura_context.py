@@ -10,7 +10,7 @@ from models import AperturaCaja, CierreDiario
 
 
 def fecha_operativa_hoy() -> date:
-    return datetime.now(UTC).replace(tzinfo=None).date()
+    return datetime.now(UTC).date()
 
 
 def exigir_apertura_del_dia(db: Session) -> None:

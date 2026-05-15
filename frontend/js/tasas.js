@@ -1,4 +1,5 @@
 import { api, formatDate, formatRate, renderEmptyRow, showToast } from "./api.js";
+import { dataCache, getCachedProductos, getCachedTasas } from "./app.js";
 
 export const RATE_ORDER = [
   "araparita",
@@ -62,7 +63,14 @@ export function fillTasaSelect(selectId) {
 }
 
 export async function loadTasas() {
-  tasasCache = await api.get("/tasas");
+  const cachedTasas = getCachedTasas();
+  if (cachedTasas) {
+    tasasCache = cachedTasas;
+  } else {
+    tasasCache = await api.get("/tasas");
+    dataCache.tasas = tasasCache;
+    dataCache.lastFetch.tasas = Date.now();
+  }
 
   const pill = document.getElementById("tasa-actual-pill");
   if (pill) {
@@ -101,7 +109,7 @@ export async function loadTasas() {
 
   const tablaProductos = document.getElementById("tabla-tasas-productos");
   if (tablaProductos) {
-    const productos = await api.get("/productos");
+    const productos = getCachedProductos() ?? (await api.get("/productos"));
     if (!productos.length) {
       tablaProductos.innerHTML = renderEmptyRow(6, "No hay productos para calcular equivalencias.");
     } else {

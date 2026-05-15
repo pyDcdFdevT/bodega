@@ -1,5 +1,7 @@
 const API_BASE = "/api";
 
+/** El backend envía fechas en UTC con tzinfo. El frontend convierte a Venezuela (UTC-4) para mostrar. */
+
 /** FastAPI puede devolver `detail` como string o como lista de errores de validación. */
 function formatApiErrorDetail(payload, isJson) {
   if (!isJson) {

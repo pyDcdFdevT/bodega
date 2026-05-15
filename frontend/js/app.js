@@ -1,5 +1,41 @@
 import { showToast } from "./api.js";
 import { getRol, initAuth } from "./auth.js";
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export const dataCache = {
+  productos: null,
+  stockBajo: null,
+  tasas: null,
+  lastFetch: {},
+};
+
+export function getCachedProductos() {
+  const ts = dataCache.lastFetch.productos;
+  if (dataCache.productos == null || ts == null || Date.now() - ts > CACHE_TTL_MS) {
+    return null;
+  }
+  return dataCache.productos;
+}
+
+export function getCachedTasas() {
+  const ts = dataCache.lastFetch.tasas;
+  if (dataCache.tasas == null || ts == null || Date.now() - ts > CACHE_TTL_MS) {
+    return null;
+  }
+  return dataCache.tasas;
+}
+
+export function invalidateCache(tipo) {
+  if (tipo === "productos") {
+    dataCache.productos = null;
+    dataCache.stockBajo = null;
+    delete dataCache.lastFetch.productos;
+  } else if (tipo === "tasas") {
+    dataCache.tasas = null;
+    delete dataCache.lastFetch.tasas;
+  }
+}
 import { initApertura, loadApertura } from "./apertura.js";
 import { initActivos, loadActivos } from "./activos.js";
 import { initCierre, loadCierre } from "./cierre.js";
@@ -125,7 +161,11 @@ async function init() {
   initFundicion();
   initActivos();
   registerServiceWorker();
-  document.addEventListener("bodega:refresh", refreshAll);
+  document.addEventListener("bodega:refresh", () => {
+    invalidateCache("productos");
+    invalidateCache("tasas");
+    refreshAll();
+  });
   document.addEventListener("bodega:unlocked", () => {
     aplicarVistaRol();
     refreshAll();

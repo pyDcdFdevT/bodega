@@ -70,7 +70,7 @@ def listar_transacciones_hoy(
     limit: int = Query(default=200, ge=1, le=1000),
     db: Session = Depends(get_db),
 ):
-    hoy = datetime.now(UTC).replace(tzinfo=None).date().isoformat()
+    hoy = datetime.now(UTC).date().isoformat()
     inicio, fin = _rango_dia_naive(hoy)
     q = db.query(Transaccion).filter(Transaccion.fecha >= inicio, Transaccion.fecha < fin)
     if tipo:

@@ -406,7 +406,7 @@ def listar_ventas(
 
 @router.get("/resumen/hoy")
 def resumen_ventas_hoy(db: Session = Depends(get_db)):
-    inicio = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
+    inicio = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     total_oro, total_reales, cantidad = (
         db.query(
             func.coalesce(func.sum(Venta.total_oro), 0),

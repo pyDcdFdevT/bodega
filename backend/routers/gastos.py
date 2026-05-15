@@ -43,7 +43,7 @@ def registrar_gasto(data: GastoCreate, db: Session = Depends(get_db)):
 
 @router.get("/hoy")
 def listar_gastos_hoy(db: Session = Depends(get_db)):
-    inicio = datetime.now(UTC).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0)
+    inicio = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     rows = (
         db.query(GastoOperativo)
         .filter(GastoOperativo.fecha >= inicio)
