@@ -5,13 +5,13 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import Categoria, Producto
-from schemas import CategoriaCreate
+from schemas import CategoriaCreate, CategoriaOut
 
 
 router = APIRouter(prefix="/categorias", tags=["Categorias"])
 
 
-@router.get("")
+@router.get("", response_model=list[CategoriaOut])
 def listar_categorias(db: Session = Depends(get_db)):
     categorias = db.query(Categoria).options(joinedload(Categoria.productos)).order_by(Categoria.nombre.asc()).all()
     return [

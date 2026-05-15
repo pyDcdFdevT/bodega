@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import CompraOro
-from schemas import CompraOroCreate
+from schemas import CompraOroCreate, CompraOroOut
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
@@ -62,7 +62,7 @@ def registrar_compra_oro(data: CompraOroCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="No fue posible registrar la compra de oro") from exc
 
 
-@router.get("")
+@router.get("", response_model=list[CompraOroOut])
 def listar_compras_oro(
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),

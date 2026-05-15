@@ -9,7 +9,7 @@ from routers.deps import require_admin
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
-from schemas import CompraCreate, CompraUpdate
+from schemas import CompraCreate, CompraOut, CompraUpdate
 
 
 router = APIRouter(prefix="/compras", tags=["Compras"])
@@ -177,7 +177,7 @@ def anular_compra(
         raise HTTPException(status_code=500, detail="No fue posible anular la compra") from exc
 
 
-@router.get("")
+@router.get("", response_model=list[CompraOut])
 def listar_compras(
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),

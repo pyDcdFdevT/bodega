@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import Gasolina, GasolinaReposicion, TasaCambio, VentaGasolina
-from schemas import GasolinaConfigUpdate, GasolinaReposicionCreate, GasolinaVenta
+from schemas import GasolinaConfigUpdate, GasolinaReposicionCreate, GasolinaVenta, VentaGasolinaOut
 from services.apertura_context import exigir_apertura_del_dia
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -219,7 +219,7 @@ def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="No fue posible registrar la venta de gasolina") from exc
 
 
-@router.get("/ventas")
+@router.get("/ventas", response_model=list[VentaGasolinaOut])
 def listar_ventas_gasolina(
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),

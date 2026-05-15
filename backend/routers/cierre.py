@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import AperturaCaja, CierreDiario
 from routers.deps import require_admin
-from schemas import CierreGenerarCreate
+from schemas import CierreDiaOut, CierreGenerarCreate, CierreResponseOut
 from services.apertura_context import build_apertura_pantalla_payload
 from services.operativa import _inicio_dia_hoy, construir_payload_cierre
 
@@ -22,7 +22,7 @@ def cierre_apertura_contexto(db: Session = Depends(get_db)):
     return build_apertura_pantalla_payload(db)
 
 
-@router.get("/dia")
+@router.get("/dia", response_model=CierreDiaOut)
 def cierre_del_dia(
     caja_inicial_reales: float | None = Query(default=None, ge=0),
     oro_operativo_inicial: float | None = Query(default=None, ge=0),
@@ -70,7 +70,7 @@ def cierre_del_dia(
     return data
 
 
-@router.post("/generar")
+@router.post("/generar", response_model=CierreResponseOut)
 def generar_cierre_diario(
     payload: CierreGenerarCreate,
     _rol: str = Depends(require_admin),

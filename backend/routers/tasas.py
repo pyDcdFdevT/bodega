@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import LogTasaCambio, TasaCambio
-from schemas import TasasConfigUpdate
+from schemas import TasaCambioOut, TasasConfigUpdate
 from services.calculos import CalculosMonetarios
 
 
@@ -22,7 +22,7 @@ def serializar_tasa(tasa: TasaCambio) -> dict:
     }
 
 
-@router.get("")
+@router.get("", response_model=list[TasaCambioOut])
 def listar_tasas(db: Session = Depends(get_db)):
     tasas = CalculosMonetarios.consultar_tasas(db)
     return [serializar_tasa(tasa) for tasa in tasas]

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import DetalleVenta, MovimientoInventario, PagoVenta, Producto, TasaCambio, Venta
 from routers.deps import require_admin
-from schemas import VentaCreate
+from schemas import VentaCreate, VentaListadoOut
 from services.apertura_context import exigir_apertura_del_dia
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -372,7 +372,7 @@ def anular_venta(
         raise HTTPException(status_code=500, detail="No fue posible anular la venta") from exc
 
 
-@router.get("")
+@router.get("", response_model=list[VentaListadoOut])
 def listar_ventas(
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),

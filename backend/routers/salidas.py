@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import MovimientoInventario, Salida
-from schemas import SalidaCreate
+from schemas import SalidaCreate, SalidaOut
 from services.apertura_context import exigir_apertura_del_dia
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -81,7 +81,7 @@ def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="No fue posible registrar la salida") from exc
 
 
-@router.get("")
+@router.get("", response_model=list[SalidaOut])
 def listar_salidas(
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),

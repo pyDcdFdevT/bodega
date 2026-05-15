@@ -198,6 +198,62 @@ class CompraUpdate(BaseModel):
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
 
+class CompraOut(ORMModel):
+    """Listado compras.js: id, fecha, proveedor, total_reales."""
+
+    id: int
+    fecha: datetime
+    proveedor: str
+    total_reales: float
+
+
+class VentaListadoOut(BaseModel):
+    """Listado ventas.js (tabla-ventas)."""
+
+    id: int
+    fecha: datetime
+    cliente: str
+    total_oro: float
+    total_reales: float
+    tipo_pago: str
+    tipo_oro: Optional[str] = None
+    tasa_nombre: Optional[str] = None
+    tipo_venta: str = "contado"
+    estado_pago: str = "PAGADO"
+    saldo_pendiente: float = 0
+
+
+class VentaGasolinaOut(BaseModel):
+    """Listado gasolina.js (tabla-gasolina-ventas)."""
+
+    id: int
+    fecha: datetime
+    litros: float
+    total_oro: float
+    total_reales: float
+    tipo_pago: str
+    tipo_oro: Optional[str] = None
+    precio_litro_reales: float
+    tasa_nombre: Optional[str] = None
+
+
+class GastoOut(BaseModel):
+    """Filas gastos.js (tabla-gastos-hoy)."""
+
+    fecha: datetime
+    categoria: str
+    descripcion: str
+    monto_reales: float
+
+
+class GastosHoyOut(BaseModel):
+    """Respuesta GET /gastos/hoy."""
+
+    fecha: str
+    total_reales: float
+    items: list[GastoOut]
+
+
 def _categoria_gasto(valor: str) -> str:
     n = _texto_requerido(valor).lower()
     permitidas = {"viaje", "comida", "estadia", "repuestos", "insumos", "otro"}
@@ -295,6 +351,152 @@ class SalidaOut(ORMModel):
     valor_oro: float
     motivo: str
     fecha: datetime
+
+
+class CierreBodegaOut(BaseModel):
+    ventas_reales: float
+    ventas_oro: float
+    compras_mercancia_reales: float
+    compras_mercancia_oro: float
+    salidas_oro: float
+
+
+class CierreGasolinaOut(BaseModel):
+    ventas_reales: float
+    ventas_oro: float
+    reposicion_reales: float
+
+
+class CierreCompraOroOut(BaseModel):
+    gramos: float
+    reales_usados: float
+
+
+class CierreGastosOut(BaseModel):
+    total_reales: float
+
+
+class CierreOroRecolectadoOut(BaseModel):
+    araparita: float
+    uruman: float
+    santa_elena_minero: float
+    santa_elena_fundido: float
+    comprado_araparita: float
+    comprado_uruman: float
+    comprado_santa_elena_minero: float
+    comprado_santa_elena_fundido: float
+    comprado_otros_tipos_gramos: float
+    comprado_gramos: float
+    bruto_total_gramos: float
+
+
+class CierreCajaOut(BaseModel):
+    saldo_inicial_reales: float
+    oro_operativo_inicial: float
+    ingresos_reales: float
+    egresos_reales: float
+    saldo_final_reales: float
+
+
+class CierreNotaOut(BaseModel):
+    nota: str
+
+
+class CierreFundicionOut(BaseModel):
+    nota: str
+    bruto_gramos: float
+
+
+class CierreConciliacionOut(BaseModel):
+    reales_esperados: float
+    oro_esperado: float
+
+
+class CierreTotalesOut(BaseModel):
+    ventas_reales: float
+    ventas_oro: float
+    compras_reales: float
+    gastos_reales: float
+    oro_recolectado_gramos: float
+
+
+class CierreDetalleOut(BaseModel):
+    fecha: str
+    bodega: CierreBodegaOut
+    gasolina: CierreGasolinaOut
+    compra_oro: CierreCompraOroOut
+    gastos: CierreGastosOut
+    oro_recolectado: CierreOroRecolectadoOut
+    caja: CierreCajaOut
+    fundicion: CierreFundicionOut
+    venta_pieza: CierreNotaOut
+    conciliacion: CierreConciliacionOut
+    totales_dia: CierreTotalesOut
+    ganancia_neta_dia: float
+    cuentas_por_cobrar: float
+    cobros_del_dia: float
+
+
+class CierreGuardadoOut(BaseModel):
+    id: int
+    fecha_operativa: str
+    ventas_reales: float
+    ventas_oro: float
+    compras_reales: float
+    gastos_reales: float
+    oro_recolectado: float
+    reales_esperados: float
+    oro_esperado: float
+    reales_contados: float
+    oro_contado: float
+    diferencia_reales: float
+    diferencia_oro: float
+    justificacion: str
+    retiro_dueno_reales: float
+    retiro_dueno_oro: float
+    se_deja_reales: float
+    se_deja_oro: float
+    cerrado_por: str
+    created_at: Optional[str] = None
+    detalle: Optional[CierreDetalleOut] = None
+
+
+class CierreDiaOut(CierreDetalleOut):
+    """GET /cierre/dia: detalle operativo del día."""
+
+    cierre_guardado: Optional[CierreGuardadoOut] = None
+
+
+class CierreDiarioOut(BaseModel):
+    """Resumen persistido al generar el cierre."""
+
+    ventas_reales: float
+    ventas_oro: float
+    compras_reales: float
+    gastos_reales: float
+    oro_recolectado: float
+    reales_esperados: float
+    oro_esperado: float
+    reales_contados: float
+    oro_contado: float
+    diferencia_reales: float
+    diferencia_oro: float
+    justificacion: str
+    retiro_dueno_reales: float
+    retiro_dueno_oro: float
+    se_deja_reales: float
+    se_deja_oro: float
+
+
+class CierreResponseOut(BaseModel):
+    """POST /cierre/generar: resumen guardado + detalle del día."""
+
+    status: str
+    cierre_id: int
+    fecha_operativa: str
+    cerrado_por: str
+    cierre: CierreDiarioOut
+    detalle: CierreDetalleOut
 
 
 class CierreGenerarCreate(BaseModel):

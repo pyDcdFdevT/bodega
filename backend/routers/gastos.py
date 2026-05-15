@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import GastoOperativo
-from schemas import GastoCreate
+from schemas import GastoCreate, GastosHoyOut
 from services.ledger import registrar_transaccion
 
 
@@ -41,7 +41,7 @@ def registrar_gasto(data: GastoCreate, db: Session = Depends(get_db)):
     return {"status": "success", "id": g.id}
 
 
-@router.get("/hoy")
+@router.get("/hoy", response_model=GastosHoyOut)
 def listar_gastos_hoy(db: Session = Depends(get_db)):
     inicio = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     rows = (
