@@ -48,11 +48,31 @@ function fechaOperativaUtc(iso) {
   return d.toISOString().slice(0, 10);
 }
 
-function renderSummaryCards(inv, op) {
+function gananciaNetaReales(op) {
+  const ventas = Number(op.ventas_reales ?? 0);
+  const compras = Number(op.compras_reales ?? 0);
+  const gastos = Number(op.gastos_reales ?? 0);
+  return Math.round((ventas - compras - gastos) * 100) / 100;
+}
+
+function totalOroRecolectadoGramos(op, oroRecolectado) {
+  const o = oroRecolectado || {};
+  return (
+    Number(o.araparita ?? op.oro_araparita ?? 0) +
+    Number(o.uruman ?? op.oro_uruman ?? 0) +
+    Number(o.santa_elena_minero ?? op.oro_santa_elena_minero ?? 0) +
+    Number(o.santa_elena_fundido ?? op.oro_santa_elena_fundido ?? 0) +
+    Number(o.comprado_gramos ?? 0)
+  );
+}
+
+function renderSummaryCards(inv, op, oroRecolectado) {
   const container = document.getElementById("dashboard-summary-cards");
   if (!container) {
     return;
   }
+  const gananciaR = gananciaNetaReales(op);
+  const oroTotal = totalOroRecolectadoGramos(op, oroRecolectado);
   container.innerHTML = `
     <article class="metric-pill dashboard-kpi">
       <span>Productos activos</span>
@@ -63,8 +83,12 @@ function renderSummaryCards(inv, op) {
       <strong>${inv.stock_bajo ?? 0}</strong>
     </article>
     <article class="metric-pill dashboard-kpi">
-      <span>Ganancia neta (oro ref.)</span>
-      <strong>${formatMoney(op.ganancia_neta)}</strong>
+      <span>Ganancia neta (R$)</span>
+      <strong>${formatMoney(gananciaR, "reales")}</strong>
+    </article>
+    <article class="metric-pill dashboard-kpi">
+      <span>Oro recolectado total (g)</span>
+      <strong>${formatMoney(oroTotal)}</strong>
     </article>
   `;
 }
@@ -291,7 +315,7 @@ function renderDashboard(data, cierreDia, ventasList) {
   const oro = cierreDia?.oro_recolectado || null;
 
   destroyDashboardCharts();
-  renderSummaryCards(inv, op);
+  renderSummaryCards(inv, op, oro);
   renderOroPieChart(op, oro);
   renderBarrasChart(op);
   renderVentasHoraChart(ventasList || [], data.fecha);
