@@ -32,7 +32,7 @@ function renderCierre() {
         ${fila("Ventas reales", formatMoney(b.ventas_reales, "reales"))}
         ${fila("Ventas oro (total venta)", `${formatMoney(b.ventas_oro)} g equiv.`)}
         ${fila("Compras mercancia", `-${formatMoney(b.compras_mercancia_reales, "reales")}`)}
-        ${fila("Salidas (valor oro)", `-${formatMoney(b.salidas_oro)} g`)}
+        ${fila("Salidas (R$)", `-${formatMoney(b.salidas_reales ?? b.salidas_oro, "reales")}`)}
       `
       )}
       ${bloque(

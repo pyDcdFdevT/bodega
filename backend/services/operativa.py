@@ -92,7 +92,8 @@ def construir_payload_cierre(
         .scalar()
         or 0
     )
-    salidas_oro = float(
+    # valor_oro (legacy): pérdida en R$ = cantidad × precio_costo_reales
+    salidas_reales = float(
         db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio).scalar() or 0
     )
 
@@ -161,7 +162,7 @@ def construir_payload_cierre(
     oro_recolectado_bruto_r = round(oro_recolectado_bruto, 2)
     co_gramos_r = round(co_gramos, 2)
     bruto_total_gramos = round(oro_recolectado_bruto + co_gramos, 2)
-    salidas_oro_r = round(salidas_oro, 2)
+    salidas_reales_r = round(salidas_reales, 2)
     oro_ini = float(oro_operativo_inicial or 0)
     oro_esperado = round(oro_ini + bruto_total_gramos, 2)
 
@@ -195,7 +196,7 @@ def construir_payload_cierre(
             "ventas_oro": round(ventas_oro, 2),
             "compras_mercancia_reales": round(compras_reales, 2),
             "compras_mercancia_oro": round(compras_oro, 2),
-            "salidas_oro": salidas_oro_r,
+            "salidas_reales": salidas_reales_r,
         },
         "gasolina": {
             "ventas_reales": round(gas_ventas_reales, 2),
@@ -235,7 +236,7 @@ def construir_payload_cierre(
             "gastos_reales": round(gastos_total, 2),
             "oro_recolectado_gramos": bruto_total_gramos,
         },
-        "ganancia_neta_dia": ganancia_neta_dia(ventas_oro, compras_oro, salidas_oro, gas_ventas_oro, gastos_oro_equiv),
+        "ganancia_neta_dia": ganancia_neta_dia(ventas_oro, compras_oro, 0.0, gas_ventas_oro, gastos_oro_equiv),
         "cuentas_por_cobrar": round(cuentas_por_cobrar, 2),
         "cobros_del_dia": round(cobros_del_dia, 2),
     }

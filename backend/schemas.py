@@ -369,7 +369,7 @@ class CierreBodegaOut(BaseModel):
     ventas_oro: float
     compras_mercancia_reales: float
     compras_mercancia_oro: float
-    salidas_oro: float
+    salidas_reales: float
 
 
 class CierreGasolinaOut(BaseModel):
