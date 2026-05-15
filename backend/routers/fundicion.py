@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import DistribucionFondos, Fundicion, LoteOro, VentaPieza
-from routers.cierre import construir_payload_cierre, _inicio_dia_hoy
+from services.operativa import _inicio_dia_hoy, construir_payload_cierre
 from routers.deps import require_admin
 from schemas import DistribucionFondosCreate, FundicionCreate, LoteOroCreate, VentaPiezaCreate
 
@@ -106,9 +104,14 @@ def listar_fundiciones(db: Session = Depends(get_db)):
 
 @router.get("/fundiciones/disponibles-venta")
 def fundiciones_sin_venta(db: Session = Depends(get_db)):
-    vendidos = {v.fundicion_id for v in db.query(VentaPieza).all()}
-    rows = db.query(Fundicion).order_by(Fundicion.fecha.desc()).all()
-    return [_serial_fund(r) for r in rows if r.id not in vendidos]
+    rows = (
+        db.query(Fundicion)
+        .outerjoin(VentaPieza, Fundicion.id == VentaPieza.fundicion_id)
+        .filter(VentaPieza.id.is_(None))
+        .order_by(Fundicion.fecha.desc())
+        .all()
+    )
+    return [_serial_fund(r) for r in rows]
 
 
 @router.post("/fundiciones")
@@ -185,9 +188,14 @@ def registrar_venta_pieza(
 
 @router.get("/ventas-pieza/sin-distribuir")
 def ventas_pieza_sin_distribuir(db: Session = Depends(get_db)):
-    con = {row[0] for row in db.query(DistribucionFondos.venta_pieza_id).distinct().all()}
-    rows = db.query(VentaPieza).order_by(VentaPieza.fecha.desc()).all()
-    return [_serial_vp(r) for r in rows if r.id not in con]
+    rows = (
+        db.query(VentaPieza)
+        .outerjoin(DistribucionFondos, VentaPieza.id == DistribucionFondos.venta_pieza_id)
+        .filter(DistribucionFondos.id.is_(None))
+        .order_by(VentaPieza.fecha.desc())
+        .all()
+    )
+    return [_serial_vp(r) for r in rows]
 
 
 @router.get("/distribuciones")

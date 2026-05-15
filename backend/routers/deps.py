@@ -7,5 +7,5 @@ def require_admin(x_bodega_rol: str | None = Header(default=None, alias="X-Bodeg
     """Solo rol admin (cabecera enviada por el cliente de confianza)."""
     rol = (x_bodega_rol or "").strip().lower()
     if rol != "admin":
-        raise HTTPException(status_code=403, detail="Solo administradores pueden generar el cierre")
+        raise HTTPException(status_code=403, detail="Solo administradores pueden realizar esta acción")
     return rol

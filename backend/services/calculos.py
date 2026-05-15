@@ -4,7 +4,7 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
-from models import TasaCambio
+from models import PagoVenta, TasaCambio
 
 
 class CalculosMonetarios:
@@ -142,3 +142,30 @@ class CalculosMonetarios:
         if tipo_pago == "reales":
             return 0.0, CalculosMonetarios.redondear(excedente_oro * tasa_reales, 2)
         return 0.0, CalculosMonetarios.redondear(excedente_oro * tasa_reales, 2)
+
+
+def ganancia_neta_dia(
+    ventas_oro: float,
+    compras_oro: float,
+    salidas_oro: float,
+    gasolina_oro: float,
+    gastos_oro_equiv: float,
+) -> float:
+    """Ganancia neta del día en oro: ventas + gasolina - compras - salidas - gastos (equiv. oro)."""
+    return round(
+        float(ventas_oro) - float(compras_oro) - float(salidas_oro) + float(gasolina_oro) - float(gastos_oro_equiv),
+        2,
+    )
+
+
+def equivalencia_pago_reales(db: Session, pago: PagoVenta) -> float:
+    """Equivalente en reales de un abono (efectivo u oro según tasa operativa)."""
+    if (pago.moneda or "reales").lower() == "reales":
+        return CalculosMonetarios.redondear(float(pago.monto), 2)
+    nombre = getattr(pago, "tipo_oro", None) or (pago.venta.tipo_oro if pago.venta else None)
+    if not nombre:
+        return 0.0
+    tasa = CalculosMonetarios.obtener_tasa_por_nombre(db, nombre)
+    if not tasa or float(tasa.tasa_reales) <= 0:
+        return 0.0
+    return CalculosMonetarios.redondear(float(pago.monto) * float(tasa.tasa_reales), 2)

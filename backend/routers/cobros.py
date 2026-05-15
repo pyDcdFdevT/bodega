@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import PagoVenta, TasaCambio, Venta
 from schemas import PagoVentaCreate
-from services.calculos import CalculosMonetarios
+from services.calculos import CalculosMonetarios, equivalencia_pago_reales
 from services.ledger import registrar_transaccion
 from services.query_operativa import venta_no_anulada
 
@@ -29,18 +29,6 @@ def _inicio_dia_hoy() -> datetime:
 
 def _tasa_por_nombre(db: Session, nombre: str) -> TasaCambio | None:
     return db.query(TasaCambio).filter(TasaCambio.nombre == nombre).first()
-
-
-def _equiv_pago_reales(db: Session, p: PagoVenta) -> float:
-    if (p.moneda or "reales").lower() == "reales":
-        return CalculosMonetarios.redondear(float(p.monto), 2)
-    nombre = getattr(p, "tipo_oro", None) or (p.venta.tipo_oro if p.venta else None)
-    if not nombre:
-        return 0.0
-    tasa = _tasa_por_nombre(db, nombre)
-    if not tasa or float(tasa.tasa_reales) <= 0:
-        return 0.0
-    return CalculosMonetarios.redondear(float(p.monto) * float(tasa.tasa_reales), 2)
 
 
 def _abono_en_reales(db: Session, body: PagoVentaCreate) -> float:
@@ -133,7 +121,7 @@ def pagos_recibidos_hoy(db: Session = Depends(get_db)):
     out = []
     for p in rows:
         v = p.venta
-        equiv = _equiv_pago_reales(db, p)
+        equiv = equivalencia_pago_reales(db, p)
         out.append(
             {
                 "id": p.id,
