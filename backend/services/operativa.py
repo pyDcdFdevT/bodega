@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
 
 from models import (
@@ -11,7 +11,9 @@ from models import (
     GastoOperativo,
     GasolinaReposicion,
     PagoVenta,
+    Producto,
     Salida,
+    Transaccion,
     Venta,
     VentaGasolina,
 )
@@ -20,8 +22,51 @@ from services.query_operativa import compra_no_anulada, venta_no_anulada
 
 
 def _inicio_dia_hoy() -> datetime:
-    d = datetime.now(UTC)
-    return d.replace(hour=0, minute=0, second=0, microsecond=0)
+    """Medianoche UTC naive (misma convención que `utc_now()` en modelos)."""
+    return datetime.now(UTC).replace(tzinfo=None).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _sum_reposicion_gasolina_reales_dia(db: Session, inicio: datetime) -> float:
+    """R$ repuestos hoy: suma `GasolinaReposicion.total_reales` (no litros × precio × tasa)."""
+    return float(
+        db.query(func.coalesce(func.sum(GasolinaReposicion.total_reales), 0))
+        .filter(GasolinaReposicion.fecha >= inicio)
+        .scalar()
+        or 0
+    )
+
+
+def _sum_salidas_reales_dia(db: Session, inicio: datetime) -> float:
+    """Pérdida en R$ del día: `Salida.valor_oro` (columna legacy, valor en reales)."""
+    desde_ledger = float(
+        db.query(func.coalesce(func.sum(Transaccion.monto_reales), 0))
+        .filter(
+            Transaccion.fecha >= inicio,
+            Transaccion.tipo == "salida",
+            Transaccion.modulo_origen == "bodega",
+        )
+        .scalar()
+        or 0
+    )
+    if desde_ledger > 0:
+        return desde_ledger
+    return float(
+        db.query(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Salida.valor_oro >= 1.0, Salida.valor_oro),
+                        else_=Salida.cantidad * Producto.precio_costo_reales,
+                    )
+                ),
+                0,
+            )
+        )
+        .join(Producto, Salida.producto_id == Producto.id)
+        .filter(Salida.fecha >= inicio)
+        .scalar()
+        or 0
+    )
 
 
 def _venta_oro_recibido_por_tipo(db: Session, inicio: datetime) -> dict[str, float]:
@@ -92,10 +137,7 @@ def construir_payload_cierre(
         .scalar()
         or 0
     )
-    # valor_oro (legacy): pérdida en R$ = cantidad × precio_costo_reales
-    salidas_reales = float(
-        db.query(func.coalesce(func.sum(Salida.valor_oro), 0)).filter(Salida.fecha >= inicio).scalar() or 0
-    )
+    salidas_reales = _sum_salidas_reales_dia(db, inicio)
 
     gas_ventas_reales = float(
         db.query(func.coalesce(func.sum(VentaGasolina.total_reales), 0))
@@ -109,12 +151,7 @@ def construir_payload_cierre(
         .scalar()
         or 0
     )
-    gas_repo_reales = float(
-        db.query(func.coalesce(func.sum(GasolinaReposicion.total_reales), 0))
-        .filter(GasolinaReposicion.fecha >= inicio)
-        .scalar()
-        or 0
-    )
+    gas_repo_reales = _sum_reposicion_gasolina_reales_dia(db, inicio)
 
     comprado_por_tipo, co_gramos, co_reales = _compra_oro_gramos_por_tipo(db, inicio)
     comprado_araparita = comprado_por_tipo.get("araparita", 0.0)
@@ -156,7 +193,7 @@ def construir_payload_cierre(
 
     oro_recolectado_bruto = oro_araparita + oro_uruman + oro_se_min + oro_se_fun
     ingresos_reales = ventas_contado_reales + gas_ventas_reales + cobros_del_dia
-    egresos_reales = compras_reales + co_reales + gas_repo_reales + gastos_total
+    egresos_reales = compras_reales + co_reales + gas_repo_reales + gastos_total + salidas_reales
     saldo_final = round(saldo_inicial_reales + ingresos_reales - egresos_reales, 2)
 
     oro_recolectado_bruto_r = round(oro_recolectado_bruto, 2)
