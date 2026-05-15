@@ -300,6 +300,28 @@ export async function loadGasolina() {
     }
   }
 
+  const tbodyRepo = document.getElementById("tabla-gasolina-reposiciones");
+  const reposiciones = gasolina?.reposiciones || [];
+  if (tbodyRepo) {
+    if (!reposiciones.length) {
+      tbodyRepo.innerHTML = renderEmptyRow(5, "No hay reposiciones registradas.");
+    } else {
+      tbodyRepo.innerHTML = reposiciones
+        .map(
+          (repo) => `
+        <tr>
+          <td>#${repo.id}</td>
+          <td>${formatDate(repo.fecha)}</td>
+          <td>${repo.litros}</td>
+          <td>${formatMoney(repo.precio_reales_litro, "reales")}</td>
+          <td>${formatMoney(repo.total_reales, "reales")}</td>
+        </tr>
+      `
+        )
+        .join("");
+    }
+  }
+
   sincronizarTipoOroDesdeTasa();
   actualizarPreviewRepo();
   actualizarVisibilidadPagoGasolina();
