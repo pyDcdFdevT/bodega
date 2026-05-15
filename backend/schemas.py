@@ -32,6 +32,25 @@ class PinVerifyRequest(BaseModel):
     _pin = field_validator("pin")(_texto_requerido)
 
 
+def _validar_pin_4_digitos(valor: str) -> str:
+    s = str(valor or "").strip()
+    if len(s) != 4 or not s.isdigit():
+        raise ValueError("El PIN debe tener exactamente 4 digitos")
+    return s
+
+
+class PinCambioRequest(BaseModel):
+    pin_admin_actual: str = Field(..., min_length=4, max_length=4)
+    pin_admin_nuevo: str = Field(..., min_length=4, max_length=4)
+    pin_vendedor_actual: str = Field(..., min_length=4, max_length=4)
+    pin_vendedor_nuevo: str = Field(..., min_length=4, max_length=4)
+
+    _pin_admin_actual = field_validator("pin_admin_actual")(_validar_pin_4_digitos)
+    _pin_admin_nuevo = field_validator("pin_admin_nuevo")(_validar_pin_4_digitos)
+    _pin_vendedor_actual = field_validator("pin_vendedor_actual")(_validar_pin_4_digitos)
+    _pin_vendedor_nuevo = field_validator("pin_vendedor_nuevo")(_validar_pin_4_digitos)
+
+
 class TasasConfigUpdate(BaseModel):
     araparita: float = Field(..., gt=0)
     uruman: float = Field(..., gt=0)

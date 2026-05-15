@@ -8,17 +8,21 @@
   <title>Bodega POS 3.0</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/css/estilo.css">
+  <script>
+    (function () {
+      if (localStorage.getItem("bodega-theme") === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
 </head>
 <body>
-  <div
-    id="pantalla-bloqueo"
-    style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,38,58,0.94);z-index:9999;padding:24px;"
-  >
-    <div style="width:min(420px,100%);background:#ffffff;border-radius:24px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.25);text-align:center;">
-      <p style="margin:0 0 8px 0;font-size:0.78rem;letter-spacing:0.18em;text-transform:uppercase;color:#8a5a2b;">Acceso protegido</p>
-      <h2 style="margin:0 0 10px 0;color:#17324d;">Ingrese el PIN</h2>
-      <p style="margin:0 0 18px 0;color:#4f667d;">Debes validar el acceso antes de usar el sistema.</p>
-      <form id="form-pin" style="display:grid;gap:14px;">
+  <div id="pantalla-bloqueo" class="pin-overlay">
+    <div class="pin-dialog card">
+      <p class="eyebrow">Acceso protegido</p>
+      <h2>Ingrese el PIN</h2>
+      <p class="muted small">Debes validar el acceso antes de usar el sistema.</p>
+      <form id="form-pin" class="stack-form">
         <input
           id="pin-input"
           type="text"
@@ -27,29 +31,21 @@
           maxlength="4"
           pattern="[0-9]*"
           placeholder="PIN de 4 digitos"
-          style="padding:14px 16px;border:1px solid rgba(17,38,58,0.18);border-radius:16px;text-align:center;font-size:1.2rem;letter-spacing:0.35em;"
+          class="pin-input"
           required
         >
-        <button
-          type="submit"
-          style="border:0;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,#d56b1d,#ba4e18);color:#fff8ef;font-weight:700;cursor:pointer;"
-        >
-          Entrar
-        </button>
-        <p id="pin-error" style="min-height:20px;margin:0;color:#b34747;font-weight:600;"></p>
+        <button type="submit">Entrar</button>
+        <p id="pin-error" class="pin-error"></p>
       </form>
     </div>
   </div>
 
   <div class="app-shell" id="app-contenido">
-    <header class="hero" style="position:relative;">
-      <button
-        type="button"
-        id="btn-cerrar-sesion"
-        style="position:absolute;top:20px;right:24px;z-index:2;border:0;border-radius:999px;padding:10px 18px;background:rgba(255,255,255,0.14);color:#fff8ef;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.2);"
-      >
-        Cerrar sesión
-      </button>
+    <header class="hero hero-with-actions">
+      <div class="hero-actions">
+        <button type="button" id="btn-config" class="btn-hero-ghost" title="Configuración" aria-label="Configuración">⚙️</button>
+        <button type="button" id="btn-cerrar-sesion" class="btn-hero-ghost">Cerrar sesión</button>
+      </div>
       <div>
         <p class="eyebrow">Bodega POS v3.0</p>
         <h1>Bodega Operativa</h1>
@@ -1115,6 +1111,47 @@
         <button type="submit">Registrar pago</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="dialog-config" class="modal-cobro modal-config">
+    <div class="modal-cobro-inner">
+      <div class="panel-header">
+        <h2>Configuración</h2>
+        <button type="button" id="btn-config-cerrar" class="btn-secondary">Cerrar</button>
+      </div>
+      <section class="config-section">
+        <h3>Apariencia</h3>
+        <label class="theme-toggle-row">
+          <span>Modo oscuro</span>
+          <input type="checkbox" id="config-theme-toggle" aria-label="Activar modo oscuro">
+        </label>
+        <p class="muted small">El tema se guarda en este dispositivo y aplica a toda la aplicación.</p>
+      </section>
+      <section id="config-pin-section" class="config-section solo-admin">
+        <h3>Cambiar PIN</h3>
+        <p class="muted small">Solo administrador. Cada PIN debe tener 4 dígitos.</p>
+        <form id="form-cambiar-pines" class="stack-form">
+          <label>
+            PIN Admin actual
+            <input type="password" name="pin_admin_actual" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" required>
+          </label>
+          <label>
+            Nuevo PIN Admin
+            <input type="password" name="pin_admin_nuevo" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="new-password" required>
+          </label>
+          <label>
+            PIN Vendedor actual
+            <input type="password" name="pin_vendedor_actual" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" required>
+          </label>
+          <label>
+            Nuevo PIN Vendedor
+            <input type="password" name="pin_vendedor_nuevo" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="new-password" required>
+          </label>
+          <p id="config-pin-error" class="pin-error"></p>
+          <button type="submit">Guardar PINs</button>
+        </form>
+      </section>
+    </div>
   </dialog>
 
   <div id="toast-container" class="toast-container"></div>

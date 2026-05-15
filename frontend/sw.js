@@ -1,4 +1,4 @@
-const CACHE_NAME = "bodega-static-v4";
+const CACHE_NAME = "bodega-static-v5";
 const ASSETS = [
   "/",
   "/index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "/js/activos.js",
   "/js/app.js",
   "/js/auth.js",
+  "/js/config.js",
   "/js/cierre.js",
   "/js/compras.js",
   "/js/compras_oro.js",

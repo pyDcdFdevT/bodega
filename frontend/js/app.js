@@ -1,5 +1,6 @@
 import { showToast } from "./api.js";
 import { getRol, initAuth } from "./auth.js";
+import { initConfig } from "./config.js";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -146,6 +147,7 @@ function registerServiceWorker() {
 }
 
 async function init() {
+  initConfig();
   initTabs();
   initApertura();
   initInventario();
