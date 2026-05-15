@@ -44,6 +44,7 @@ class TasaCambioOut(ORMModel):
     nombre: str
     tasa_reales: float
     actualizado_en: datetime
+    etiqueta: Optional[str] = None
 
 
 class CategoriaCreate(BaseModel):
@@ -221,6 +222,7 @@ class VentaListadoOut(BaseModel):
     tipo_venta: str = "contado"
     estado_pago: str = "PAGADO"
     saldo_pendiente: float = 0
+    estado: Optional[str] = None
 
 
 class VentaGasolinaOut(BaseModel):
