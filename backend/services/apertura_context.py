@@ -1,4 +1,4 @@
-"""Contexto de pantalla de apertura: sugerencia desde cierre de ayer y apertura de hoy."""
+"""Contexto de pantalla de apertura: sugerencia desde cierre de hoy o ayer y apertura de hoy."""
 
 from __future__ import annotations
 
@@ -20,17 +20,23 @@ def exigir_apertura_del_dia(db: Session) -> None:
         raise ValueError("Debe registrar la apertura del día antes de vender")
 
 
+def _sugerencia_desde_cierre(cierre: CierreDiario) -> dict:
+    return {
+        "caja_inicial_reales": round(float(cierre.se_deja_reales), 2),
+        "oro_operativo_inicial": round(float(cierre.se_deja_oro), 4),
+    }
+
+
 def build_apertura_pantalla_payload(db: Session) -> dict:
     hoy = fecha_operativa_hoy()
     ayer = hoy - timedelta(days=1)
+    cierre_hoy = db.query(CierreDiario).filter(CierreDiario.fecha_operativa == hoy).first()
     cierre_ayer = db.query(CierreDiario).filter(CierreDiario.fecha_operativa == ayer).first()
 
     sugerencia = None
-    if cierre_ayer:
-        sugerencia = {
-            "caja_inicial_reales": round(float(cierre_ayer.se_deja_reales), 2),
-            "oro_operativo_inicial": round(float(cierre_ayer.se_deja_oro), 4),
-        }
+    cierre_ref = cierre_hoy or cierre_ayer
+    if cierre_ref:
+        sugerencia = _sugerencia_desde_cierre(cierre_ref)
 
     apertura_hoy = db.query(AperturaCaja).filter(AperturaCaja.fecha_operativa == hoy).first()
     out_ap = None
