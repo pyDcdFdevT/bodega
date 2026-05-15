@@ -45,11 +45,6 @@ function asegurarMotivos() {
   select.innerHTML = MOTIVOS.map((motivo) => `<option value="${motivo}">${motivo}</option>`).join("");
 }
 
-/** valor_oro en API almacena el monto en reales (pérdida). */
-function perdidaReales(salida) {
-  return Number(salida.valor_oro ?? 0);
-}
-
 export async function loadSalidas() {
   asegurarMotivos();
   await loadProductoOptions(["salida-producto"]);
@@ -73,7 +68,7 @@ export async function loadSalidas() {
           <td>${formatDate(salida.fecha)}</td>
           <td>${salida.producto || "-"}</td>
           <td>${salida.cantidad}</td>
-          <td>${formatMoney(perdidaReales(salida), "reales")}</td>
+          <td>${formatMoney(salida.valor_oro, "reales")}</td>
           <td>${salida.motivo}</td>
         </tr>
       `
