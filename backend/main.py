@@ -34,6 +34,18 @@ from routers import (
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 
+_DEFAULT_ALLOWED_ORIGINS = [
+    "https://bodega-production-916f.up.railway.app",
+    "http://localhost:8000",
+]
+
+
+def _allowed_origins() -> list[str]:
+    raw = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    return list(_DEFAULT_ALLOWED_ORIGINS)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -53,8 +65,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_allowed_origins(),
+    allow_credentials=False,  # no se usan cookies, solo header X-Bodega-Rol
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -24,6 +24,38 @@ def _inicio_dia_hoy() -> datetime:
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def _venta_oro_recibido_por_tipo(db: Session, inicio: datetime) -> dict[str, float]:
+    rows = (
+        db.query(Venta.tipo_oro, func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
+        .filter(Venta.fecha >= inicio, venta_no_anulada())
+        .group_by(Venta.tipo_oro)
+        .all()
+    )
+    return {(tipo or ""): float(total) for tipo, total in rows}
+
+
+def _compra_oro_gramos_por_tipo(db: Session, inicio: datetime) -> tuple[dict[str, float], float, float]:
+    """Gramos por tipo_oro, total gramos y total reales en una sola query."""
+    rows = (
+        db.query(
+            CompraOro.tipo_oro,
+            func.coalesce(func.sum(CompraOro.gramos), 0),
+            func.coalesce(func.sum(CompraOro.total_reales), 0),
+        )
+        .filter(CompraOro.fecha >= inicio)
+        .group_by(CompraOro.tipo_oro)
+        .all()
+    )
+    por_tipo: dict[str, float] = {}
+    co_gramos = 0.0
+    co_reales = 0.0
+    for tipo, gramos, reales in rows:
+        por_tipo[str(tipo)] = float(gramos)
+        co_gramos += float(gramos)
+        co_reales += float(reales)
+    return por_tipo, co_gramos, co_reales
+
+
 def construir_payload_cierre(
     db: Session,
     inicio: datetime,
@@ -42,30 +74,11 @@ def construir_payload_cierre(
         .scalar()
         or 0
     )
-    oro_araparita = float(
-        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "araparita", venta_no_anulada())
-        .scalar()
-        or 0
-    )
-    oro_uruman = float(
-        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "uruman", venta_no_anulada())
-        .scalar()
-        or 0
-    )
-    oro_se_min = float(
-        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "santa_elena_minero", venta_no_anulada())
-        .scalar()
-        or 0
-    )
-    oro_se_fun = float(
-        db.query(func.coalesce(func.sum(Venta.monto_recibido_oro), 0))
-        .filter(Venta.fecha >= inicio, Venta.tipo_oro == "santa_elena_fundido", venta_no_anulada())
-        .scalar()
-        or 0
-    )
+    oro_por_tipo = _venta_oro_recibido_por_tipo(db, inicio)
+    oro_araparita = oro_por_tipo.get("araparita", 0.0)
+    oro_uruman = oro_por_tipo.get("uruman", 0.0)
+    oro_se_min = oro_por_tipo.get("santa_elena_minero", 0.0)
+    oro_se_fun = oro_por_tipo.get("santa_elena_fundido", 0.0)
 
     compras_reales = float(
         db.query(func.coalesce(func.sum(Compra.total_reales), 0))
@@ -102,25 +115,11 @@ def construir_payload_cierre(
         or 0
     )
 
-    co_gramos = float(
-        db.query(func.coalesce(func.sum(CompraOro.gramos), 0)).filter(CompraOro.fecha >= inicio).scalar() or 0
-    )
-    co_reales = float(
-        db.query(func.coalesce(func.sum(CompraOro.total_reales), 0)).filter(CompraOro.fecha >= inicio).scalar() or 0
-    )
-
-    def _comprado_gramos_tipo(tipo_oro: str) -> float:
-        return float(
-            db.query(func.coalesce(func.sum(CompraOro.gramos), 0))
-            .filter(CompraOro.fecha >= inicio, CompraOro.tipo_oro == tipo_oro)
-            .scalar()
-            or 0
-        )
-
-    comprado_araparita = _comprado_gramos_tipo("araparita")
-    comprado_uruman = _comprado_gramos_tipo("uruman")
-    comprado_santa_elena_minero = _comprado_gramos_tipo("santa_elena_minero")
-    comprado_santa_elena_fundido = _comprado_gramos_tipo("santa_elena_fundido")
+    comprado_por_tipo, co_gramos, co_reales = _compra_oro_gramos_por_tipo(db, inicio)
+    comprado_araparita = comprado_por_tipo.get("araparita", 0.0)
+    comprado_uruman = comprado_por_tipo.get("uruman", 0.0)
+    comprado_santa_elena_minero = comprado_por_tipo.get("santa_elena_minero", 0.0)
+    comprado_santa_elena_fundido = comprado_por_tipo.get("santa_elena_fundido", 0.0)
     comprado_suma_tipos = comprado_araparita + comprado_uruman + comprado_santa_elena_minero + comprado_santa_elena_fundido
     comprado_otros_tipos_gramos = max(0.0, co_gramos - comprado_suma_tipos)
 
