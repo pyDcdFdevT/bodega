@@ -184,12 +184,30 @@ def listar_compras(
 ):
     compras = (
         db.query(Compra)
-        .options(joinedload(Compra.detalles))
+        .options(joinedload(Compra.detalles).joinedload(DetalleCompra.producto))
         .order_by(Compra.fecha.desc(), Compra.id.desc())
         .limit(limit)
         .all()
     )
-    return compras
+    return [
+        {
+            "id": c.id,
+            "fecha": c.fecha,
+            "proveedor": c.proveedor,
+            "total_reales": c.total_reales,
+            "observaciones": c.observaciones,
+            "detalles": [
+                {
+                    "producto_id": d.producto_id,
+                    "cantidad": d.cantidad,
+                    "precio_reales_total": d.precio_reales_total,
+                    "producto_nombre": d.producto.nombre if d.producto else None,
+                }
+                for d in c.detalles
+            ],
+        }
+        for c in compras
+    ]
 
 
 @router.put("/{compra_id}")

@@ -199,13 +199,22 @@ class CompraUpdate(BaseModel):
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
 
+class DetalleCompraListOut(BaseModel):
+    producto_id: int
+    cantidad: float
+    precio_reales_total: float
+    producto_nombre: Optional[str] = None
+
+
 class CompraOut(ORMModel):
-    """Listado compras.js: id, fecha, proveedor, total_reales."""
+    """Listado compras.js: id, fecha, proveedor, producto, total_reales."""
 
     id: int
     fecha: datetime
     proveedor: str
     total_reales: float
+    observaciones: Optional[str] = None
+    detalles: list[DetalleCompraListOut] = []
 
 
 class VentaListadoOut(BaseModel):

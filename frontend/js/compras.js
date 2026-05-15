@@ -15,6 +15,14 @@ function setModoEdicion(activo) {
   }
 }
 
+function nombrePrimerProducto(compra) {
+  const detalle = compra.detalles?.[0];
+  if (!detalle) {
+    return "-";
+  }
+  return detalle.producto_nombre || "-";
+}
+
 function resetFormularioCompra(form) {
   compraEditandoId = null;
   setModoEdicion(false);
@@ -29,7 +37,7 @@ export async function loadCompras() {
   const tbody = document.getElementById("tabla-compras");
 
   if (!compras.length) {
-    tbody.innerHTML = renderEmptyRow(5, "No hay compras registradas.");
+    tbody.innerHTML = renderEmptyRow(6, "No hay compras registradas.");
     return;
   }
 
@@ -39,6 +47,7 @@ export async function loadCompras() {
         <tr>
           <td>#${compra.id}</td>
           <td>${formatDate(compra.fecha)}</td>
+          <td>${nombrePrimerProducto(compra)}</td>
           <td>${compra.proveedor}</td>
           <td>${formatMoney(compra.total_reales, "reales")}</td>
           <td><button type="button" class="btn-icon" data-edit-compra="${compra.id}" title="Editar">✏️</button></td>
