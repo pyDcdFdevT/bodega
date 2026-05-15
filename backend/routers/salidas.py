@@ -20,13 +20,15 @@ def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
         producto = ValidacionesSistema.validar_stock(data.producto_id, data.cantidad, db)
 
         stock_anterior = producto.stock_actual
-        valor_oro = CalculosMonetarios.redondear_oro(producto.precio_venta_oro * data.cantidad)
+        valor_perdida_reales = CalculosMonetarios.redondear(
+            float(producto.precio_venta_reales) * data.cantidad, 2
+        )
         producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual - data.cantidad)
 
         salida = Salida(
             producto_id=producto.id,
             cantidad=data.cantidad,
-            valor_oro=valor_oro,
+            valor_oro=valor_perdida_reales,
             motivo=data.motivo,
         )
         db.add(salida)
@@ -47,9 +49,9 @@ def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
             tipo="salida",
             modulo_origen="bodega",
             referencia_id=salida.id,
-            moneda="oro",
-            monto_reales=0.0,
-            gramos_oro=float(valor_oro),
+            moneda="reales",
+            monto_reales=float(valor_perdida_reales),
+            gramos_oro=0.0,
             tipo_oro=None,
             tasa_usada=None,
             descripcion=f"Salida #{salida.id} {producto.nombre}: {data.motivo}"[:255],

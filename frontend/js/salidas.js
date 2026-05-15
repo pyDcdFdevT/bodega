@@ -22,18 +22,18 @@ function obtenerProductoSeleccionado() {
 function calcularValorSalida() {
   const producto = obtenerProductoSeleccionado();
   const cantidad = Number(document.getElementById("salida-cantidad").value || 0);
-  const target = document.getElementById("salida-valor-oro");
+  const target = document.getElementById("salida-valor-reales");
 
   if (!producto || cantidad <= 0) {
     if (target) {
-      target.textContent = "0.0000";
+      target.textContent = formatMoney(0, "reales");
     }
     return;
   }
 
-  const valor = producto.precio_venta_oro * cantidad;
+  const valor = Number(producto.precio_venta_reales || 0) * cantidad;
   if (target) {
-    target.textContent = formatMoney(valor);
+    target.textContent = formatMoney(valor, "reales");
   }
 }
 
@@ -43,6 +43,11 @@ function asegurarMotivos() {
     return;
   }
   select.innerHTML = MOTIVOS.map((motivo) => `<option value="${motivo}">${motivo}</option>`).join("");
+}
+
+/** valor_oro en API almacena el monto en reales (pérdida). */
+function perdidaReales(salida) {
+  return Number(salida.valor_oro ?? 0);
 }
 
 export async function loadSalidas() {
@@ -68,7 +73,7 @@ export async function loadSalidas() {
           <td>${formatDate(salida.fecha)}</td>
           <td>${salida.producto || "-"}</td>
           <td>${salida.cantidad}</td>
-          <td>${formatMoney(salida.valor_oro)}</td>
+          <td>${formatMoney(perdidaReales(salida), "reales")}</td>
           <td>${salida.motivo}</td>
         </tr>
       `
@@ -100,7 +105,7 @@ export function initSalidas() {
       showToast("Salida registrada correctamente", "success");
       form.reset();
       document.getElementById("salida-cantidad").value = "1";
-      document.getElementById("salida-valor-oro").textContent = "0.00";
+      document.getElementById("salida-valor-reales").textContent = formatMoney(0, "reales");
       asegurarMotivos();
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
