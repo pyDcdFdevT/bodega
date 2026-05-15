@@ -22,7 +22,7 @@ from database import Base
 
 
 def utc_now() -> datetime:
-    return datetime.now(UTC)  # mantiene tzinfo=UTC
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _nuevo_uuid_transaccion() -> str:

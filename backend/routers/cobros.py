@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_
@@ -12,6 +11,7 @@ from models import PagoVenta, TasaCambio, Venta
 from schemas import PagoVentaCreate
 from services.calculos import CalculosMonetarios, equivalencia_pago_reales
 from services.ledger import registrar_transaccion
+from services.operativa import _inicio_dia_hoy
 from services.query_operativa import venta_no_anulada
 
 
@@ -20,11 +20,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/cobros", tags=["Cobros"])
 
 _CANAL_ETIQUETA = {"efectivo": "Efectivo", "oro": "Oro"}
-
-
-def _inicio_dia_hoy() -> datetime:
-    d = datetime.now(UTC)
-    return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def _tasa_por_nombre(db: Session, nombre: str) -> TasaCambio | None:
