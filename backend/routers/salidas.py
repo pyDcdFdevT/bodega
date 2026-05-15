@@ -21,7 +21,7 @@ def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
 
         stock_anterior = producto.stock_actual
         valor_perdida_reales = CalculosMonetarios.redondear(
-            float(producto.precio_venta_reales) * data.cantidad, 2
+            float(producto.precio_costo_reales) * data.cantidad, 2
         )
         producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual - data.cantidad)
 

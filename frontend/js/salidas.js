@@ -31,7 +31,7 @@ function calcularValorSalida() {
     return;
   }
 
-  const valor = Number(producto.precio_venta_reales || 0) * cantidad;
+  const valor = Number(producto.precio_costo_reales || 0) * cantidad;
   if (target) {
     target.textContent = formatMoney(valor, "reales");
   }

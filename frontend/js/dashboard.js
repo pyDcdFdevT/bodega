@@ -4,6 +4,22 @@ import { getRateLabel } from "./tasas.js";
 const CHART_COLORS = ["#c9a227", "#2d6a9f", "#3d8b5a", "#8b5a9e", "#d4654a"];
 const CHART_GRID = "rgba(23, 50, 77, 0.12)";
 
+/** Paleta daltónico-friendly (Wong) para oro recolectado por tipo. */
+const ORO_PIE_COLORS = {
+  araparita: "#0072B2",
+  uruman: "#E69F00",
+  santa_elena_minero: "#009E73",
+  santa_elena_fundido: "#CC79A7",
+  comprado: "#F0E442",
+};
+const ORO_PIE_COLOR_ORDER = [
+  ORO_PIE_COLORS.araparita,
+  ORO_PIE_COLORS.uruman,
+  ORO_PIE_COLORS.santa_elena_minero,
+  ORO_PIE_COLORS.santa_elena_fundido,
+  ORO_PIE_COLORS.comprado,
+];
+
 let chartOroPie = null;
 let chartBarras = null;
 let chartVentasHora = null;
@@ -120,9 +136,9 @@ function renderOroPieChart(op, oroRecolectado) {
       datasets: [
         {
           data: values,
-          backgroundColor: CHART_COLORS,
+          backgroundColor: ORO_PIE_COLOR_ORDER,
           borderWidth: 2,
-          borderColor: "#fff",
+          borderColor: "#17324d",
         },
       ],
     },
