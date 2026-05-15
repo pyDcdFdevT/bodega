@@ -793,6 +793,14 @@ summary.accordion-cat-summary::-webkit-details-marker {
   background: var(--bg-card);
 }
 
+[data-theme="dark"] .pos-card {
+  color: #cccccc;
+}
+
+[data-theme="dark"] .pos-card strong {
+  color: #e0e0e0 !important;
+}
+
 [data-theme="dark"] .muted,
 [data-theme="dark"] .muted.small {
   color: var(--ink-soft);
