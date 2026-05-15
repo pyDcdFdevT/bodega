@@ -103,6 +103,8 @@ export function initCompras() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const formData = new FormData(form);
 
     if (compraEditandoId) {
@@ -112,6 +114,10 @@ export function initCompras() {
         proveedor: formData.get("proveedor"),
         observaciones: formData.get("observaciones") || null,
       };
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Registrando...";
+      }
       try {
         await api.put(`/compras/${compraEditandoId}`, payload);
         resetFormularioCompra(form);
@@ -119,6 +125,11 @@ export function initCompras() {
         document.dispatchEvent(new CustomEvent("bodega:refresh"));
       } catch (error) {
         showToast(error.message, "error");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
       }
       return;
     }
@@ -131,6 +142,10 @@ export function initCompras() {
       observaciones: formData.get("observaciones") || null,
     };
 
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.post("/compras", payload);
       resetFormularioCompra(form);
@@ -138,6 +153,11 @@ export function initCompras() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 }

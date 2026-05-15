@@ -446,6 +446,8 @@ export function initVentas() {
 
   formVenta?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = formVenta.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     if (mensajeVuelto) {
       mensajeVuelto.textContent = "";
     }
@@ -499,6 +501,10 @@ export function initVentas() {
       showToast("Selecciona el tipo de oro para el cobro", "error");
       return;
     }
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       const response = await api.post("/ventas", payload);
       const vueltoTxt = textoVuelto(response.data);
@@ -540,6 +546,11 @@ export function initVentas() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 }

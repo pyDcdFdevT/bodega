@@ -88,6 +88,8 @@ export function initSalidas() {
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
 
     const payload = {
       producto_id: Number(document.getElementById("salida-producto").value),
@@ -95,6 +97,10 @@ export function initSalidas() {
       motivo: document.getElementById("salida-motivo").value,
     };
 
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.post("/salidas", payload);
       showToast("Salida registrada correctamente", "success");
@@ -105,6 +111,11 @@ export function initSalidas() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 }

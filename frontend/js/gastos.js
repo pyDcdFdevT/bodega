@@ -51,12 +51,18 @@ export function initGastos() {
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const fd = new FormData(form);
     const payload = {
       categoria: fd.get("categoria"),
       descripcion: String(fd.get("descripcion") || "").trim(),
       monto_reales: Number(fd.get("monto_reales")),
     };
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.post("/gastos", payload);
       form.reset();
@@ -64,6 +70,11 @@ export function initGastos() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 }

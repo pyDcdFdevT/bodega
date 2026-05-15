@@ -210,6 +210,8 @@ export function initCobros() {
   document.getElementById("form-registrar-pago-cobro")?.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const form = ev.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const fd = new FormData(form);
     const canal = String(fd.get("tipo_pago") || "").trim().toLowerCase();
     if (!canal || !["efectivo", "oro"].includes(canal)) {
@@ -254,6 +256,10 @@ export function initCobros() {
       tipo_oro: canal === "oro" ? tipoOroPago : null,
       registrado_por: "Admin",
     };
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       const data = await api.post("/cobros/registrar-pago", payload);
       const abono = data.abono_reales != null ? formatMoney(data.abono_reales, "reales") : "";
@@ -272,6 +278,11 @@ export function initCobros() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       showToast(msg || "Error al registrar el pago", "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 }

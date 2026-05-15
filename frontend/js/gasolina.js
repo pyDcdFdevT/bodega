@@ -359,11 +359,17 @@ export function initGasolina() {
 
   reponerForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = reponerForm.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const formData = new FormData(reponerForm);
     const payload = {
       litros: Number(formData.get("litros")),
       precio_reales_litro: Number(formData.get("precio_reales_litro")),
     };
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.post("/gasolina/reponer", payload);
       reponerForm.reset();
@@ -372,6 +378,11 @@ export function initGasolina() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 
@@ -389,6 +400,8 @@ export function initGasolina() {
 
   configForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = configForm.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const formData = new FormData(configForm);
     const payload = {
       tipo: formData.get("tipo"),
@@ -396,6 +409,10 @@ export function initGasolina() {
       precio_por_litro_reales: Number(formData.get("precio_por_litro_reales")),
     };
 
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.put("/gasolina/configurar", payload);
       gasolinaConfigCache = { ...(gasolinaConfigCache || {}), ...payload };
@@ -403,11 +420,18 @@ export function initGasolina() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 
   ventaForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = ventaForm.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const tipoPago = document.getElementById("gasolina-tipo-pago").value;
     if (tipoPago !== "reales") {
       if (!document.getElementById("gasolina-tipo-oro").value) {
@@ -426,6 +450,10 @@ export function initGasolina() {
       monto_recibido_reales: Number(formData.get("monto_recibido_reales")),
     };
 
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.post("/gasolina/venta", payload);
       resetFormVentaGasolina();
@@ -433,6 +461,11 @@ export function initGasolina() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 

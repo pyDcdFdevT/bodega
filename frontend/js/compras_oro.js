@@ -66,6 +66,8 @@ export function initComprasOro() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn?.textContent ?? "";
     const formData = new FormData(form);
     const payload = {
       tipo_oro: formData.get("tipo_oro"),
@@ -73,6 +75,10 @@ export function initComprasOro() {
       tasa_compra_reales: Number(formData.get("tasa_compra_reales")),
     };
 
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+    }
     try {
       await api.post("/compras-oro", payload);
       showToast("Compra de oro registrada", "success");
@@ -81,6 +87,11 @@ export function initComprasOro() {
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 }
