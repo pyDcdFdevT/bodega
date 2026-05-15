@@ -64,11 +64,22 @@ function fechaOperativaUtc(iso) {
   return d.toISOString().slice(0, 10);
 }
 
-function gananciaNetaReales(op) {
+/** ventas_reales − compras mercancía − gastos_reales (sin compra de oro en R$). */
+function gananciaNetaReales(op, cierreDia) {
   const ventas = Number(op.ventas_reales ?? 0);
-  const compras = Number(op.compras_reales ?? 0);
   const gastos = Number(op.gastos_reales ?? 0);
+  const compras =
+    cierreDia?.bodega?.compras_mercancia_reales != null
+      ? Number(cierreDia.bodega.compras_mercancia_reales)
+      : Number(op.compras_reales ?? 0);
   return Math.round((ventas - compras - gastos) * 100) / 100;
+}
+
+function comprasMercanciaReales(op, cierreDia) {
+  if (cierreDia?.bodega?.compras_mercancia_reales != null) {
+    return Number(cierreDia.bodega.compras_mercancia_reales);
+  }
+  return Number(op.compras_reales ?? 0);
 }
 
 function totalOroRecolectadoGramos(op, oroRecolectado) {
@@ -82,12 +93,12 @@ function totalOroRecolectadoGramos(op, oroRecolectado) {
   );
 }
 
-function renderSummaryCards(inv, op, oroRecolectado) {
+function renderSummaryCards(inv, op, oroRecolectado, cierreDia) {
   const container = document.getElementById("dashboard-summary-cards");
   if (!container) {
     return;
   }
-  const gananciaR = gananciaNetaReales(op);
+  const gananciaR = gananciaNetaReales(op, cierreDia);
   const oroTotal = totalOroRecolectadoGramos(op, oroRecolectado);
   container.innerHTML = `
     <article class="metric-pill dashboard-kpi">
@@ -157,7 +168,7 @@ function renderOroPieChart(op, oroRecolectado) {
   });
 }
 
-function renderBarrasChart(op) {
+function renderBarrasChart(op, cierreDia) {
   const canvas = document.getElementById("chart-barras-reales");
   if (!canvas || typeof Chart === "undefined") {
     return;
@@ -169,7 +180,11 @@ function renderBarrasChart(op) {
       datasets: [
         {
           label: "R$",
-          data: [Number(op.ventas_reales ?? 0), Number(op.compras_reales ?? 0), Number(op.gastos_reales ?? 0)],
+          data: [
+            Number(op.ventas_reales ?? 0),
+            comprasMercanciaReales(op, cierreDia),
+            Number(op.gastos_reales ?? 0),
+          ],
           backgroundColor: ["#2d6a9f", "#c9a227", "#d4654a"],
           borderRadius: 8,
         },
@@ -278,6 +293,39 @@ function renderStockBajo(inv) {
   }
 }
 
+function nombrePrimerProductoCompra(compra) {
+  const detalle = compra.detalles?.[0];
+  if (!detalle) {
+    return "-";
+  }
+  return detalle.producto_nombre || "-";
+}
+
+function renderUltimasCompras(compras, fechaDia) {
+  const tb = document.getElementById("tabla-dashboard-compras");
+  if (!tb) {
+    return;
+  }
+  const hoy = (compras || [])
+    .filter((c) => !fechaDia || fechaOperativaUtc(c.fecha) === fechaDia)
+    .slice(0, 5);
+  if (!hoy.length) {
+    tb.innerHTML = renderEmptyRow(4, "Sin compras hoy.");
+  } else {
+    tb.innerHTML = hoy
+      .map(
+        (c) => `
+        <tr>
+          <td>${formatTimeOnly(c.fecha)}</td>
+          <td>${nombrePrimerProductoCompra(c)}</td>
+          <td>${c.proveedor || "-"}</td>
+          <td>${formatMoney(c.total_reales, "reales")}</td>
+        </tr>`
+      )
+      .join("");
+  }
+}
+
 function renderUltimasVentas(uv) {
   const tbVentas = document.getElementById("tabla-dashboard-ventas");
   if (!tbVentas) {
@@ -322,7 +370,7 @@ function renderUltimosMovimientos(um) {
   }
 }
 
-function renderDashboard(data, cierreDia, ventasList) {
+function renderDashboard(data, cierreDia, ventasList, comprasList) {
   if (!data) {
     return;
   }
@@ -331,20 +379,22 @@ function renderDashboard(data, cierreDia, ventasList) {
   const oro = cierreDia?.oro_recolectado || null;
 
   destroyDashboardCharts();
-  renderSummaryCards(inv, op, oro);
+  renderSummaryCards(inv, op, oro, cierreDia);
   renderOroPieChart(op, oro);
-  renderBarrasChart(op);
+  renderBarrasChart(op, cierreDia);
   renderVentasHoraChart(ventasList || [], data.fecha);
   renderStockBajo(inv);
   renderUltimasVentas(data.ultimas_ventas || []);
+  renderUltimasCompras(comprasList, data.fecha);
   renderUltimosMovimientos(data.ultimos_movimientos || []);
 }
 
 export async function loadDashboard() {
-  const [dashboard, cierreDia, ventasList] = await Promise.all([
+  const [dashboard, cierreDia, ventasList, comprasList] = await Promise.all([
     api.get("/reportes/dashboard"),
     api.get("/cierre/dia").catch(() => null),
     api.get("/ventas?limit=200").catch(() => []),
+    api.get("/compras?limit=50").catch(() => []),
   ]);
-  renderDashboard(dashboard, cierreDia, ventasList);
+  renderDashboard(dashboard, cierreDia, ventasList, comprasList);
 }
