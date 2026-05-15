@@ -693,14 +693,6 @@ def apply_schema_patches() -> None:
             _migrate_gasolina_precio_column(conn, dialect)
             _ensure_gastos_table(conn, dialect)
             _ensure_activos_table(conn, dialect)
-            if insp.has_table("ventas_gasolina"):
-                alters = [
-                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)",
-                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS unidad_precio_venta VARCHAR(20) DEFAULT 'reales_litro'",
-                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS precio_litro_venta FLOAT DEFAULT 0",
-                ]
-                for sql in alters:
-                    conn.execute(text(sql))
             create_reposiciones = """
 CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
     id SERIAL PRIMARY KEY,
@@ -713,6 +705,14 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
     fecha TIMESTAMP DEFAULT NOW()
 );
 """
+            if insp.has_table("ventas_gasolina"):
+                alters = [
+                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS tipo_oro VARCHAR(50)",
+                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS unidad_precio_venta VARCHAR(20) DEFAULT 'reales_litro'",
+                    "ALTER TABLE ventas_gasolina ADD COLUMN IF NOT EXISTS precio_litro_venta FLOAT DEFAULT 0",
+                ]
+                for sql in alters:
+                    conn.execute(text(sql))
             conn.execute(text(create_reposiciones))
             _ensure_transacciones_table(conn, dialect)
             _migrate_cierres_diarios_legacy(conn, dialect)

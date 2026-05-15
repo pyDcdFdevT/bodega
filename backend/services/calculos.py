@@ -40,6 +40,11 @@ class CalculosMonetarios:
         return sorted(tasas, key=lambda tasa: indice.get(tasa.nombre, 999))
 
     @staticmethod
+    def consultar_tasas(db: Session) -> list[TasaCambio]:
+        """Solo lectura: no inserta ni hace flush (init_data / mutaciones crean filas)."""
+        return CalculosMonetarios.ordenar_tasas(db.query(TasaCambio).all())
+
+    @staticmethod
     def asegurar_tasas_predefinidas(db: Session) -> list[TasaCambio]:
         existentes = {tasa.nombre: tasa for tasa in db.query(TasaCambio).all()}
         for nombre, valor in CalculosMonetarios.TASAS_PREDEFINIDAS.items():

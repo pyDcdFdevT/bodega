@@ -31,9 +31,8 @@ def _asegurar_gasolina(db: Session) -> Gasolina:
 
 @router.get("")
 def obtener_gasolina(db: Session = Depends(get_db)):
-    gasolina = _asegurar_gasolina(db)
-    db.commit()
-    return gasolina
+    """Consulta pura: no crea filas ni hace commit (init_data crea el registro inicial)."""
+    return db.query(Gasolina).order_by(Gasolina.id.asc()).first()
 
 
 @router.put("/configurar")

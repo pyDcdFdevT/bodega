@@ -8,6 +8,20 @@ function renderResumen(gasolina) {
   if (!target) {
     return;
   }
+  if (!gasolina) {
+    target.innerHTML = `
+    <article class="metric-pill">
+      <span>Litros disponibles</span>
+      <strong>0.00</strong>
+    </article>
+    <article class="metric-pill">
+      <span>Precio base (R$/L)</span>
+      <strong>${formatMoney(0, "reales")}</strong>
+    </article>
+    <p class="muted small">Sin registro de gasolina. Use configurar o ejecute init_data.</p>
+  `;
+    return;
+  }
   const pr = Number(gasolina.precio_por_litro_reales ?? gasolina.precio_por_litro_oro ?? 0);
   target.innerHTML = `
     <article class="metric-pill">
@@ -251,7 +265,7 @@ export async function loadGasolina() {
 
   renderResumen(gasolina);
   const form = document.getElementById("form-gasolina-config");
-  if (form) {
+  if (form && gasolina) {
     form.tipo.value = gasolina.tipo;
     form.litros_disponibles.value = gasolina.litros_disponibles;
     const prField = form.querySelector("[name=precio_por_litro_reales]");

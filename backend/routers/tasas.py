@@ -24,13 +24,8 @@ def serializar_tasa(tasa: TasaCambio) -> dict:
 
 @router.get("")
 def listar_tasas(db: Session = Depends(get_db)):
-    try:
-        tasas = CalculosMonetarios.listar_tasas(db)
-        db.commit()
-        return [serializar_tasa(tasa) for tasa in tasas]
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="No fue posible cargar las tasas") from exc
+    tasas = CalculosMonetarios.consultar_tasas(db)
+    return [serializar_tasa(tasa) for tasa in tasas]
 
 
 @router.put("")
