@@ -322,6 +322,27 @@ class GasolinaReposicionCreate(BaseModel):
     precio_reales_litro: float = Field(..., gt=0)
 
 
+class GasolinaReposicionOut(ORMModel):
+    """Listado panel gasolina: reposiciones recientes."""
+
+    id: int
+    fecha: datetime
+    litros: float
+    precio_reales_litro: float
+    total_reales: float
+
+
+class GasolinaPanelOut(BaseModel):
+    """GET /gasolina: configuración + reposiciones recientes."""
+
+    id: int
+    tipo: str
+    litros_disponibles: float
+    precio_por_litro_reales: float
+    updated_at: datetime
+    reposiciones: list[GasolinaReposicionOut] = []
+
+
 class GasolinaConfigUpdate(BaseModel):
     tipo: str = Field(default="Gasolina", min_length=3, max_length=50)
     litros_disponibles: Optional[float] = Field(default=None, ge=0)

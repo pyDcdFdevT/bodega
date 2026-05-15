@@ -5,7 +5,14 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import Gasolina, GasolinaReposicion, TasaCambio, VentaGasolina
-from schemas import GasolinaConfigUpdate, GasolinaReposicionCreate, GasolinaVenta, VentaGasolinaOut
+from schemas import (
+    GasolinaConfigUpdate,
+    GasolinaPanelOut,
+    GasolinaReposicionCreate,
+    GasolinaReposicionOut,
+    GasolinaVenta,
+    VentaGasolinaOut,
+)
 from services.apertura_context import exigir_apertura_del_dia
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -29,10 +36,36 @@ def _asegurar_gasolina(db: Session) -> Gasolina:
     return gasolina
 
 
-@router.get("")
+@router.get("", response_model=GasolinaPanelOut | None)
 def obtener_gasolina(db: Session = Depends(get_db)):
-    """Consulta pura: no crea filas ni hace commit (init_data crea el registro inicial)."""
-    return db.query(Gasolina).order_by(Gasolina.id.asc()).first()
+    """Configuración de gasolina y reposiciones recientes (sin crear filas)."""
+    gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
+    if not gasolina:
+        return None
+    reposiciones = (
+        db.query(GasolinaReposicion)
+        .filter(GasolinaReposicion.gasolina_id == gasolina.id)
+        .order_by(GasolinaReposicion.fecha.desc(), GasolinaReposicion.id.desc())
+        .limit(50)
+        .all()
+    )
+    return {
+        "id": gasolina.id,
+        "tipo": gasolina.tipo,
+        "litros_disponibles": gasolina.litros_disponibles,
+        "precio_por_litro_reales": gasolina.precio_por_litro_reales,
+        "updated_at": gasolina.updated_at,
+        "reposiciones": [
+            GasolinaReposicionOut(
+                id=r.id,
+                fecha=r.fecha,
+                litros=r.litros,
+                precio_reales_litro=r.precio_reales_litro,
+                total_reales=r.total_reales,
+            )
+            for r in reposiciones
+        ],
+    }
 
 
 @router.put("/configurar")
