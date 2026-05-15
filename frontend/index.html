@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#17324d">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
   <title>Bodega POS 3.0</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/css/estilo.css">
@@ -598,7 +598,22 @@
           </div>
         </div>
 
-        <div class="pill-grid" id="dashboard-cards"></div>
+        <div class="dashboard-summary" id="dashboard-summary-cards"></div>
+
+        <div class="dashboard-charts">
+          <article class="card dashboard-chart-card">
+            <h3>Oro recolectado por tipo (hoy)</h3>
+            <div class="chart-wrap"><canvas id="chart-oro-pie" aria-label="Oro por tipo"></canvas></div>
+          </article>
+          <article class="card dashboard-chart-card">
+            <h3>Ventas vs compras vs gastos (R$)</h3>
+            <div class="chart-wrap"><canvas id="chart-barras-reales" aria-label="Operaciones en reales"></canvas></div>
+          </article>
+          <article class="card dashboard-chart-card dashboard-chart-card--wide">
+            <h3>Ventas del dia por hora (R$)</h3>
+            <div class="chart-wrap"><canvas id="chart-ventas-hora" aria-label="Ventas por hora"></canvas></div>
+          </article>
+        </div>
 
         <article class="card">
           <h3>Stock bajo (alertas)</h3>
@@ -1066,6 +1081,7 @@
   </dialog>
 
   <div id="toast-container" class="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>
