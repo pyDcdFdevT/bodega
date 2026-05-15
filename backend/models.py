@@ -530,3 +530,13 @@ class Transaccion(Base):
     descripcion = Column(String(255), nullable=True)
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class Configuracion(Base):
+    """Pares clave-valor de configuración persistente (p. ej. PINs)."""
+
+    __tablename__ = "configuracion"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clave = Column(String(50), unique=True, nullable=False, index=True)
+    valor = Column(String(255), nullable=False)

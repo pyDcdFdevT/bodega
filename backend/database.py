@@ -119,6 +119,39 @@ CREATE TABLE IF NOT EXISTS gastos_operativos (
         )
 
 
+def _ensure_configuracion_table(conn, dialect: str) -> None:
+    from sqlalchemy import text
+
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS configuracion (
+    id SERIAL PRIMARY KEY,
+    clave VARCHAR(50) NOT NULL UNIQUE,
+    valor VARCHAR(255) NOT NULL
+)
+"""
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_configuracion_clave ON configuracion (clave)"))
+        return
+
+    if dialect == "sqlite":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS configuracion (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    clave VARCHAR(50) NOT NULL UNIQUE,
+    valor VARCHAR(255) NOT NULL
+)
+"""
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_configuracion_clave ON configuracion (clave)"))
+
+
 def _ensure_activos_table(conn, dialect: str) -> None:
     from sqlalchemy import text
 
@@ -692,6 +725,7 @@ def apply_schema_patches() -> None:
         with engine.begin() as conn:
             _migrate_gasolina_precio_column(conn, dialect)
             _ensure_gastos_table(conn, dialect)
+            _ensure_configuracion_table(conn, dialect)
             _ensure_activos_table(conn, dialect)
             create_reposiciones = """
 CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
@@ -729,6 +763,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             if insp.has_table("gasolina"):
                 _migrate_gasolina_precio_column(conn, dialect)
             _ensure_gastos_table(conn, dialect)
+            _ensure_configuracion_table(conn, dialect)
             _ensure_activos_table(conn, dialect)
             if insp.has_table("ventas_gasolina"):
                 result = conn.execute(text("PRAGMA table_info(ventas_gasolina)"))

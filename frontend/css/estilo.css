@@ -806,6 +806,109 @@ summary.accordion-cat-summary::-webkit-details-marker {
   color: var(--ink-soft);
 }
 
+/* Legibilidad: resúmenes, badges, métricas y tablas */
+[data-theme="dark"] .card,
+[data-theme="dark"] .panel.active {
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .card h2,
+[data-theme="dark"] .card h3,
+[data-theme="dark"] .panel-header h2 {
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .report-item {
+  background: #16213e;
+  color: #e0e0e0;
+  border: 1px solid var(--line);
+}
+
+[data-theme="dark"] .report-item strong {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] #compra-oro-total {
+  background: transparent;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .badge {
+  background: #16213e;
+  color: #e0e0e0;
+  border: 1px solid var(--line);
+}
+
+[data-theme="dark"] .metric-pill {
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid var(--line);
+}
+
+[data-theme="dark"] .metric-pill span {
+  color: #b8b8c8;
+}
+
+[data-theme="dark"] .metric-pill strong {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .stat-card {
+  background: #16213e;
+  color: #e0e0e0;
+  border: 1px solid var(--line);
+}
+
+[data-theme="dark"] .stat-card span {
+  color: #b8b8c8;
+}
+
+[data-theme="dark"] .stat-card strong {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .hero .stat-card {
+  background: rgba(255, 255, 255, 0.12);
+  border: 0;
+  color: #fdfaf5;
+}
+
+[data-theme="dark"] .hero .stat-card span {
+  color: rgba(253, 250, 245, 0.75);
+}
+
+[data-theme="dark"] .hero .stat-card strong {
+  color: #fff8ef;
+}
+
+[data-theme="dark"] .btn-refresh {
+  background: #16213e;
+  color: #e0e0e0;
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .btn-refresh:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+[data-theme="dark"] table,
+[data-theme="dark"] th,
+[data-theme="dark"] td {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .empty-state {
+  background: #16213e;
+  color: #b8b8c8;
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .card strong,
+[data-theme="dark"] .panel strong {
+  color: #e0e0e0;
+}
+
 @media (max-width: 960px) {
   .hero,
   .grid.two {

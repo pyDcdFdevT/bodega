@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from database import Base, apply_schema_patches, engine
+import models  # noqa: F401 — registra tablas en Base.metadata
 from init_data import inicializar_datos
 from routers import (
     activos,
