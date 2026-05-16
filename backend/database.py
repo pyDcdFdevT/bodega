@@ -971,6 +971,72 @@ def _migrate_tasas_mercado_y_historicos(conn, dialect: str) -> None:
     )
 
 
+DISTRIBUCIONES_VENTA_PIEZA_2 = (
+    ("reposicion_bodega", 800.0),
+    ("reposicion_gasolina", 400.0),
+    ("gastos_operativos", 200.0),
+    ("pago_socio", 500.0),
+    ("ganancia_dueno", 500.0),
+    ("se_deja_caja", 351.0),
+)
+MONTO_TOTAL_VENTA_PIEZA_2 = sum(m for _, m in DISTRIBUCIONES_VENTA_PIEZA_2)
+
+
+def _migrate_distribuciones_venta_pieza_2(conn, dialect: str) -> None:
+    """Reemplaza distribuciones de venta pieza #2 para cuadrar con monto_total R$ 2,751."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("distribuciones_fondos") or not insp.has_table("ventas_pieza"):
+        return
+
+    vp = conn.execute(
+        text("SELECT id, monto_total FROM ventas_pieza WHERE id = 2")
+    ).fetchone()
+    if not vp:
+        return
+
+    esperado = float(MONTO_TOTAL_VENTA_PIEZA_2)
+    suma = float(
+        conn.execute(
+            text(
+                "SELECT COALESCE(SUM(monto), 0) FROM distribuciones_fondos WHERE venta_pieza_id = 2"
+            )
+        ).scalar()
+        or 0
+    )
+    count = int(
+        conn.execute(
+            text("SELECT COUNT(*) FROM distribuciones_fondos WHERE venta_pieza_id = 2")
+        ).scalar()
+        or 0
+    )
+    if count == len(DISTRIBUCIONES_VENTA_PIEZA_2) and round(suma, 2) == round(esperado, 2):
+        caja = conn.execute(
+            text(
+                """
+                SELECT monto FROM distribuciones_fondos
+                WHERE venta_pieza_id = 2 AND tipo = 'se_deja_caja'
+                LIMIT 1
+                """
+            )
+        ).fetchone()
+        if caja and round(float(caja[0]), 2) == 351.0:
+            return
+
+    conn.execute(text("DELETE FROM distribuciones_fondos WHERE venta_pieza_id = 2"))
+    for tipo, monto in DISTRIBUCIONES_VENTA_PIEZA_2:
+        conn.execute(
+            text(
+                """
+                INSERT INTO distribuciones_fondos (venta_pieza_id, tipo, monto)
+                VALUES (2, :tipo, :monto)
+                """
+            ),
+            {"tipo": tipo, "monto": monto},
+        )
+
+
 def _migrate_apertura_caja_inicial_cero(conn, dialect: str) -> None:
     """
     Corrige la primera apertura con caja_inicial_reales = 0:
@@ -1353,6 +1419,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_pagos_proveedores(conn, dialect)
             _migrate_apertura_caja_inicial_cero(conn, dialect)
             _migrate_tasas_mercado_y_historicos(conn, dialect)
+            _migrate_distribuciones_venta_pieza_2(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -1392,4 +1459,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_pagos_proveedores(conn, dialect)
             _migrate_apertura_caja_inicial_cero(conn, dialect)
             _migrate_tasas_mercado_y_historicos(conn, dialect)
+            _migrate_distribuciones_venta_pieza_2(conn, dialect)
         return
