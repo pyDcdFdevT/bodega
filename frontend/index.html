@@ -939,6 +939,13 @@
             <label>Se deja en caja (oro, g)
               <input type="number" id="cierre-se-deja-oro" min="0" step="0.01" value="0">
             </label>
+            <label class="cierre-check-fundicion">
+              <input type="checkbox" id="cierre-retirar-fundicion">
+              Retirar oro para fundicion
+            </label>
+            <p class="muted small cierre-hint-fundicion">
+              Si se marca, el bruto del dia se registra como lote en Fundicion (estado ACUMULANDO) y deja de contarse en el balance operativo.
+            </p>
             <button type="button" class="btn-cobrar" id="btn-cierre-generar">Generar cierre</button>
           </div>
         </article>

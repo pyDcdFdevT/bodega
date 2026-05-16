@@ -6,12 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import AperturaCaja, CierreDiario
+from models import AperturaCaja, CierreDiario, LoteOro
 from routers.deps import require_admin
 from schemas import CierreDiaOut, CierreGenerarCreate, CierreResponseOut
 from services.apertura_context import build_apertura_pantalla_payload, fecha_operativa_hoy
 from services.ledger import registrar_transaccion
 from services.operativa import _inicio_dia_hoy, construir_payload_cierre
+from services.oro_lotes import (
+    eliminar_lote_cierre_si_posible,
+    gramos_oro_en_lotes,
+    lote_cierre_del_dia,
+    origen_lote_desde_cierre,
+)
 
 
 router = APIRouter(prefix="/cierre", tags=["Cierre"])
@@ -107,6 +113,43 @@ def generar_cierre_diario(
         )
 
     tot = data["totales_dia"]
+    lote_fundicion_id: int | None = None
+
+    if payload.retirar_oro_para_fundicion:
+        bruto = float(data["oro_recolectado"]["bruto_total_gramos"])
+        if bruto <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No hay oro recolectado hoy para retirar a fundicion",
+            )
+        if lote_cierre_del_dia(db, fe):
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un lote de cierre para fundicion en este dia",
+            )
+        en_lotes = gramos_oro_en_lotes(db)
+        disponible = round(oro_esperado - en_lotes, 4)
+        if bruto > disponible + 0.02:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Oro disponible ({disponible} g) insuficiente para retiro "
+                    f"({bruto} g); revise lotes previos"
+                ),
+            )
+        lote = LoteOro(
+            gramos_brutos=bruto,
+            origen=origen_lote_desde_cierre(fe),
+            estado="ACUMULANDO",
+        )
+        db.add(lote)
+        db.flush()
+        lote_fundicion_id = lote.id
+        data["retiro_fundicion"] = {
+            "lote_id": lote.id,
+            "gramos_brutos": bruto,
+            "origen": lote.origen,
+        }
 
     row = CierreDiario(
         fecha_operativa=fe,
@@ -138,6 +181,7 @@ def generar_cierre_diario(
         "cierre_id": row.id,
         "fecha_operativa": fe.isoformat(),
         "cerrado_por": row.cerrado_por,
+        "lote_fundicion_id": lote_fundicion_id,
         "cierre": {
             "ventas_reales": row.ventas_reales,
             "ventas_oro": row.ventas_oro,
@@ -172,6 +216,10 @@ def reabrir_dia_operativo(
         raise HTTPException(status_code=400, detail="No hay cierre registrado para hoy")
 
     cierre_id = row.id
+    try:
+        eliminar_lote_cierre_si_posible(db, fe)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     db.delete(row)
     registrar_transaccion(
         db,

@@ -20,6 +20,7 @@ from models import (
 from services.calculos import CalculosMonetarios
 from services.depreciacion import totales_depreciacion
 from services.operativa import construir_payload_cierre
+from services.oro_lotes import gramos_oro_en_lotes
 
 CAPITAL_INICIAL_KEY = "capital_inicial_reales"
 
@@ -277,7 +278,10 @@ def build_balance_general(db: Session) -> dict:
     hoy = datetime.now(UTC).date()
 
     caja, oro_gramos = _caja_y_oro_operativo(db, hoy)
+    gramos_en_lotes = gramos_oro_en_lotes(db)
+    oro_disponible = max(0.0, round(float(oro_gramos) - gramos_en_lotes, 4))
     oro_por_tipo = _oro_operativo_por_tipo(db, hoy, oro_gramos)
+    oro_por_tipo = _reconciliar_oro_por_tipo(oro_por_tipo, oro_disponible)
     oro_valorado = _valorar_oro_balance(db, oro_por_tipo)
     oro_reales = float(oro_valorado["valor_reales"])
     inventario = _valor_inventario_cpp(db)
@@ -295,6 +299,8 @@ def build_balance_general(db: Session) -> dict:
         "caja_reales": caja,
         "oro": {
             "gramos": oro_valorado["gramos"],
+            "gramos_operativo": round(float(oro_gramos), 4),
+            "gramos_en_lotes": gramos_en_lotes,
             "valor_reales": oro_reales,
             "por_tipo": oro_valorado["por_tipo"],
         },

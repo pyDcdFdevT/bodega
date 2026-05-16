@@ -628,6 +628,7 @@ class CierreResponseOut(BaseModel):
     cerrado_por: str
     cierre: CierreDiarioOut
     detalle: CierreDetalleOut
+    lote_fundicion_id: int | None = None
 
 
 class CierreGenerarCreate(BaseModel):
@@ -639,6 +640,7 @@ class CierreGenerarCreate(BaseModel):
     retiro_dueno_oro: float = Field(default=0, ge=0)
     se_deja_reales: float = Field(default=0, ge=0)
     se_deja_oro: float = Field(default=0, ge=0)
+    retirar_oro_para_fundicion: bool = False
 
     _cerrado_por = field_validator("cerrado_por")(_texto_requerido)
 

@@ -141,6 +141,7 @@ function setCierreCerradoMode(cerrado) {
     "cierre-retiro-oro",
     "cierre-se-deja-reales",
     "cierre-se-deja-oro",
+    "cierre-retirar-fundicion",
   ];
   for (const id of fieldIds) {
     const el = document.getElementById(id);
@@ -262,6 +263,7 @@ export function initCierre() {
       return;
     }
     try {
+      const retirarFundicion = Boolean(document.getElementById("cierre-retirar-fundicion")?.checked);
       const body = {
         cerrado_por: "Admin",
         reales_contados: Number(document.getElementById("cierre-conc-real-contado")?.value || 0),
@@ -271,9 +273,15 @@ export function initCierre() {
         retiro_dueno_oro: Number(document.getElementById("cierre-retiro-oro")?.value || 0),
         se_deja_reales: Number(document.getElementById("cierre-se-deja-reales")?.value || 0),
         se_deja_oro: Number(document.getElementById("cierre-se-deja-oro")?.value || 0),
+        retirar_oro_para_fundicion: retirarFundicion,
       };
-      await api.post("/cierre/generar", body, adminHeaders());
-      showToast("Cierre generado correctamente", "success");
+      const out = await api.post("/cierre/generar", body, adminHeaders());
+      if (out?.lote_fundicion_id) {
+        showToast(`Cierre generado. Lote #${out.lote_fundicion_id} creado en Fundicion.`, "success");
+      } else {
+        showToast("Cierre generado correctamente", "success");
+      }
+      document.dispatchEvent(new CustomEvent("bodega:refresh"));
       await loadCierre();
     } catch (error) {
       const msg = String(error.message || "");

@@ -131,6 +131,23 @@ textarea {
   letter-spacing: 0.02em;
 }
 
+.cierre-check-fundicion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.cierre-check-fundicion input {
+  width: auto;
+  margin: 0;
+}
+
+.cierre-hint-fundicion {
+  margin: 0.25rem 0 0.75rem;
+}
+
 .hero h1 {
   font-size: clamp(2rem, 3vw, 3.1rem);
 }
