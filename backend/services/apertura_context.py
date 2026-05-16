@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import AperturaCaja, CierreDiario
+from models import AperturaCaja, CierreDiario, DistribucionFondos, VentaPieza
+from services.oro_lotes import lote_cierre_del_dia
 
 
 def fecha_operativa_hoy() -> date:
     return datetime.now(UTC).date()
+
+
+def _inicio_dia(fecha: date) -> datetime:
+    return datetime(fecha.year, fecha.month, fecha.day, tzinfo=UTC).replace(tzinfo=None)
 
 
 def exigir_apertura_del_dia(db: Session) -> None:
@@ -20,10 +26,38 @@ def exigir_apertura_del_dia(db: Session) -> None:
         raise ValueError("Debe registrar la apertura del día antes de vender")
 
 
-def _sugerencia_desde_cierre(cierre: CierreDiario) -> dict:
+def _sum_distrib_se_deja_caja_post_cierre(
+    db: Session, cierre: CierreDiario, hoy: date
+) -> float:
+    """Suma 'se_deja_caja' de distribuciones de ventas de pieza posteriores al cierre."""
+    inicio = cierre.created_at
+    if inicio is None:
+        inicio = _inicio_dia(cierre.fecha_operativa + timedelta(days=1))
+    fin = datetime.now(UTC).replace(tzinfo=None)
+
+    total = (
+        db.query(func.coalesce(func.sum(DistribucionFondos.monto), 0))
+        .join(VentaPieza, DistribucionFondos.venta_pieza_id == VentaPieza.id)
+        .filter(
+            DistribucionFondos.tipo == "se_deja_caja",
+            VentaPieza.fecha >= inicio,
+            VentaPieza.fecha <= fin,
+        )
+        .scalar()
+    )
+    return round(float(total or 0), 2)
+
+
+def _sugerencia_desde_cierre(db: Session, cierre: CierreDiario, hoy: date) -> dict:
+    caja_cierre = round(float(cierre.se_deja_reales), 2)
+    caja_distrib = _sum_distrib_se_deja_caja_post_cierre(db, cierre, hoy)
+    oro_retirado = lote_cierre_del_dia(db, cierre.fecha_operativa) is not None
+    oro_ini = 0.0 if oro_retirado else round(float(cierre.se_deja_oro), 4)
     return {
-        "caja_inicial_reales": round(float(cierre.se_deja_reales), 2),
-        "oro_operativo_inicial": round(float(cierre.se_deja_oro), 4),
+        "caja_inicial_reales": round(caja_cierre + caja_distrib, 2),
+        "oro_operativo_inicial": oro_ini,
+        "oro_retirado_fundicion": oro_retirado,
+        "caja_distribuciones_se_deja_caja": caja_distrib,
     }
 
 
@@ -36,7 +70,7 @@ def build_apertura_pantalla_payload(db: Session) -> dict:
     sugerencia = None
     cierre_ref = cierre_hoy or cierre_ayer
     if cierre_ref:
-        sugerencia = _sugerencia_desde_cierre(cierre_ref)
+        sugerencia = _sugerencia_desde_cierre(db, cierre_ref, hoy)
 
     apertura_hoy = db.query(AperturaCaja).filter(AperturaCaja.fecha_operativa == hoy).first()
     out_ap = None
