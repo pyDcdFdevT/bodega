@@ -11,17 +11,13 @@ from models import (
     Activo,
     AperturaCaja,
     CierreDiario,
-    Compra,
-    CompraOro,
     Configuracion,
-    GastoOperativo,
     Producto,
     Transaccion,
 )
 from services.calculos import CalculosMonetarios
 from services.depreciacion import totales_depreciacion
-from services.operativa import _ganancia_mercancia_cpp_reales, construir_payload_cierre
-from services.query_operativa import compra_no_anulada
+from services.operativa import construir_payload_cierre
 
 CAPITAL_INICIAL_KEY = "capital_inicial_reales"
 
@@ -38,25 +34,20 @@ def _inicio_dia(fecha: date) -> datetime:
 
 
 def _obtener_capital_inicial(db: Session) -> float:
-    row = db.query(Configuracion).filter(Configuracion.clave == CAPITAL_INICIAL_KEY).first()
-    if row and str(row.valor or "").strip():
-        try:
-            return round(float(row.valor), 2)
-        except ValueError:
-            pass
+    """Capital aportado: caja inicial de la apertura operativa más antigua."""
     primera = (
         db.query(AperturaCaja)
         .order_by(AperturaCaja.fecha_operativa.asc(), AperturaCaja.id.asc())
         .first()
     )
     if primera:
-        valor = round(float(primera.caja_inicial_reales), 2)
-        if row:
-            row.valor = str(valor)
-        else:
-            db.add(Configuracion(clave=CAPITAL_INICIAL_KEY, valor=str(valor)))
-        db.commit()
-        return valor
+        return round(float(primera.caja_inicial_reales), 2)
+    row = db.query(Configuracion).filter(Configuracion.clave == CAPITAL_INICIAL_KEY).first()
+    if row and str(row.valor or "").strip():
+        try:
+            return round(float(row.valor), 2)
+        except ValueError:
+            pass
     return 0.0
 
 
@@ -235,15 +226,12 @@ def _cuentas_por_pagar(db: Session) -> float:
     return round(float(data.get("total_pendiente") or 0), 2)
 
 
-def _ganancia_acumulada_reales(db: Session) -> float:
-    ingresos, costo_cpp = _ganancia_mercancia_cpp_reales(db, inicio=None)
-    gastos = float(
-        db.query(func.coalesce(func.sum(GastoOperativo.monto_reales), 0)).scalar() or 0
-    )
-    compras_oro = float(
-        db.query(func.coalesce(func.sum(CompraOro.total_reales), 0)).scalar() or 0
-    )
-    return round(ingresos - costo_cpp - gastos - compras_oro, 2)
+def _ganancia_acumulada_reales(activos_total: float, pasivos_total: float, capital_inicial: float) -> float:
+    """
+    Resultado acumulado coherente con la ecuación contable:
+    Activos = Pasivos + Capital inicial + Ganancia acumulada.
+    """
+    return round(float(activos_total) - float(pasivos_total) - float(capital_inicial), 2)
 
 
 def build_balance_general(db: Session) -> dict:
@@ -282,7 +270,7 @@ def build_balance_general(db: Session) -> dict:
     }
 
     capital_inicial = _obtener_capital_inicial(db)
-    ganancia_acumulada = _ganancia_acumulada_reales(db)
+    ganancia_acumulada = _ganancia_acumulada_reales(activos_total, pasivos["total"], capital_inicial)
     patrimonio_total = round(capital_inicial + ganancia_acumulada, 2)
     patrimonio = {
         "capital_inicial": capital_inicial,
