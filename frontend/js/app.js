@@ -43,7 +43,7 @@ import { initCierre, loadCierre } from "./cierre.js";
 import { initCobros, loadCobros } from "./cobros.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
-import { loadDashboard } from "./dashboard.js";
+import { initEstadoResultados, loadDashboard } from "./dashboard.js";
 import { initPagosProveedores } from "./pagos_proveedores.js";
 import { initFundicion, loadFundicion } from "./fundicion.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
@@ -164,6 +164,7 @@ async function init() {
   initFundicion();
   initActivos();
   initPagosProveedores();
+  initEstadoResultados();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", () => {
     invalidateCache("productos");

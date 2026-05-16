@@ -622,6 +622,29 @@
 
         <div class="dashboard-summary" id="dashboard-summary-cards"></div>
 
+        <article class="card estado-resultados-card" id="estado-resultados-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Contabilidad</p>
+              <h3>Estado de Resultados</h3>
+            </div>
+            <div class="reporte-periodo-filters">
+              <label class="reporte-filter-label">
+                <span class="muted small">Mes</span>
+                <select id="estado-resultados-mes"></select>
+              </label>
+              <label class="reporte-filter-label">
+                <span class="muted small">Año</span>
+                <select id="estado-resultados-anio"></select>
+              </label>
+              <button type="button" class="btn-refresh" id="btn-estado-resultados">Actualizar</button>
+            </div>
+          </div>
+          <div id="estado-resultados-content">
+            <p class="muted">Seleccione mes y año, luego pulse Actualizar.</p>
+          </div>
+        </article>
+
         <article class="card reporte-periodo-card" id="reporte-periodo-root">
           <div class="panel-header">
             <div>

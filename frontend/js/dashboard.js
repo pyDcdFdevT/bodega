@@ -528,6 +528,116 @@ function reporteLinea(label, valor) {
   return `<div class="cierre-line"><span>${label}</span><strong>${valor}</strong></div>`;
 }
 
+function erLinea(concepto, monto, indent = false) {
+  const cls = indent ? "er-line er-line-indent" : "er-line";
+  return `<div class="${cls}"><span>${concepto}</span><strong>${formatMoney(monto, "reales")}</strong></div>`;
+}
+
+function erSeccion(titulo, lineas, totalLabel, total, extraHtml = "") {
+  const body = lineas.map((l) => erLinea(l.concepto, l.monto, true)).join("");
+  const totalRow = totalLabel
+    ? `<div class="er-line er-total"><span>${totalLabel}</span><strong>${formatMoney(total, "reales")}</strong></div>`
+    : "";
+  return `
+    <section class="er-block">
+      <h4 class="er-titulo">${titulo}</h4>
+      ${body}
+      ${extraHtml}
+      ${totalRow}
+    </section>`;
+}
+
+function poblarSelectoresEstadoResultados() {
+  const selMes = document.getElementById("estado-resultados-mes");
+  const selAnio = document.getElementById("estado-resultados-anio");
+  if (!selMes || !selAnio) {
+    return;
+  }
+  const ahora = new Date();
+  const anioActual = ahora.getFullYear();
+  if (!selMes.options.length) {
+    selMes.innerHTML = MESES_ES.map((nombre, i) => `<option value="${i + 1}">${nombre}</option>`).join("");
+    selMes.value = String(ahora.getMonth() + 1);
+  }
+  if (!selAnio.options.length) {
+    for (let y = anioActual; y >= anioActual - 5; y -= 1) {
+      const opt = document.createElement("option");
+      opt.value = String(y);
+      opt.textContent = String(y);
+      selAnio.appendChild(opt);
+    }
+    selAnio.value = String(anioActual);
+  }
+}
+
+function renderEstadoResultados(data) {
+  const root = document.getElementById("estado-resultados-content");
+  if (!root) {
+    return;
+  }
+  if (!data?.ingresos_operacionales) {
+    root.innerHTML = '<p class="muted">Sin datos para el periodo.</p>';
+    return;
+  }
+  const ing = data.ingresos_operacionales;
+  const cv = data.costo_ventas;
+  const go = data.gastos_operativos;
+  const utilNeta = Number(data.utilidad_neta ?? 0);
+
+  root.innerHTML = `
+    <p class="muted small er-periodo">${data.periodo?.etiqueta || ""}</p>
+    <div class="estado-resultados-sheet">
+      ${erSeccion(ing.titulo, ing.lineas, "Total ingresos", ing.total)}
+      ${erSeccion(
+        cv.titulo,
+        cv.lineas,
+        "Total costo de ventas",
+        cv.total,
+        `<div class="er-line er-subtotal"><span>Utilidad bruta</span><strong>${formatMoney(cv.utilidad_bruta, "reales")}</strong></div>`
+      )}
+      ${erSeccion(go.titulo, go.lineas, "Total gastos", go.total)}
+      <section class="er-block er-block-neta">
+        <div class="er-line er-utilidad-neta">
+          <span>UTILIDAD NETA</span>
+          <strong>${formatMoney(utilNeta, "reales")}</strong>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+export async function loadEstadoResultados() {
+  poblarSelectoresEstadoResultados();
+  const mes = Number(document.getElementById("estado-resultados-mes")?.value || new Date().getMonth() + 1);
+  const anio = Number(document.getElementById("estado-resultados-anio")?.value || new Date().getFullYear());
+  const root = document.getElementById("estado-resultados-content");
+  if (root) {
+    root.innerHTML = '<p class="muted">Cargando estado de resultados…</p>';
+  }
+  try {
+    const data = await api.get(`/reportes/estado-resultados?mes=${mes}&anio=${anio}`);
+    renderEstadoResultados(data);
+  } catch (error) {
+    if (root) {
+      root.innerHTML = `<p class="muted">${error.message || "Error al cargar"}</p>`;
+    }
+    showToast(error.message || "Error al cargar", "error");
+  }
+}
+
+let estadoResultadosInicializado = false;
+
+export function initEstadoResultados() {
+  poblarSelectoresEstadoResultados();
+  if (estadoResultadosInicializado) {
+    return;
+  }
+  estadoResultadosInicializado = true;
+  document.getElementById("btn-estado-resultados")?.addEventListener("click", () => {
+    loadEstadoResultados();
+  });
+}
+
 function renderReportePeriodo(data) {
   const root = document.getElementById("reporte-periodo-content");
   if (!root) {
@@ -880,6 +990,8 @@ export async function loadDashboard() {
   await loadPagosProveedores();
   initReportePeriodo();
   loadReportePeriodo();
+  initEstadoResultados();
+  loadEstadoResultados();
 }
 
 export { renderBalance };

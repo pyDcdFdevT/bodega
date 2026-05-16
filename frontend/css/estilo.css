@@ -909,6 +909,99 @@ summary.accordion-cat-summary::-webkit-details-marker {
   color: #e0e0e0;
 }
 
+.estado-resultados-card {
+  margin-bottom: 1rem;
+}
+
+.estado-resultados-sheet {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 0;
+}
+
+.er-periodo {
+  text-align: center;
+  margin-bottom: 16px !important;
+  font-weight: 600;
+}
+
+.er-block {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.er-block-neta {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-top: 8px;
+}
+
+.er-titulo {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #64748b);
+}
+
+.er-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 0.95rem;
+}
+
+.er-line-indent {
+  padding-left: 16px;
+}
+
+.er-line span {
+  color: var(--text, #1e293b);
+}
+
+.er-line strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.er-total {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border, #cbd5e1);
+  font-weight: 600;
+}
+
+.er-subtotal {
+  margin-top: 10px;
+  font-weight: 600;
+  color: var(--accent, #2d6a9f);
+}
+
+.er-utilidad-neta {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 14px 16px;
+  background: var(--surface-elevated, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.er-utilidad-neta strong {
+  color: var(--ok, #15803d);
+}
+
+[data-theme="dark"] .er-block {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .er-utilidad-neta {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 .reporte-periodo-card {
   margin-bottom: 18px;
 }
