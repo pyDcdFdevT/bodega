@@ -771,6 +771,200 @@ CHECK (tipo IN (
     )
 
 
+def _saldo_inicial_desde_snapshot(snapshot_json: str | None) -> tuple[float, float] | None:
+    import json
+
+    if not snapshot_json:
+        return None
+    try:
+        snap = json.loads(snapshot_json)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    caja = (snap.get("caja") or {}).get("saldo_inicial_reales")
+    if caja is None:
+        return None
+    valor = float(caja)
+    if valor <= 0.009:
+        return None
+    oro = float((snap.get("caja") or {}).get("oro_operativo_inicial") or 0)
+    return round(valor, 2), round(oro, 4)
+
+
+def _resolver_caja_inicial_primera_apertura(conn, fecha_op) -> tuple[float, float] | None:
+    from sqlalchemy import text
+
+    cierre_prev = conn.execute(
+        text(
+            """
+SELECT se_deja_reales, se_deja_oro
+FROM cierres_diarios
+WHERE fecha_operativa < :fecha
+ORDER BY fecha_operativa DESC, id DESC
+LIMIT 1
+"""
+        ),
+        {"fecha": fecha_op},
+    ).fetchone()
+    if cierre_prev:
+        caja = round(float(cierre_prev[0] or 0), 2)
+        if caja > 0.009:
+            return caja, round(float(cierre_prev[1] or 0), 4)
+
+    cierre_mismo = conn.execute(
+        text(
+            """
+SELECT snapshot_json
+FROM cierres_diarios
+WHERE fecha_operativa = :fecha
+ORDER BY id DESC
+LIMIT 1
+"""
+        ),
+        {"fecha": fecha_op},
+    ).fetchone()
+    if cierre_mismo:
+        desde_snap = _saldo_inicial_desde_snapshot(cierre_mismo[0])
+        if desde_snap:
+            return desde_snap
+
+    cfg = conn.execute(
+        text(
+            "SELECT valor FROM configuracion WHERE clave = 'capital_inicial_reales' LIMIT 1"
+        )
+    ).fetchone()
+    if cfg and cfg[0]:
+        try:
+            caja = round(float(cfg[0]), 2)
+        except (TypeError, ValueError):
+            caja = 0.0
+        if caja > 0.009:
+            return caja, 0.0
+    return None
+
+
+def _sync_config_capital_inicial(conn, dialect: str, nuevo_caja: float) -> None:
+    from sqlalchemy import inspect, text
+
+    if not inspect(conn).has_table("configuracion"):
+        return
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+INSERT INTO configuracion (clave, valor)
+VALUES ('capital_inicial_reales', :valor)
+ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor
+"""
+            ),
+            {"valor": str(nuevo_caja)},
+        )
+    else:
+        existe = conn.execute(
+            text("SELECT 1 FROM configuracion WHERE clave = 'capital_inicial_reales' LIMIT 1")
+        ).fetchone()
+        if existe:
+            conn.execute(
+                text("UPDATE configuracion SET valor = :valor WHERE clave = 'capital_inicial_reales'"),
+                {"valor": str(nuevo_caja)},
+            )
+        else:
+            conn.execute(
+                text(
+                    "INSERT INTO configuracion (clave, valor) VALUES ('capital_inicial_reales', :valor)"
+                ),
+                {"valor": str(nuevo_caja)},
+            )
+
+
+def _migrate_apertura_caja_inicial_cero(conn, dialect: str) -> None:
+    """
+    Corrige la primera apertura con caja_inicial_reales = 0:
+    - se_deja_* del último cierre anterior, o
+    - saldo_inicial del snapshot del cierre del mismo día (primer día operativo), o
+    - configuracion.capital_inicial_reales.
+    Si no hay fila de apertura pero sí cierre con snapshot, la recrea.
+    """
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("aperturas_caja") or not insp.has_table("cierres_diarios"):
+        return
+
+    primera = conn.execute(
+        text(
+            """
+SELECT id, fecha_operativa, caja_inicial_reales, oro_operativo_inicial
+FROM aperturas_caja
+ORDER BY fecha_operativa ASC, id ASC
+LIMIT 1
+"""
+        )
+    ).fetchone()
+
+    if not primera:
+        cierre_ini = conn.execute(
+            text(
+                """
+SELECT fecha_operativa, snapshot_json, cerrado_por
+FROM cierres_diarios
+ORDER BY fecha_operativa ASC, id ASC
+LIMIT 1
+"""
+            )
+        ).fetchone()
+        if not cierre_ini:
+            return
+        resuelto = _saldo_inicial_desde_snapshot(cierre_ini[1])
+        if not resuelto:
+            return
+        nuevo_caja, nuevo_oro = resuelto
+        conn.execute(
+            text(
+                """
+INSERT INTO aperturas_caja
+    (fecha_operativa, caja_inicial_reales, oro_operativo_inicial, abierto_por, created_at)
+VALUES (:fecha, :caja, :oro, :por, CURRENT_TIMESTAMP)
+"""
+            ),
+            {
+                "fecha": cierre_ini[0],
+                "caja": nuevo_caja,
+                "oro": nuevo_oro,
+                "por": (cierre_ini[2] or "Sistema")[:100],
+            },
+        )
+        _sync_config_capital_inicial(conn, dialect, nuevo_caja)
+        return
+
+    ap_id = int(primera[0])
+    fecha_op = primera[1]
+    caja_actual = float(primera[2] or 0)
+    if caja_actual > 0.009:
+        return
+
+    resuelto = _resolver_caja_inicial_primera_apertura(conn, fecha_op)
+    if not resuelto:
+        return
+    nuevo_caja, nuevo_oro = resuelto
+
+    conn.execute(
+        text(
+            """
+UPDATE aperturas_caja
+SET caja_inicial_reales = :caja,
+    oro_operativo_inicial = CASE
+        WHEN oro_operativo_inicial IS NULL OR oro_operativo_inicial = 0 THEN :oro
+        ELSE oro_operativo_inicial
+    END
+WHERE id = :id
+"""
+        ),
+        {"caja": nuevo_caja, "oro": nuevo_oro, "id": ap_id},
+    )
+
+    _sync_config_capital_inicial(conn, dialect, nuevo_caja)
+
+
 def _migrate_pagos_proveedores(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -1009,6 +1203,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
             _migrate_pagos_proveedores(conn, dialect)
+            _migrate_apertura_caja_inicial_cero(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -1045,4 +1240,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
             _migrate_pagos_proveedores(conn, dialect)
+            _migrate_apertura_caja_inicial_cero(conn, dialect)
         return
