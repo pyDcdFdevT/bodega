@@ -982,6 +982,24 @@ DISTRIBUCIONES_VENTA_PIEZA_2 = (
 MONTO_TOTAL_VENTA_PIEZA_2 = sum(m for _, m in DISTRIBUCIONES_VENTA_PIEZA_2)
 
 
+def _migrate_nombre_bodega_default(conn, dialect: str) -> None:
+    """Valor por defecto del nombre visible en la app."""
+    from sqlalchemy import inspect, text
+
+    if not inspect(conn).has_table("configuracion"):
+        return
+    existe = conn.execute(
+        text("SELECT 1 FROM configuracion WHERE clave = 'nombre_bodega' LIMIT 1")
+    ).fetchone()
+    if existe:
+        return
+    conn.execute(
+        text(
+            "INSERT INTO configuracion (clave, valor) VALUES ('nombre_bodega', 'Bodega Minera')"
+        )
+    )
+
+
 def _migrate_distribuciones_venta_pieza_2(conn, dialect: str) -> None:
     """Reemplaza distribuciones de venta pieza #2 para cuadrar con monto_total R$ 2,751."""
     from sqlalchemy import inspect, text
@@ -1420,6 +1438,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_apertura_caja_inicial_cero(conn, dialect)
             _migrate_tasas_mercado_y_historicos(conn, dialect)
             _migrate_distribuciones_venta_pieza_2(conn, dialect)
+            _migrate_nombre_bodega_default(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -1460,4 +1479,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_apertura_caja_inicial_cero(conn, dialect)
             _migrate_tasas_mercado_y_historicos(conn, dialect)
             _migrate_distribuciones_venta_pieza_2(conn, dialect)
+            _migrate_nombre_bodega_default(conn, dialect)
         return

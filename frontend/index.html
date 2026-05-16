@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#17324d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
-  <title>Bodega POS 3.0</title>
+  <title>Bodega Minera — Bodega POS</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/css/estilo.css">
   <script>
@@ -48,7 +48,7 @@
       </div>
       <div>
         <p class="eyebrow">Bodega POS v3.0</p>
-        <h1>Bodega Operativa</h1>
+        <h1 id="app-nombre-bodega">Bodega Minera</h1>
         <p class="hero-copy">
           Inventario, ventas tipo POS, gasolina en R$/L, gastos, apertura/cierre, fundicion y dashboard del dia.
         </p>
@@ -613,24 +613,29 @@
         <div class="panel-header">
           <div>
             <p class="eyebrow">Resumen</p>
-            <h2>Dashboard del dia</h2>
+            <h2 id="dashboard-heading">Dashboard del día</h2>
           </div>
+        </div>
+
+        <div class="dashboard-period-tabs" role="tablist" aria-label="Período del dashboard">
+          <button type="button" class="dashboard-period-tab active" data-periodo="dia" role="tab" aria-selected="true">Día</button>
+          <button type="button" class="dashboard-period-tab" data-periodo="mes" role="tab" aria-selected="false">Mes</button>
+          <button type="button" class="dashboard-period-tab" data-periodo="anio" role="tab" aria-selected="false">Año</button>
         </div>
 
         <div class="dashboard-summary" id="dashboard-summary-cards"></div>
 
-
         <div class="dashboard-charts">
           <article class="card dashboard-chart-card">
-            <h3>Oro recolectado por tipo (hoy)</h3>
+            <h3 id="dashboard-chart-oro-title">Oro recolectado por tipo</h3>
             <div class="chart-wrap"><canvas id="chart-oro-pie" aria-label="Oro por tipo"></canvas></div>
           </article>
           <article class="card dashboard-chart-card">
-            <h3>Ventas vs compras vs gastos (R$)</h3>
+            <h3 id="dashboard-chart-barras-title">Ventas vs compras vs gastos (R$)</h3>
             <div class="chart-wrap"><canvas id="chart-barras-reales" aria-label="Operaciones en reales"></canvas></div>
           </article>
           <article class="card dashboard-chart-card dashboard-chart-card--wide">
-            <h3>Ventas del dia por hora (R$)</h3>
+            <h3 id="dashboard-chart-linea-title">Ventas por hora (R$)</h3>
             <div class="chart-wrap"><canvas id="chart-ventas-hora" aria-label="Ventas por hora"></canvas></div>
           </article>
         </div>
@@ -651,9 +656,9 @@
           </div>
         </article>
 
-        <div class="grid two">
+        <div class="grid two" id="dashboard-ultimas-operaciones">
           <article class="card">
-            <h3>Ultimas 5 ventas (hoy)</h3>
+            <h3>Últimas 5 ventas (hoy)</h3>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -669,7 +674,7 @@
             </div>
           </article>
           <article class="card">
-            <h3>Ultimas 5 compras (hoy)</h3>
+            <h3>Últimas 5 compras (hoy)</h3>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -1424,6 +1429,18 @@
         <h2>Configuración</h2>
         <button type="button" id="btn-config-cerrar" class="btn-secondary">Cerrar</button>
       </div>
+      <section class="config-section">
+        <h3>Bodega</h3>
+        <form id="form-nombre-bodega" class="stack-form">
+          <label>
+            Nombre de la bodega
+            <input type="text" id="config-nombre-bodega" name="nombre" maxlength="100" placeholder="Bodega Minera" required>
+          </label>
+          <p id="config-nombre-error" class="pin-error"></p>
+          <button type="submit" id="btn-guardar-nombre-bodega" class="solo-admin">Guardar nombre</button>
+        </form>
+        <p class="muted small">Se muestra en el encabezado y en el título del navegador.</p>
+      </section>
       <section class="config-section">
         <h3>Apariencia</h3>
         <label class="theme-toggle-row">

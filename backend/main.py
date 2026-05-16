@@ -20,6 +20,7 @@ from routers import (
     cobros,
     compras,
     compras_oro,
+    configuracion,
     fundicion,
     gasolina,
     gastos,
@@ -81,6 +82,7 @@ def healthcheck():
 
 
 app.include_router(auth.router, prefix="/api")
+app.include_router(configuracion.router, prefix="/api")
 app.include_router(productos.router, prefix="/api")
 app.include_router(categorias.router, prefix="/api")
 app.include_router(compras.router, prefix="/api")

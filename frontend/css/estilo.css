@@ -412,6 +412,34 @@ th {
   margin-top: 16px;
 }
 
+.dashboard-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dashboard-period-tab {
+  border: 1px solid var(--border, rgba(23, 50, 77, 0.2));
+  border-radius: 999px;
+  padding: 8px 18px;
+  background: var(--tab-bg, #f4f7fb);
+  color: var(--ink, #17324d);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.dashboard-period-tab:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-period-tab.active {
+  background: var(--accent, #c9a227);
+  border-color: var(--accent, #c9a227);
+  color: #fff8ef;
+}
+
 .dashboard-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

@@ -44,7 +44,7 @@ import { initCobros, loadCobros } from "./cobros.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { refreshHistorialAbierto } from "./historial_operaciones.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
-import { loadDashboard } from "./dashboard.js";
+import { initDashboard, loadDashboard } from "./dashboard.js";
 import { initContabilidad, loadContabilidad } from "./contabilidad.js";
 import { initFundicion, loadFundicion } from "./fundicion.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
@@ -162,6 +162,7 @@ async function init() {
   initTasas();
   initGastos();
   initCierre();
+  initDashboard();
   initCobros();
   initFundicion();
   initActivos();

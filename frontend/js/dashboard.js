@@ -1,8 +1,23 @@
-import { api, formatMoney, formatTimeOnly, renderEmptyRow } from "./api.js";
+import { api, fechaOperativaUtc, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
 import { getRateLabel } from "./tasas.js";
 
 const CHART_COLORS = ["#c9a227", "#2d6a9f", "#3d8b5a", "#8b5a9e", "#d4654a"];
 const CHART_GRID = "rgba(23, 50, 77, 0.12)";
+
+const MESES_ES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
 
 /** Paleta daltónico-friendly (Wong) para oro recolectado por tipo. */
 const ORO_PIE_COLORS = {
@@ -23,6 +38,8 @@ const ORO_PIE_COLOR_ORDER = [
 let chartOroPie = null;
 let chartBarras = null;
 let chartVentasHora = null;
+let dashboardPeriodo = "dia";
+let dashboardInitialized = false;
 
 function destroyDashboardCharts() {
   [chartOroPie, chartBarras, chartVentasHora].forEach((c) => {
@@ -56,17 +73,12 @@ function horaVenezuela(iso) {
   return (d.getUTCHours() - 4 + 24) % 24;
 }
 
-function fechaOperativaUtc(iso) {
-  const d = parseUtcInstant(iso);
-  if (!d) {
-    return "";
-  }
-  return d.toISOString().slice(0, 10);
-}
-
 function activosHoyReales(op, activosList, fechaDia) {
-  if (op.activos_reales != null) {
+  if (op.activos_reales != null && fechaDia) {
     return Number(op.activos_reales);
+  }
+  if (op.activos_reales != null && !fechaDia) {
+    return 0;
   }
   return (activosList || [])
     .filter((a) => !fechaDia || fechaOperativaUtc(a.fecha) === fechaDia)
@@ -74,8 +86,11 @@ function activosHoyReales(op, activosList, fechaDia) {
 }
 
 /** ventas_reales − compras mercancía − gastos_reales − activos (sin compra de oro en R$). */
-function gananciaNetaReales(op, cierreDia, activosR) {
-  if (op.ganancia_neta_reales != null) {
+function gananciaNetaReales(op, cierreDia, activosR, esDia) {
+  if (!esDia && op.ganancia_neta_reales != null) {
+    return Number(op.ganancia_neta_reales);
+  }
+  if (op.ganancia_neta_reales != null && esDia) {
     return Number(op.ganancia_neta_reales);
   }
   const ventas = Number(op.ventas_reales ?? 0);
@@ -105,13 +120,57 @@ function totalOroRecolectadoGramos(op, oroRecolectado) {
   );
 }
 
-function renderSummaryCards(inv, op, oroRecolectado, cierreDia, activosList, fechaDia) {
+function periodoSuffix(periodo) {
+  if (periodo === "mes") {
+    return " (mes)";
+  }
+  if (periodo === "anio") {
+    return " (año)";
+  }
+  return "";
+}
+
+function actualizarTitulosDashboard(periodo, periodoLabel) {
+  const heading = document.getElementById("dashboard-heading");
+  if (heading) {
+    const titulos = {
+      dia: "Dashboard del día",
+      mes: `Dashboard del mes — ${periodoLabel}`,
+      anio: `Dashboard del año — ${periodoLabel}`,
+    };
+    heading.textContent = titulos[periodo] || titulos.dia;
+  }
+  const oroTitle = document.getElementById("dashboard-chart-oro-title");
+  const lineaTitle = document.getElementById("dashboard-chart-linea-title");
+  if (oroTitle) {
+    oroTitle.textContent =
+      periodo === "dia"
+        ? "Oro recolectado por tipo (hoy)"
+        : `Oro recolectado por tipo${periodoSuffix(periodo)}`;
+  }
+  if (lineaTitle) {
+    const lineaTitulos = {
+      dia: "Ventas del día por hora (R$)",
+      mes: "Ventas por día del mes (R$)",
+      anio: "Ventas por mes del año (R$)",
+    };
+    lineaTitle.textContent = lineaTitulos[periodo] || lineaTitulos.dia;
+  }
+  const ultimas = document.getElementById("dashboard-ultimas-operaciones");
+  if (ultimas) {
+    ultimas.hidden = periodo !== "dia";
+  }
+}
+
+function renderSummaryCards(inv, op, oroRecolectado, cierreDia, activosList, fechaDia, periodo) {
   const container = document.getElementById("dashboard-summary-cards");
   if (!container) {
     return;
   }
-  const activosR = activosHoyReales(op, activosList, fechaDia);
-  const gananciaR = gananciaNetaReales(op, cierreDia, activosR);
+  const esDia = periodo === "dia";
+  const suf = periodoSuffix(periodo);
+  const activosR = activosHoyReales(op, activosList, esDia ? fechaDia : null);
+  const gananciaR = gananciaNetaReales(op, cierreDia, activosR, esDia);
   const oroTotal = totalOroRecolectadoGramos(op, oroRecolectado);
   container.innerHTML = `
     <article class="metric-pill dashboard-kpi">
@@ -123,11 +182,11 @@ function renderSummaryCards(inv, op, oroRecolectado, cierreDia, activosList, fec
       <strong>${inv.stock_bajo ?? 0}</strong>
     </article>
     <article class="metric-pill dashboard-kpi">
-      <span>Ganancia neta (R$)</span>
+      <span>Ganancia neta (R$)${suf}</span>
       <strong>${formatMoney(gananciaR, "reales")}</strong>
     </article>
     <article class="metric-pill dashboard-kpi">
-      <span>Oro total (g)</span>
+      <span>Oro total (g)${suf}</span>
       <strong>${formatMoney(oroTotal)}</strong>
     </article>
   `;
@@ -248,12 +307,41 @@ function buildVentasPorHora(ventas, fechaDia) {
   return { labels, data };
 }
 
-function renderVentasHoraChart(ventas, fechaDia) {
+function buildSeriesPeriodo(periodo, reporte) {
+  if (periodo === "mes" && Array.isArray(reporte?.cierres)) {
+    return {
+      labels: reporte.cierres.map((c) => {
+        const d = String(c.fecha_operativa || "");
+        return d.length >= 10 ? d.slice(8, 10) + "/" + d.slice(5, 7) : d;
+      }),
+      data: reporte.cierres.map((c) => Number(c.ventas_reales || 0)),
+    };
+  }
+  if (periodo === "anio" && Array.isArray(reporte?.meses)) {
+    return {
+      labels: reporte.meses.map((m) => m.mes_nombre || MESES_ES[(m.mes || 1) - 1]),
+      data: reporte.meses.map((m) => Number(m.ventas_reales || 0)),
+    };
+  }
+  return { labels: [], data: [] };
+}
+
+function renderVentasLineaChart(view) {
   const canvas = document.getElementById("chart-ventas-hora");
   if (!canvas || typeof Chart === "undefined") {
     return;
   }
-  const { labels, data } = buildVentasPorHora(ventas, fechaDia);
+  let labels;
+  let data;
+  if (view.periodo === "dia") {
+    ({ labels, data } = buildVentasPorHora(view.ventasList || [], view.fecha));
+  } else {
+    ({ labels, data } = buildSeriesPeriodo(view.periodo, view.reporte));
+    if (!labels.length) {
+      labels = ["—"];
+      data = [0];
+    }
+  }
   chartVentasHora = new Chart(canvas, {
     type: "line",
     data: {
@@ -361,31 +449,147 @@ function renderUltimasVentas(uv) {
   }
 }
 
-function renderDashboard(data, cierreDia, ventasList, comprasList, activosList) {
-  if (!data) {
+function mapReporteToView(reporte, inventario) {
+  const t = reporte.totales || {};
+  const b = t.bodega || {};
+  const oro = t.oro_recolectado_detalle || {};
+  const periodo = reporte.periodo === "anual" ? "anio" : "mes";
+  const periodoLabel =
+    periodo === "anio"
+      ? String(reporte.anio)
+      : `${reporte.mes_nombre || MESES_ES[(reporte.mes || 1) - 1]} ${reporte.anio}`;
+  return {
+    periodo,
+    periodoLabel,
+    inventario: inventario || {},
+    op: {
+      ventas_reales: t.ventas_reales,
+      compras_reales: b.compras_mercancia_reales ?? t.compras_reales,
+      gastos_reales: t.gastos_reales,
+      ganancia_neta_reales: t.ganancia_neta_reales,
+      oro_araparita: oro.araparita,
+      oro_uruman: oro.uruman,
+      oro_santa_elena_minero: oro.santa_elena_minero,
+      oro_santa_elena_fundido: oro.santa_elena_fundido,
+    },
+    oroRecolectado: {
+      araparita: oro.araparita,
+      uruman: oro.uruman,
+      santa_elena_minero: oro.santa_elena_minero,
+      santa_elena_fundido: oro.santa_elena_fundido,
+      comprado_gramos: oro.comprado_gramos,
+    },
+    cierreDia: { bodega: { compras_mercancia_reales: b.compras_mercancia_reales } },
+    reporte,
+    fecha: null,
+    ultimasVentas: [],
+    ventasList: [],
+    comprasList: [],
+    activosList: [],
+  };
+}
+
+function renderDashboard(view) {
+  if (!view) {
     return;
   }
-  const op = data.operaciones_hoy || {};
-  const inv = data.inventario || {};
-  const oro = cierreDia?.oro_recolectado || null;
+  const op = view.op || {};
+  const inv = view.inventario || {};
+  const oro = view.oroRecolectado || null;
+  const periodo = view.periodo || "dia";
 
   destroyDashboardCharts();
-  renderSummaryCards(inv, op, oro, cierreDia, activosList, data.fecha);
+  actualizarTitulosDashboard(periodo, view.periodoLabel);
+  renderSummaryCards(inv, op, oro, view.cierreDia, view.activosList, view.fecha, periodo);
   renderOroPieChart(op, oro);
-  renderBarrasChart(op, cierreDia);
-  renderVentasHoraChart(ventasList || [], data.fecha);
+  renderBarrasChart(op, view.cierreDia);
+  renderVentasLineaChart(view);
   renderStockBajo(inv);
-  renderUltimasVentas(data.ultimas_ventas || []);
-  renderUltimasCompras(comprasList, data.fecha);
+  if (periodo === "dia") {
+    renderUltimasVentas(view.ultimasVentas || []);
+    renderUltimasCompras(view.comprasList, view.fecha);
+  }
+}
+
+async function fetchInventarioDashboard() {
+  const dash = await api.get("/reportes/dashboard");
+  return dash.inventario || {};
+}
+
+async function fetchDashboardView(periodo) {
+  const ahora = new Date();
+  const mes = ahora.getMonth() + 1;
+  const anio = ahora.getFullYear();
+
+  if (periodo === "dia") {
+    const [dashboard, cierreDia, ventasList, comprasList, activosList] = await Promise.all([
+      api.get("/reportes/dashboard"),
+      api.get("/cierre/dia").catch(() => null),
+      api.get("/ventas?limit=200").catch(() => []),
+      api.get("/compras?limit=50").catch(() => []),
+      api.get("/activos").catch(() => []),
+    ]);
+    return {
+      periodo: "dia",
+      periodoLabel: dashboard.fecha,
+      inventario: dashboard.inventario || {},
+      op: dashboard.operaciones_hoy || {},
+      oroRecolectado: cierreDia?.oro_recolectado || null,
+      cierreDia,
+      fecha: dashboard.fecha,
+      ultimasVentas: dashboard.ultimas_ventas || [],
+      ventasList,
+      comprasList,
+      activosList,
+    };
+  }
+
+  if (periodo === "mes") {
+    const [reporte, inventario] = await Promise.all([
+      api.get(`/reportes/mensual?mes=${mes}&anio=${anio}`),
+      fetchInventarioDashboard(),
+    ]);
+    return mapReporteToView(reporte, inventario);
+  }
+
+  const [reporte, inventario] = await Promise.all([
+    api.get(`/reportes/anual?anio=${anio}`),
+    fetchInventarioDashboard(),
+  ]);
+  return mapReporteToView(reporte, inventario);
+}
+
+export function initDashboard() {
+  if (dashboardInitialized) {
+    return;
+  }
+  dashboardInitialized = true;
+  document.querySelectorAll(".dashboard-period-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = btn.dataset.periodo || "dia";
+      if (next === dashboardPeriodo) {
+        return;
+      }
+      dashboardPeriodo = next;
+      document.querySelectorAll(".dashboard-period-tab").forEach((b) => {
+        const active = b.dataset.periodo === dashboardPeriodo;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      loadDashboard();
+    });
+  });
 }
 
 export async function loadDashboard() {
-  const [dashboard, cierreDia, ventasList, comprasList, activosList] = await Promise.all([
-    api.get("/reportes/dashboard"),
-    api.get("/cierre/dia").catch(() => null),
-    api.get("/ventas?limit=200").catch(() => []),
-    api.get("/compras?limit=50").catch(() => []),
-    api.get("/activos").catch(() => []),
-  ]);
-  renderDashboard(dashboard, cierreDia, ventasList, comprasList, activosList);
+  const activeBtn = document.querySelector(".dashboard-period-tab.active");
+  if (activeBtn?.dataset.periodo) {
+    dashboardPeriodo = activeBtn.dataset.periodo;
+  }
+  try {
+    const view = await fetchDashboardView(dashboardPeriodo);
+    renderDashboard(view);
+  } catch (error) {
+    showToast(error.message || "Error al cargar el dashboard", "error");
+  }
 }
