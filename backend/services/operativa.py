@@ -6,6 +6,7 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
 
 from models import (
+    CierreDiario,
     Compra,
     CompraOro,
     DetalleVenta,
@@ -18,8 +19,18 @@ from models import (
     Venta,
     VentaGasolina,
 )
+from services.apertura_context import fecha_operativa_hoy
 from services.calculos import CalculosMonetarios, equivalencia_pago_reales, ganancia_neta_dia
 from services.query_operativa import compra_no_anulada, venta_no_anulada
+
+MSG_DIA_CERRADO = "El día ya fue cerrado. No se pueden registrar más operaciones."
+
+
+def verificar_dia_abierto(db: Session) -> None:
+    """Impide registrar operaciones si el día operativo ya tiene cierre."""
+    hoy = fecha_operativa_hoy()
+    if db.query(CierreDiario).filter(CierreDiario.fecha_operativa == hoy).first():
+        raise ValueError(MSG_DIA_CERRADO)
 
 
 def _inicio_dia_hoy() -> datetime:

@@ -7,6 +7,7 @@ from database import get_db
 from models import CompraOro
 from schemas import CompraOroCreate, CompraOroOut
 from services.calculos import CalculosMonetarios
+from services.operativa import verificar_dia_abierto
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
 
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/compras-oro", tags=["Compra de Oro"])
 @router.post("")
 def registrar_compra_oro(data: CompraOroCreate, db: Session = Depends(get_db)):
     try:
+        verificar_dia_abierto(db)
         tipo_oro = ValidacionesSistema.validar_tipo_oro(data.tipo_oro)
         total_reales = CalculosMonetarios.redondear(data.gramos * data.tasa_compra_reales, 2)
 

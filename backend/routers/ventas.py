@@ -11,6 +11,7 @@ from models import DetalleVenta, MovimientoInventario, PagoVenta, Producto, Tasa
 from routers.deps import require_admin
 from schemas import VentaCreate, VentaListadoOut
 from services.apertura_context import exigir_apertura_del_dia
+from services.operativa import verificar_dia_abierto
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.query_operativa import venta_no_anulada
@@ -60,6 +61,7 @@ def _validar_invariante_venta_balanceada(
 def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     try:
         exigir_apertura_del_dia(db)
+        verificar_dia_abierto(db)
         es_fiado = venta.tipo_venta == "fiado"
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(venta.tipo_pago)
         if es_fiado and tipo_pago != "reales":

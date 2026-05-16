@@ -391,6 +391,32 @@ function balanceLinea(label, valor) {
   return `<div class="cierre-line"><span>${label}</span><strong>${valor}</strong></div>`;
 }
 
+function oroBalanceHtml(oro) {
+  const tipos = oro.por_tipo || [];
+  if (!tipos.length) {
+    return balanceLinea(
+      `Oro (${formatMoney(oro.gramos)} g)`,
+      formatMoney(oro.valor_reales, "reales")
+    );
+  }
+  const lineas = tipos
+    .filter((t) => Number(t.gramos) > 0.0001 || Number(t.valor_reales) > 0)
+    .map((t) =>
+      balanceLinea(
+        `${t.etiqueta || t.tipo} (${formatMoney(t.gramos)} g @ ${formatMoney(t.tasa_reales, "reales")}/g)`,
+        formatMoney(t.valor_reales, "reales")
+      )
+    )
+    .join("");
+  return (
+    lineas +
+    balanceLinea(
+      `Oro total (${formatMoney(oro.gramos)} g)`,
+      formatMoney(oro.valor_reales, "reales")
+    )
+  );
+}
+
 function renderBalance(data) {
   const root = document.getElementById("balance-general-content");
   const badge = document.getElementById("balance-ecuacion-badge");
@@ -421,10 +447,7 @@ function renderBalance(data) {
     <div class="balance-col">
       <h4>Activos</h4>
       ${balanceLinea("Caja", formatMoney(a.caja_reales, "reales"))}
-      ${balanceLinea(
-        `Oro (${formatMoney(oro.gramos)} g @ ${oro.tasa_referencia || "tasa ref."})`,
-        formatMoney(oro.valor_reales, "reales")
-      )}
+      ${oroBalanceHtml(oro)}
       ${balanceLinea("Inventario (CPP)", formatMoney(a.inventario_reales, "reales"))}
       ${balanceLinea(
         "Activos fijos (valor actual)",

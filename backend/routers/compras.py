@@ -8,6 +8,7 @@ from models import Compra, DetalleCompra, MovimientoInventario, Producto
 from routers.deps import require_admin
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
+from services.operativa import verificar_dia_abierto
 from services.validaciones import ValidacionesSistema
 from schemas import CompraCreate, CompraOut, CompraUpdate
 
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/compras", tags=["Compras"])
 @router.post("")
 def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
     try:
+        verificar_dia_abierto(db)
         tasa = ValidacionesSistema.validar_tasa(db)
         producto = ValidacionesSistema.obtener_producto_activo(compra.producto_id, db)
         if compra.cantidad <= 0:

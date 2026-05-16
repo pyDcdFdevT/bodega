@@ -519,7 +519,7 @@ class Transaccion(Base):
     __tablename__ = "transacciones"
     __table_args__ = (
         CheckConstraint(
-            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado')",
+            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia')",
             name="ck_transaccion_tipo",
         ),
         CheckConstraint(

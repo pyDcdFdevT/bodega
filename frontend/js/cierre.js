@@ -2,6 +2,10 @@ import { api, formatMoney, showToast } from "./api.js";
 
 let lastCierreData = null;
 
+function adminHeaders() {
+  return { headers: { "X-Bodega-Rol": "admin" } };
+}
+
 function bloque(titulo, html) {
   return `<article class="card cierre-bloque"><h3>${titulo}</h3><div class="cierre-body">${html}</div></article>`;
 }
@@ -149,6 +153,10 @@ function setCierreCerradoMode(cerrado) {
     btn.disabled = cerrado;
     btn.style.display = cerrado ? "none" : "";
   }
+  const btnReabrir = document.getElementById("btn-cierre-reabrir");
+  if (btnReabrir) {
+    btnReabrir.style.display = cerrado ? "" : "none";
+  }
   const cardConc = document.getElementById("cierre-card-conciliacion");
   const cardGen = document.getElementById("cierre-card-generar");
   if (cardConc) {
@@ -228,6 +236,26 @@ export function initCierre() {
     document.getElementById(id)?.addEventListener("input", () => updateConciliacionUi());
   });
 
+  document.getElementById("btn-cierre-reabrir")?.addEventListener("click", async () => {
+    if (!lastCierreData?.cierre_guardado) {
+      return;
+    }
+    if (
+      !window.confirm(
+        "¿Reabrir el dia operativo? Se eliminara el cierre de hoy y podra registrar operaciones de nuevo."
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.post("/cierre/reabrir", {}, adminHeaders());
+      showToast("Dia reabierto correctamente", "success");
+      await loadCierre();
+    } catch (error) {
+      showToast(error.message, "error");
+    }
+  });
+
   document.getElementById("btn-cierre-generar")?.addEventListener("click", async () => {
     if (lastCierreData?.cierre_guardado) {
       showToast("El cierre de hoy ya fue generado", "error");
@@ -244,15 +272,8 @@ export function initCierre() {
         se_deja_reales: Number(document.getElementById("cierre-se-deja-reales")?.value || 0),
         se_deja_oro: Number(document.getElementById("cierre-se-deja-oro")?.value || 0),
       };
-      const resp = await api.post("/cierre/generar", body, { headers: { "X-Bodega-Rol": "admin" } });
+      await api.post("/cierre/generar", body, adminHeaders());
       showToast("Cierre generado correctamente", "success");
-      const wrap = document.getElementById("cierre-snapshot-wrap");
-      const pre = document.getElementById("cierre-snapshot-pre");
-      if (wrap && pre) {
-        wrap.style.display = "block";
-        pre.textContent = JSON.stringify(resp, null, 2);
-      }
-      setCierreCerradoMode(true);
       await loadCierre();
     } catch (error) {
       const msg = String(error.message || "");

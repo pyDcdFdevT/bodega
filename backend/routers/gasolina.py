@@ -14,6 +14,7 @@ from schemas import (
     VentaGasolinaOut,
 )
 from services.apertura_context import exigir_apertura_del_dia
+from services.operativa import verificar_dia_abierto
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
@@ -91,6 +92,7 @@ def configurar_gasolina(data: GasolinaConfigUpdate, db: Session = Depends(get_db
 @router.post("/reponer")
 def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_db)):
     try:
+        verificar_dia_abierto(db)
         gasolina = _asegurar_gasolina(db)
         tasa = CalculosMonetarios.obtener_tasa_por_nombre(db, CalculosMonetarios.TASA_REFERENCIA_COMPRAS)
         if not tasa:
@@ -149,6 +151,7 @@ def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_d
 def vender_gasolina(data: GasolinaVenta, db: Session = Depends(get_db)):
     try:
         exigir_apertura_del_dia(db)
+        verificar_dia_abierto(db)
         tipo_pago = ValidacionesSistema.normalizar_tipo_pago(data.tipo_pago)
         tasa: TasaCambio | None = None
         tipo_oro: str | None = None

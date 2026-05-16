@@ -749,6 +749,28 @@ WHERE depreciacion_mensual = 0 AND monto_reales > 0
         )
 
 
+def _migrate_transaccion_tipo_reabrir(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("transacciones"):
+        return
+    if dialect != "postgresql":
+        return
+    conn.execute(text("ALTER TABLE transacciones DROP CONSTRAINT IF EXISTS ck_transaccion_tipo"))
+    conn.execute(
+        text(
+            """
+ALTER TABLE transacciones ADD CONSTRAINT ck_transaccion_tipo
+CHECK (tipo IN (
+    'venta','compra','salida','gasto','compra_oro','venta_gasolina',
+    'reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia'
+))
+"""
+        )
+    )
+
+
 def _migrate_compra_tipo_pago(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -899,6 +921,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_venta_compra_estado_anulacion(conn, dialect)
             _migrate_costo_promedio_columns(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
+            _migrate_transaccion_tipo_reabrir(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -933,4 +956,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_venta_compra_estado_anulacion(conn, dialect)
             _migrate_costo_promedio_columns(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
+            _migrate_transaccion_tipo_reabrir(conn, dialect)
         return

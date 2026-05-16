@@ -9,7 +9,8 @@ from database import get_db
 from models import AperturaCaja, CierreDiario
 from routers.deps import require_admin
 from schemas import CierreDiaOut, CierreGenerarCreate, CierreResponseOut
-from services.apertura_context import build_apertura_pantalla_payload
+from services.apertura_context import build_apertura_pantalla_payload, fecha_operativa_hoy
+from services.ledger import registrar_transaccion
 from services.operativa import _inicio_dia_hoy, construir_payload_cierre
 
 
@@ -156,4 +157,34 @@ def generar_cierre_diario(
             "se_deja_oro": row.se_deja_oro,
         },
         "detalle": data,
+    }
+
+
+@router.post("/reabrir")
+def reabrir_dia_operativo(
+    _rol: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Elimina el cierre de hoy para permitir nuevas operaciones (solo admin)."""
+    fe = fecha_operativa_hoy()
+    row = db.query(CierreDiario).filter(CierreDiario.fecha_operativa == fe).first()
+    if not row:
+        raise HTTPException(status_code=400, detail="No hay cierre registrado para hoy")
+
+    cierre_id = row.id
+    db.delete(row)
+    registrar_transaccion(
+        db,
+        tipo="reabrir_dia",
+        modulo_origen="bodega",
+        referencia_id=cierre_id,
+        moneda="reales",
+        descripcion=f"Reapertura del dia operativo {fe.isoformat()}",
+    )
+    db.commit()
+    return {
+        "status": "success",
+        "message": "Dia reabierto. Ya puede registrar operaciones.",
+        "fecha_operativa": fe.isoformat(),
+        "cierre_eliminado_id": cierre_id,
     }

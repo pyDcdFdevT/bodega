@@ -5,6 +5,7 @@ from database import get_db
 from models import MovimientoInventario, Salida
 from schemas import SalidaCreate, SalidaOut
 from services.apertura_context import exigir_apertura_del_dia
+from services.operativa import verificar_dia_abierto
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.validaciones import ValidacionesSistema
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/salidas", tags=["Salidas"])
 def registrar_salida(data: SalidaCreate, db: Session = Depends(get_db)):
     try:
         exigir_apertura_del_dia(db)
+        verificar_dia_abierto(db)
         producto = ValidacionesSistema.validar_stock(data.producto_id, data.cantidad, db)
 
         stock_anterior = producto.stock_actual

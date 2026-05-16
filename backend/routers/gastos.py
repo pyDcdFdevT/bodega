@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from database import get_db
 from models import GastoOperativo
 from schemas import GastoCreate, GastosHoyOut
 from services.ledger import registrar_transaccion
+from services.operativa import verificar_dia_abierto
 
 
 router = APIRouter(prefix="/gastos", tags=["Gastos"])
@@ -17,6 +18,10 @@ router = APIRouter(prefix="/gastos", tags=["Gastos"])
 
 @router.post("")
 def registrar_gasto(data: GastoCreate, db: Session = Depends(get_db)):
+    try:
+        verificar_dia_abierto(db)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     g = GastoOperativo(
         categoria=data.categoria,
         descripcion=data.descripcion.strip(),
