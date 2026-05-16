@@ -78,6 +78,7 @@ function renderBalance(data) {
       ${balanceLinea("Caja", formatMoney(a.caja_reales, "reales"))}
       ${oroBalanceHtml(oro)}
       ${balanceLinea("Inventario (CPP)", formatMoney(a.inventario_reales, "reales"))}
+      ${balanceLinea("Gasolina (stock)", formatMoney(a.gasolina_stock_reales ?? 0, "reales"))}
       ${balanceLinea(
         "Activos fijos (valor actual)",
         formatMoney(a.activos_fijos_reales, "reales")

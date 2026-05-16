@@ -12,6 +12,7 @@ from models import (
     AperturaCaja,
     CierreDiario,
     Configuracion,
+    Gasolina,
     Producto,
     Transaccion,
 )
@@ -49,6 +50,16 @@ def _obtener_capital_inicial(db: Session) -> float:
         except ValueError:
             pass
     return 0.0
+
+
+def _valor_stock_gasolina(db: Session) -> float:
+    """Valor del stock de combustible: litros disponibles × precio por litro (R$)."""
+    gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
+    if not gasolina:
+        return 0.0
+    litros = float(gasolina.litros_disponibles or 0)
+    precio = float(gasolina.precio_por_litro_reales or 0)
+    return CalculosMonetarios.redondear(litros * precio, 2)
 
 
 def _valor_inventario_cpp(db: Session) -> float:
@@ -242,13 +253,16 @@ def build_balance_general(db: Session) -> dict:
     oro_valorado = _valorar_oro_balance(db, oro_por_tipo)
     oro_reales = float(oro_valorado["valor_reales"])
     inventario = _valor_inventario_cpp(db)
+    gasolina_stock = _valor_stock_gasolina(db)
     activos_rows = db.query(Activo).order_by(Activo.fecha.asc(), Activo.id.asc()).all()
     dep = totales_depreciacion(activos_rows, hoy)
     activos_fijos_valor_actual = dep["valor_actual"]
     activos_fijos_monto_original = dep["monto_original"]
     activos_fijos_dep_acum = dep["depreciacion_acumulada"]
 
-    activos_total = round(caja + oro_reales + inventario + activos_fijos_valor_actual, 2)
+    activos_total = round(
+        caja + oro_reales + inventario + gasolina_stock + activos_fijos_valor_actual, 2
+    )
     activos = {
         "caja_reales": caja,
         "oro": {
@@ -257,6 +271,7 @@ def build_balance_general(db: Session) -> dict:
             "por_tipo": oro_valorado["por_tipo"],
         },
         "inventario_reales": inventario,
+        "gasolina_stock_reales": gasolina_stock,
         "activos_fijos_reales": activos_fijos_valor_actual,
         "activos_fijos_monto_original": activos_fijos_monto_original,
         "activos_fijos_depreciacion_acumulada": activos_fijos_dep_acum,
