@@ -1145,10 +1145,62 @@ WHERE tipo_pago_compra IS NULL OR tipo_pago_compra = ''
             )
 
 
+def _backfill_gasolina_costo_promedio(conn) -> None:
+    """CPP inicial desde último precio de reposición (compatible PG y SQLite)."""
+    from sqlalchemy import inspect, text
+
+    if not inspect(conn).has_table("gasolina"):
+        return
+
+    gasolinas = conn.execute(
+        text("SELECT id, costo_promedio_reales FROM gasolina")
+    ).fetchall()
+    upd = text("UPDATE gasolina SET costo_promedio_reales = :cpp WHERE id = :id")
+    for gid, cpp_actual in gasolinas:
+        if float(cpp_actual or 0) > 0.009:
+            continue
+        ultimo = conn.execute(
+            text(
+                """
+SELECT precio_reales_litro FROM gasolina_reposiciones
+WHERE gasolina_id = :gid
+ORDER BY fecha DESC, id DESC
+LIMIT 1
+"""
+            ),
+            {"gid": int(gid)},
+        ).fetchone()
+        if ultimo and float(ultimo[0] or 0) > 0:
+            conn.execute(upd, {"cpp": round(float(ultimo[0]), 2), "id": int(gid)})
+
+
+def _migrate_gasolina_costo_promedio(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("gasolina"):
+        return
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                "ALTER TABLE gasolina ADD COLUMN IF NOT EXISTS costo_promedio_reales "
+                "DOUBLE PRECISION NOT NULL DEFAULT 0"
+            )
+        )
+    else:
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(gasolina)"))}
+        if "costo_promedio_reales" not in cols:
+            conn.execute(
+                text("ALTER TABLE gasolina ADD COLUMN costo_promedio_reales REAL NOT NULL DEFAULT 0")
+            )
+    _backfill_gasolina_costo_promedio(conn)
+
+
 def _migrate_costo_promedio_columns(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
     insp = inspect(conn)
+    _migrate_gasolina_costo_promedio(conn, dialect)
     if dialect == "postgresql":
         if insp.has_table("productos"):
             conn.execute(

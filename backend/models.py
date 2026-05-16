@@ -266,12 +266,14 @@ class Gasolina(Base):
     __table_args__ = (
         CheckConstraint("litros_disponibles >= 0", name="ck_gasolina_litros"),
         CheckConstraint("precio_por_litro_reales >= 0", name="ck_gasolina_precio_litro_reales"),
+        CheckConstraint("costo_promedio_reales >= 0", name="ck_gasolina_costo_promedio_reales"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     tipo = Column(String(50), default="Gasolina", nullable=False)
     litros_disponibles = Column(Float, default=0, nullable=False)
     precio_por_litro_reales = Column(Float, default=0, nullable=False)
+    costo_promedio_reales = Column(Float, default=0, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     ventas = relationship("VentaGasolina", back_populates="gasolina")

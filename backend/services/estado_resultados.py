@@ -8,7 +8,8 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import Activo, DetalleVenta, GastoOperativo, GasolinaReposicion, Producto, Venta, VentaGasolina
+from models import Activo, DetalleVenta, GastoOperativo, Producto, Venta, VentaGasolina
+from services.balance import cpp_gasolina_unitario
 from services.depreciacion import _meses_depreciados, calcular_depreciacion_mensual
 from services.query_operativa import venta_no_anulada
 
@@ -48,6 +49,17 @@ def _rango_mes(mes: int, anio: int) -> tuple[datetime, datetime]:
 
 def _linea(concepto: str, monto: float) -> dict:
     return {"concepto": concepto, "monto": round(float(monto), 2)}
+
+
+def _costo_gasolina_periodo(db: Session, inicio: datetime, fin: datetime) -> float:
+    litros_vendidos = float(
+        db.query(func.coalesce(func.sum(VentaGasolina.litros), 0))
+        .filter(VentaGasolina.fecha >= inicio, VentaGasolina.fecha <= fin)
+        .scalar()
+        or 0
+    )
+    cpp = cpp_gasolina_unitario(db)
+    return round(litros_vendidos * cpp, 2)
 
 
 def _costo_mercancia_periodo(db: Session, inicio: datetime, fin: datetime) -> float:
@@ -110,12 +122,7 @@ def build_estado_resultados(db: Session, mes: int, anio: int) -> dict:
 
     costo_mercancia = _costo_mercancia_periodo(db, inicio, fin)
 
-    costo_gasolina = float(
-        db.query(func.coalesce(func.sum(GasolinaReposicion.total_reales), 0))
-        .filter(GasolinaReposicion.fecha >= inicio, GasolinaReposicion.fecha <= fin)
-        .scalar()
-        or 0
-    )
+    costo_gasolina = _costo_gasolina_periodo(db, inicio, fin)
     total_costo_ventas = round(costo_mercancia + costo_gasolina, 2)
     utilidad_bruta = round(total_ingresos - total_costo_ventas, 2)
 

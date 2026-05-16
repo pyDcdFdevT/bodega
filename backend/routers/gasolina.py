@@ -55,6 +55,7 @@ def obtener_gasolina(db: Session = Depends(get_db)):
         "tipo": gasolina.tipo,
         "litros_disponibles": gasolina.litros_disponibles,
         "precio_por_litro_reales": gasolina.precio_por_litro_reales,
+        "costo_promedio_reales": float(gasolina.costo_promedio_reales or 0),
         "updated_at": gasolina.updated_at,
         "reposiciones": [
             GasolinaReposicionOut(
@@ -102,7 +103,15 @@ def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_d
 
         total_reales = CalculosMonetarios.redondear(data.litros * data.precio_reales_litro, 2)
         total_oro = CalculosMonetarios.reales_a_oro(total_reales, db, tasa=tasa)
-        gasolina.litros_disponibles = CalculosMonetarios.redondear(gasolina.litros_disponibles + data.litros, 3)
+        stock_anterior = float(gasolina.litros_disponibles or 0)
+        cpp_anterior = float(gasolina.costo_promedio_reales or 0)
+        gasolina.costo_promedio_reales = CalculosMonetarios.costo_promedio_ponderado(
+            stock_anterior,
+            cpp_anterior,
+            float(data.litros),
+            float(data.precio_reales_litro),
+        )
+        gasolina.litros_disponibles = CalculosMonetarios.redondear(stock_anterior + data.litros, 3)
 
         registro = GasolinaReposicion(
             gasolina_id=gasolina.id,
@@ -137,6 +146,7 @@ def reponer_gasolina(data: GasolinaReposicionCreate, db: Session = Depends(get_d
                 "total_reales": total_reales,
                 "total_oro": total_oro,
                 "litros_disponibles": gasolina.litros_disponibles,
+                "costo_promedio_reales": gasolina.costo_promedio_reales,
             },
         }
     except ValueError as exc:

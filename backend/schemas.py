@@ -437,6 +437,7 @@ class GasolinaPanelOut(BaseModel):
     tipo: str
     litros_disponibles: float
     precio_por_litro_reales: float
+    costo_promedio_reales: float = 0
     updated_at: datetime
     reposiciones: list[GasolinaReposicionOut] = []
 

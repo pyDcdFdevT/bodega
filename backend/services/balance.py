@@ -13,6 +13,7 @@ from models import (
     CierreDiario,
     Configuracion,
     Gasolina,
+    GasolinaReposicion,
     Producto,
     Transaccion,
 )
@@ -52,14 +53,41 @@ def _obtener_capital_inicial(db: Session) -> float:
     return 0.0
 
 
+def _ultimo_precio_compra_gasolina(db: Session, gasolina_id: int) -> float:
+    row = (
+        db.query(GasolinaReposicion.precio_reales_litro)
+        .filter(GasolinaReposicion.gasolina_id == gasolina_id)
+        .order_by(GasolinaReposicion.fecha.desc(), GasolinaReposicion.id.desc())
+        .first()
+    )
+    return float(row[0]) if row else 0.0
+
+
+def cpp_gasolina_unitario(db: Session) -> float:
+    """CPP de gasolina (costo de compra por litro) para valoración y costo de ventas."""
+    gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
+    if not gasolina:
+        return 0.0
+    return _cpp_gasolina_valoracion(db, gasolina)
+
+
+def _cpp_gasolina_valoracion(db: Session, gasolina: Gasolina) -> float:
+    """Costo unitario de compra (CPP); si no hay CPP, último precio de reposición."""
+    cpp = float(gasolina.costo_promedio_reales or 0)
+    if cpp > 0.009:
+        return cpp
+    ultimo = _ultimo_precio_compra_gasolina(db, int(gasolina.id))
+    return round(ultimo, 2) if ultimo > 0 else 0.0
+
+
 def _valor_stock_gasolina(db: Session) -> float:
-    """Valor del stock de combustible: litros disponibles × precio por litro (R$)."""
+    """Valor del stock a costo (CPP × litros), no a precio de venta."""
     gasolina = db.query(Gasolina).order_by(Gasolina.id.asc()).first()
     if not gasolina:
         return 0.0
     litros = float(gasolina.litros_disponibles or 0)
-    precio = float(gasolina.precio_por_litro_reales or 0)
-    return CalculosMonetarios.redondear(litros * precio, 2)
+    cpp = _cpp_gasolina_valoracion(db, gasolina)
+    return CalculosMonetarios.redondear(litros * cpp, 2)
 
 
 def _valor_inventario_cpp(db: Session) -> float:
