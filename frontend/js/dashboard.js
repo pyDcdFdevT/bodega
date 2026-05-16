@@ -64,15 +64,27 @@ function fechaOperativaUtc(iso) {
   return d.toISOString().slice(0, 10);
 }
 
-/** ventas_reales − compras mercancía − gastos_reales (sin compra de oro en R$). */
-function gananciaNetaReales(op, cierreDia) {
+function activosHoyReales(op, activosList, fechaDia) {
+  if (op.activos_reales != null) {
+    return Number(op.activos_reales);
+  }
+  return (activosList || [])
+    .filter((a) => !fechaDia || fechaOperativaUtc(a.fecha) === fechaDia)
+    .reduce((sum, a) => sum + Number(a.monto_reales || 0), 0);
+}
+
+/** ventas_reales − compras mercancía − gastos_reales − activos (sin compra de oro en R$). */
+function gananciaNetaReales(op, cierreDia, activosR) {
+  if (op.ganancia_neta_reales != null) {
+    return Number(op.ganancia_neta_reales);
+  }
   const ventas = Number(op.ventas_reales ?? 0);
   const gastos = Number(op.gastos_reales ?? 0);
   const compras =
     cierreDia?.bodega?.compras_mercancia_reales != null
       ? Number(cierreDia.bodega.compras_mercancia_reales)
       : Number(op.compras_reales ?? 0);
-  return Math.round((ventas - compras - gastos) * 100) / 100;
+  return Math.round((ventas - compras - gastos - Number(activosR || 0)) * 100) / 100;
 }
 
 function comprasMercanciaReales(op, cierreDia) {
@@ -93,12 +105,13 @@ function totalOroRecolectadoGramos(op, oroRecolectado) {
   );
 }
 
-function renderSummaryCards(inv, op, oroRecolectado, cierreDia) {
+function renderSummaryCards(inv, op, oroRecolectado, cierreDia, activosList, fechaDia) {
   const container = document.getElementById("dashboard-summary-cards");
   if (!container) {
     return;
   }
-  const gananciaR = gananciaNetaReales(op, cierreDia);
+  const activosR = activosHoyReales(op, activosList, fechaDia);
+  const gananciaR = gananciaNetaReales(op, cierreDia, activosR);
   const oroTotal = totalOroRecolectadoGramos(op, oroRecolectado);
   container.innerHTML = `
     <article class="metric-pill dashboard-kpi">
@@ -108,6 +121,10 @@ function renderSummaryCards(inv, op, oroRecolectado, cierreDia) {
     <article class="metric-pill dashboard-kpi">
       <span>Stock bajo</span>
       <strong>${inv.stock_bajo ?? 0}</strong>
+    </article>
+    <article class="metric-pill dashboard-kpi">
+      <span>Activos (inversiones)</span>
+      <strong>${formatMoney(activosR, "reales")}</strong>
     </article>
     <article class="metric-pill dashboard-kpi">
       <span>Ganancia neta (R$)</span>
@@ -370,7 +387,7 @@ function renderUltimosMovimientos(um) {
   }
 }
 
-function renderDashboard(data, cierreDia, ventasList, comprasList) {
+function renderDashboard(data, cierreDia, ventasList, comprasList, activosList) {
   if (!data) {
     return;
   }
@@ -379,7 +396,7 @@ function renderDashboard(data, cierreDia, ventasList, comprasList) {
   const oro = cierreDia?.oro_recolectado || null;
 
   destroyDashboardCharts();
-  renderSummaryCards(inv, op, oro, cierreDia);
+  renderSummaryCards(inv, op, oro, cierreDia, activosList, data.fecha);
   renderOroPieChart(op, oro);
   renderBarrasChart(op, cierreDia);
   renderVentasHoraChart(ventasList || [], data.fecha);
@@ -390,11 +407,12 @@ function renderDashboard(data, cierreDia, ventasList, comprasList) {
 }
 
 export async function loadDashboard() {
-  const [dashboard, cierreDia, ventasList, comprasList] = await Promise.all([
+  const [dashboard, cierreDia, ventasList, comprasList, activosList] = await Promise.all([
     api.get("/reportes/dashboard"),
     api.get("/cierre/dia").catch(() => null),
     api.get("/ventas?limit=200").catch(() => []),
     api.get("/compras?limit=50").catch(() => []),
+    api.get("/activos").catch(() => []),
   ]);
-  renderDashboard(dashboard, cierreDia, ventasList, comprasList);
+  renderDashboard(dashboard, cierreDia, ventasList, comprasList, activosList);
 }

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
 from models import (
+    Activo,
     Compra,
     Gasolina,
     GasolinaReposicion,
@@ -125,6 +126,16 @@ def dashboard(db: Session = Depends(get_db)):
             or 0
         )
     )
+    activos_hoy_reales = float(
+        db.query(func.coalesce(func.sum(Activo.monto_reales), 0))
+        .filter(Activo.fecha >= inicio_hoy)
+        .scalar()
+        or 0
+    )
+    ganancia_neta_reales = round(
+        float(ventas_hoy_reales) - compras_hoy_reales - gastos_hoy_reales - activos_hoy_reales,
+        2,
+    )
     stock_bajo_rows = (
         db.query(Producto)
         .filter(Producto.activo.is_(True), Producto.stock_actual <= Producto.stock_minimo)
@@ -192,7 +203,9 @@ def dashboard(db: Session = Depends(get_db)):
             "oro_total": round(oro_total, 2),
             "gastos_reales": round(gastos_hoy_reales, 2),
             "gastos_oro_equiv": round(gastos_hoy_oro, 2),
+            "activos_reales": round(activos_hoy_reales, 2),
             "ganancia_neta": ganancia_neta,
+            "ganancia_neta_reales": ganancia_neta_reales,
         },
         "ultimas_ventas": ultimas_ventas_out,
         "ultimos_movimientos": ultimos_mov_out,
