@@ -7,8 +7,8 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models import AperturaCaja, CierreDiario, DistribucionFondos, VentaPieza
-from services.oro_lotes import lote_cierre_del_dia
+from models import AperturaCaja, CierreDiario, DistribucionFondos, LoteOro, VentaPieza
+from services.oro_lotes import origen_lote_desde_cierre
 
 
 def fecha_operativa_hoy() -> date:
@@ -51,8 +51,16 @@ def _sum_distrib_se_deja_caja_post_cierre(
 def _sugerencia_desde_cierre(db: Session, cierre: CierreDiario, hoy: date) -> dict:
     caja_cierre = round(float(cierre.se_deja_reales), 2)
     caja_distrib = _sum_distrib_se_deja_caja_post_cierre(db, cierre, hoy)
-    oro_retirado = lote_cierre_del_dia(db, cierre.fecha_operativa) is not None
-    oro_ini = 0.0 if oro_retirado else round(float(cierre.se_deja_oro), 4)
+    fecha_cierre = cierre.fecha_operativa
+    origen_cierre = origen_lote_desde_cierre(fecha_cierre)
+    lote_retiro_cierre = (
+        db.query(LoteOro).filter(LoteOro.origen == origen_cierre).first()
+    )
+    if lote_retiro_cierre is not None:
+        oro_ini = 0.0
+    else:
+        oro_ini = round(float(cierre.se_deja_oro), 4)
+    oro_retirado = lote_retiro_cierre is not None
     return {
         "caja_inicial_reales": round(caja_cierre + caja_distrib, 2),
         "oro_operativo_inicial": oro_ini,
