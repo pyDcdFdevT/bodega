@@ -1,4 +1,4 @@
-const CACHE_NAME = "bodega-static-v8";
+const CACHE_NAME = "bodega-static-v9";
 const ASSETS = [
   "/",
   "/index.html",

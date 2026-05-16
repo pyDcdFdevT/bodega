@@ -1,5 +1,8 @@
 import { api, formatDate, formatMoney, renderEmptyRow } from "./api.js";
 
+const HISTORIAL_LIMIT = 50;
+const DEBOUNCE_MS = 280;
+
 const SECCIONES = [
   { key: "compras", label: "Compras", endpoint: "/historial/compras" },
   { key: "ventas", label: "Ventas", endpoint: "/historial/ventas" },
@@ -7,6 +10,8 @@ const SECCIONES = [
   { key: "salidas", label: "Salidas", endpoint: "/historial/salidas" },
   { key: "gasolina", label: "Gasolina", endpoint: "/historial/gasolina" },
 ];
+
+const debounceTimers = new Map();
 
 function hoyPartes() {
   const d = new Date();
@@ -54,7 +59,8 @@ function leerFiltro(key) {
   const anio = Number(document.getElementById(`hist-${key}-anio`)?.value);
   const mes = Number(document.getElementById(`hist-${key}-mes`)?.value);
   const diaRaw = document.getElementById(`hist-${key}-dia`)?.value;
-  const params = new URLSearchParams({ limit: "20" });
+  const buscar = document.getElementById(`hist-${key}-q`)?.value?.trim() || "";
+  const params = new URLSearchParams({ limit: String(HISTORIAL_LIMIT) });
   if (anio) {
     params.set("anio", String(anio));
   }
@@ -63,6 +69,9 @@ function leerFiltro(key) {
   }
   if (diaRaw) {
     params.set("dia", String(diaRaw));
+  }
+  if (buscar) {
+    params.set("buscar", buscar);
   }
   return params.toString();
 }
@@ -88,7 +97,7 @@ function renderCompras(rows) {
 
 function renderVentas(rows) {
   if (!rows.length) {
-    return renderEmptyRow(6, "Sin registros en el periodo.");
+    return renderEmptyRow(7, "Sin registros en el periodo.");
   }
   return rows
     .map(
@@ -97,6 +106,7 @@ function renderVentas(rows) {
       <td>#${r.id}</td>
       <td>${formatDate(r.fecha)}</td>
       <td>${r.cliente || "—"}</td>
+      <td>${r.productos || "—"}</td>
       <td>${formatMoney(r.total_reales, "reales")}</td>
       <td>${formatMoney(r.total_oro)} g</td>
       <td>${r.estado_pago || "—"}</td>
@@ -144,52 +154,37 @@ function renderSalidas(rows) {
 }
 
 function renderGasolina(data) {
-  const ventas = data?.ventas || [];
-  const repos = data?.reposiciones || [];
-  if (!ventas.length && !repos.length) {
+  const ventas = (data?.ventas || []).map((v) => ({ ...v, movimiento: v.movimiento || "Venta" }));
+  const repos = (data?.reposiciones || []).map((r) => ({
+    ...r,
+    movimiento: r.movimiento || "Reposicion",
+  }));
+  const rows = [...ventas, ...repos].sort(
+    (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+  );
+  if (!rows.length) {
     return `<p class="muted small">Sin registros en el periodo.</p>`;
   }
-  let html = "";
-  if (ventas.length) {
-    html += `<p class="muted small" style="margin:0.5rem 0 0.25rem;">Ventas</p>
-      <div class="table-wrap"><table><thead><tr>
-        <th>ID</th><th>Fecha</th><th>Litros</th><th>Total R$</th><th>Oro (g)</th><th>Pago</th>
-      </tr></thead><tbody>`;
-    html += ventas
-      .map(
-        (v) => `
+  return `<div class="table-wrap"><table><thead><tr>
+      <th>Tipo</th><th>ID</th><th>Fecha</th><th>Litros</th><th>Total R$</th><th>Oro (g)</th><th>Pago / Precio L</th>
+    </tr></thead><tbody>${rows
+      .map((row) => {
+        const esRepo = row.movimiento === "Reposicion";
+        const pagoCol = esRepo
+          ? formatMoney(row.precio_reales_litro, "reales")
+          : row.tipo_pago || "—";
+        return `
       <tr>
-        <td>#${v.id}</td>
-        <td>${formatDate(v.fecha)}</td>
-        <td>${Number(v.litros).toFixed(2)}</td>
-        <td>${formatMoney(v.total_reales, "reales")}</td>
-        <td>${formatMoney(v.total_oro)} g</td>
-        <td>${v.tipo_pago || "—"}</td>
-      </tr>`
-      )
-      .join("");
-    html += `</tbody></table></div>`;
-  }
-  if (repos.length) {
-    html += `<p class="muted small" style="margin:0.75rem 0 0.25rem;">Reposiciones</p>
-      <div class="table-wrap"><table><thead><tr>
-        <th>ID</th><th>Fecha</th><th>Litros</th><th>Precio/L</th><th>Total R$</th>
-      </tr></thead><tbody>`;
-    html += repos
-      .map(
-        (r) => `
-      <tr>
-        <td>#${r.id}</td>
-        <td>${formatDate(r.fecha)}</td>
-        <td>${Number(r.litros).toFixed(2)}</td>
-        <td>${formatMoney(r.precio_reales_litro, "reales")}</td>
-        <td>${formatMoney(r.total_reales, "reales")}</td>
-      </tr>`
-      )
-      .join("");
-    html += `</tbody></table></div>`;
-  }
-  return html;
+        <td>${row.movimiento}</td>
+        <td>#${row.id}</td>
+        <td>${formatDate(row.fecha)}</td>
+        <td>${Number(row.litros).toFixed(2)}</td>
+        <td>${formatMoney(row.total_reales, "reales")}</td>
+        <td>${esRepo ? "—" : `${formatMoney(row.total_oro)} g`}</td>
+        <td>${pagoCol}</td>
+      </tr>`;
+      })
+      .join("")}</tbody></table></div>`;
 }
 
 async function cargarSeccion(sec) {
@@ -209,7 +204,7 @@ async function cargarSeccion(sec) {
       </tr></thead><tbody>${renderCompras(data)}</tbody></table></div>`;
     } else if (sec.key === "ventas") {
       body.innerHTML = `<div class="table-wrap"><table><thead><tr>
-        <th>ID</th><th>Fecha</th><th>Cliente</th><th>Total R$</th><th>Oro</th><th>Estado</th>
+        <th>ID</th><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total R$</th><th>Oro</th><th>Estado</th>
       </tr></thead><tbody>${renderVentas(data)}</tbody></table></div>`;
     } else if (sec.key === "cobros") {
       body.innerHTML = `<div class="table-wrap"><table><thead><tr>
@@ -225,10 +220,22 @@ async function cargarSeccion(sec) {
   }
 }
 
+function debouncedRecargar(sec, fn) {
+  const prev = debounceTimers.get(sec.key);
+  if (prev) {
+    clearTimeout(prev);
+  }
+  debounceTimers.set(
+    sec.key,
+    setTimeout(fn, DEBOUNCE_MS)
+  );
+}
+
 function initFiltrosSeccion(sec) {
   const anio = document.getElementById(`hist-${sec.key}-anio`);
   const mes = document.getElementById(`hist-${sec.key}-mes`);
   const dia = document.getElementById(`hist-${sec.key}-dia`);
+  const buscar = document.getElementById(`hist-${sec.key}-q`);
   const btn = document.getElementById(`hist-${sec.key}-buscar`);
   if (anio) {
     llenarSelectAnios(anio);
@@ -247,6 +254,13 @@ function initFiltrosSeccion(sec) {
   anio?.addEventListener("change", recargar);
   mes?.addEventListener("change", recargar);
   dia?.addEventListener("change", recargar);
+  buscar?.addEventListener("input", () => {
+    const details = document.getElementById(`historial-seccion-${sec.key}`);
+    if (!details?.open) {
+      return;
+    }
+    debouncedRecargar(sec, recargar);
+  });
 
   const details = document.getElementById(`historial-seccion-${sec.key}`);
   details?.addEventListener("toggle", () => {
@@ -257,30 +271,16 @@ function initFiltrosSeccion(sec) {
 }
 
 export function initHistorialOperaciones() {
-  const btn = document.getElementById("btn-compras-ver-historial");
-  const acordeon = document.getElementById("historial-acordeon");
-  if (!btn || !acordeon) {
+  const root = document.getElementById("historial-operaciones-root");
+  if (!root) {
     return;
   }
-  btn.addEventListener("click", () => {
-    const visible = acordeon.hidden;
-    acordeon.hidden = !visible;
-    btn.textContent = visible ? "Ocultar historial" : "Ver historial";
-    if (visible) {
-      SECCIONES.forEach((sec) => {
-        const d = document.getElementById(`historial-seccion-${sec.key}`);
-        if (d?.open) {
-          cargarSeccion(sec);
-        }
-      });
-    }
-  });
   SECCIONES.forEach(initFiltrosSeccion);
 }
 
 export async function refreshHistorialAbierto() {
-  const acordeon = document.getElementById("historial-acordeon");
-  if (!acordeon || acordeon.hidden) {
+  const root = document.getElementById("historial-operaciones-root");
+  if (!root) {
     return;
   }
   for (const sec of SECCIONES) {

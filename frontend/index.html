@@ -302,61 +302,6 @@
                 <tbody id="tabla-compras"></tbody>
               </table>
             </div>
-            <button type="button" class="btn-secondary btn-historial-toggle" id="btn-compras-ver-historial">
-              Ver historial
-            </button>
-            <div id="historial-acordeon" class="historial-acordeon" hidden>
-              <details class="historial-seccion" id="historial-seccion-compras">
-                <summary>Compras</summary>
-                <div class="historial-filtros">
-                  <label>Año <select id="hist-compras-anio"></select></label>
-                  <label>Mes <select id="hist-compras-mes"></select></label>
-                  <label>Día <select id="hist-compras-dia"></select></label>
-                  <button type="button" class="btn-refresh" id="hist-compras-buscar">Buscar</button>
-                </div>
-                <div id="historial-body-compras" class="historial-body"></div>
-              </details>
-              <details class="historial-seccion" id="historial-seccion-ventas">
-                <summary>Ventas</summary>
-                <div class="historial-filtros">
-                  <label>Año <select id="hist-ventas-anio"></select></label>
-                  <label>Mes <select id="hist-ventas-mes"></select></label>
-                  <label>Día <select id="hist-ventas-dia"></select></label>
-                  <button type="button" class="btn-refresh" id="hist-ventas-buscar">Buscar</button>
-                </div>
-                <div id="historial-body-ventas" class="historial-body"></div>
-              </details>
-              <details class="historial-seccion" id="historial-seccion-cobros">
-                <summary>Cobros / Pagos</summary>
-                <div class="historial-filtros">
-                  <label>Año <select id="hist-cobros-anio"></select></label>
-                  <label>Mes <select id="hist-cobros-mes"></select></label>
-                  <label>Día <select id="hist-cobros-dia"></select></label>
-                  <button type="button" class="btn-refresh" id="hist-cobros-buscar">Buscar</button>
-                </div>
-                <div id="historial-body-cobros" class="historial-body"></div>
-              </details>
-              <details class="historial-seccion" id="historial-seccion-salidas">
-                <summary>Salidas</summary>
-                <div class="historial-filtros">
-                  <label>Año <select id="hist-salidas-anio"></select></label>
-                  <label>Mes <select id="hist-salidas-mes"></select></label>
-                  <label>Día <select id="hist-salidas-dia"></select></label>
-                  <button type="button" class="btn-refresh" id="hist-salidas-buscar">Buscar</button>
-                </div>
-                <div id="historial-body-salidas" class="historial-body"></div>
-              </details>
-              <details class="historial-seccion" id="historial-seccion-gasolina">
-                <summary>Gasolina (ventas + reposiciones)</summary>
-                <div class="historial-filtros">
-                  <label>Año <select id="hist-gasolina-anio"></select></label>
-                  <label>Mes <select id="hist-gasolina-mes"></select></label>
-                  <label>Día <select id="hist-gasolina-dia"></select></label>
-                  <button type="button" class="btn-refresh" id="hist-gasolina-buscar">Buscar</button>
-                </div>
-                <div id="historial-body-gasolina" class="historial-body"></div>
-              </details>
-            </div>
           </article>
         </div>
       </section>
@@ -855,6 +800,84 @@
             <p class="muted">Cargando pagos a proveedores…</p>
           </div>
         </article>
+
+        <article class="card" id="historial-operaciones-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Histórico</p>
+              <h3>Historial de operaciones</h3>
+            </div>
+          </div>
+          <p class="muted small historial-intro">Filtre por fecha y busque por nombre. Hasta 50 resultados por consulta.</p>
+          <div id="historial-acordeon" class="historial-acordeon">
+            <details class="historial-seccion" id="historial-seccion-compras">
+              <summary>Compras</summary>
+              <div class="historial-filtros">
+                <label>Año <select id="hist-compras-anio"></select></label>
+                <label>Mes <select id="hist-compras-mes"></select></label>
+                <label>Día <select id="hist-compras-dia"></select></label>
+                <label class="historial-buscar">Buscar
+                  <input type="search" id="hist-compras-q" placeholder="Producto o proveedor…" autocomplete="off">
+                </label>
+                <button type="button" class="btn-refresh" id="hist-compras-buscar">Actualizar</button>
+              </div>
+              <div id="historial-body-compras" class="historial-body"></div>
+            </details>
+            <details class="historial-seccion" id="historial-seccion-ventas">
+              <summary>Ventas</summary>
+              <div class="historial-filtros">
+                <label>Año <select id="hist-ventas-anio"></select></label>
+                <label>Mes <select id="hist-ventas-mes"></select></label>
+                <label>Día <select id="hist-ventas-dia"></select></label>
+                <label class="historial-buscar">Buscar
+                  <input type="search" id="hist-ventas-q" placeholder="Producto o cliente…" autocomplete="off">
+                </label>
+                <button type="button" class="btn-refresh" id="hist-ventas-buscar">Actualizar</button>
+              </div>
+              <div id="historial-body-ventas" class="historial-body"></div>
+            </details>
+            <details class="historial-seccion" id="historial-seccion-cobros">
+              <summary>Cobros / Pagos</summary>
+              <div class="historial-filtros">
+                <label>Año <select id="hist-cobros-anio"></select></label>
+                <label>Mes <select id="hist-cobros-mes"></select></label>
+                <label>Día <select id="hist-cobros-dia"></select></label>
+                <label class="historial-buscar">Buscar
+                  <input type="search" id="hist-cobros-q" placeholder="Cliente…" autocomplete="off">
+                </label>
+                <button type="button" class="btn-refresh" id="hist-cobros-buscar">Actualizar</button>
+              </div>
+              <div id="historial-body-cobros" class="historial-body"></div>
+            </details>
+            <details class="historial-seccion" id="historial-seccion-salidas">
+              <summary>Salidas</summary>
+              <div class="historial-filtros">
+                <label>Año <select id="hist-salidas-anio"></select></label>
+                <label>Mes <select id="hist-salidas-mes"></select></label>
+                <label>Día <select id="hist-salidas-dia"></select></label>
+                <label class="historial-buscar">Buscar
+                  <input type="search" id="hist-salidas-q" placeholder="Producto o motivo…" autocomplete="off">
+                </label>
+                <button type="button" class="btn-refresh" id="hist-salidas-buscar">Actualizar</button>
+              </div>
+              <div id="historial-body-salidas" class="historial-body"></div>
+            </details>
+            <details class="historial-seccion" id="historial-seccion-gasolina">
+              <summary>Gasolina (ventas + reposiciones)</summary>
+              <div class="historial-filtros">
+                <label>Año <select id="hist-gasolina-anio"></select></label>
+                <label>Mes <select id="hist-gasolina-mes"></select></label>
+                <label>Día <select id="hist-gasolina-dia"></select></label>
+                <label class="historial-buscar">Buscar
+                  <input type="search" id="hist-gasolina-q" placeholder="Venta o reposicion…" autocomplete="off">
+                </label>
+                <button type="button" class="btn-refresh" id="hist-gasolina-buscar">Actualizar</button>
+              </div>
+              <div id="historial-body-gasolina" class="historial-body"></div>
+            </details>
+          </div>
+        </article>
+
       </section>
 
       <section class="panel solo-admin" id="panel-gastos">

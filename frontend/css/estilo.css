@@ -148,9 +148,8 @@ textarea {
   margin: 0.25rem 0 0.75rem;
 }
 
-.btn-historial-toggle {
-  margin-top: 0.75rem;
-  width: 100%;
+.historial-intro {
+  margin: 0 0 0.75rem;
 }
 
 .historial-acordeon {
@@ -189,6 +188,11 @@ details.historial-seccion summary {
 
 .historial-filtros select {
   min-width: 5.5rem;
+}
+
+.historial-filtros .historial-buscar input[type="search"] {
+  min-width: 10rem;
+  padding: 0.35rem 0.5rem;
 }
 
 .historial-body {

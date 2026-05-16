@@ -1,4 +1,5 @@
 import { api, formatDate, formatMoney, showToast } from "./api.js";
+import { initHistorialOperaciones } from "./historial_operaciones.js";
 import { loadPagosProveedores, initPagosProveedores } from "./pagos_proveedores.js";
 
 const MESES_ES = [
@@ -590,6 +591,7 @@ export function initContabilidad() {
   }
   contabilidadInicializada = true;
   initPagosProveedores();
+  initHistorialOperaciones();
   initEstadoResultados();
   initReportePeriodo();
 }
