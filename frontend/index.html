@@ -264,9 +264,25 @@
               <label>Producto
                 <select name="producto_id" id="compra-producto" required></select>
               </label>
-              <label>Cantidad
-                <input name="cantidad" type="number" min="0.001" step="0.001" value="1" required>
+              <label id="compra-cantidad-label">Cantidad
+                <input name="cantidad" id="compra-cantidad" type="number" min="0.001" step="0.001" value="1" required>
               </label>
+              <div id="compra-kg-extra" class="compra-kg-extra hidden">
+                <label>Kilos según factura
+                  <input type="number" id="compra-kilos-factura" min="0.001" step="0.001" readonly>
+                </label>
+                <label>Kilos recibidos (pesaje real)
+                  <input name="kilos_recibidos" id="compra-kilos-recibidos" type="number" min="0.001" step="0.001">
+                </label>
+                <p id="compra-kg-diferencia" class="muted small compra-kg-diferencia hidden"></p>
+                <label class="compra-merma-check hidden" id="compra-merma-wrap">
+                  <input type="checkbox" name="registrar_merma_transporte" id="compra-merma-check" value="1">
+                  Registrar merma por transporte
+                </label>
+                <label>Unidades <span class="muted small">(opcional)</span>
+                  <input name="unidades" id="compra-unidades" type="number" min="0" step="1" placeholder="Ej. pollos, piezas">
+                </label>
+              </div>
               <label>Precio total (R$)
                 <input name="precio_reales" type="number" min="0.01" step="0.01" required>
               </label>

@@ -333,10 +333,9 @@ function htmlTarjetaProducto(p) {
       <div class="pos-card pos-card-pollo">
         <strong>${p.nombre}</strong>
         <span class="pos-card-meta">${formatMoney(p.precio_venta_reales, "reales")}/kg</span>
-        <span class="pos-card-stock">Kilos: ${stock.kilos}</span>
-        <span class="pos-card-stock muted small">Pollos est.: ${stock.pollos}</span>
+        <span class="pos-card-stock">${stock.linea}</span>
         <div class="pos-pollo-actions">
-          <button type="button" class="btn-secondary pos-pollo-uno" data-pollo-uno="${p.id}">1 Pollo</button>
+          <button type="button" class="btn-secondary pos-pollo-uno" data-pollo-uno="${p.id}">1 unidad</button>
           <label class="pos-pollo-kg">
             <span class="pos-pollo-kg-label">X kg</span>
             <input type="number" min="0.01" step="0.01" placeholder="kg" class="pos-pollo-kg-input" data-pollo-kg-input="${p.id}">

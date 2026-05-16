@@ -4,23 +4,17 @@ import { RATE_ORDER, getRateLabel, getTasasCache } from "./tasas.js";
 
 let productosCache = [];
 
-/** Venta por unidad con peso en kg (ej. pollo: 1 unidad = X kg). */
+/** Venta por unidad con peso en kg (pollo, queso, carnes, pescado, etc.). */
 export function ventaPorUnidadKg(producto) {
-  return (
-    producto?.unidad_venta === "kg" &&
-    producto?.presentacion === "kg" &&
-    Number(producto?.kg_por_unidad) > 0
-  );
+  return Number(producto?.kg_por_unidad) > 0;
 }
 
 export function textoStockKgUnidad(producto) {
   const kg = Number(producto?.stock_actual || 0);
   const kpu = Number(producto?.kg_por_unidad);
   const est = kpu > 0 ? Math.floor(kg / kpu) : 0;
-  return {
-    kilos: `${kg.toFixed(2)} kg`,
-    pollos: `~${est} unidades`,
-  };
+  const linea = `Stock: ${kg.toFixed(2)} kg (~${est} unidades)`;
+  return { linea, kilos: `${kg.toFixed(2)} kg`, unidades: `~${est} unidades` };
 }
 
 function agruparPorCategoria(items) {
@@ -78,7 +72,7 @@ function tablaProductosHtml(productos) {
               <td>${producto.unidad_venta}</td>
               <td>${
                 ventaPorUnidadKg(producto)
-                  ? `<div class="stock-kg-unidad"><div>Kilos: ${textoStockKgUnidad(producto).kilos}</div><div class="muted small">Pollos est.: ${textoStockKgUnidad(producto).pollos}</div></div>`
+                  ? textoStockKgUnidad(producto).linea
                   : producto.stock_actual
               }</td>
               <td>${formatMoney(producto.costo_promedio_reales ?? producto.precio_costo_reales, "reales")}</td>
@@ -138,10 +132,7 @@ function renderStockBajo(items) {
           <td>${producto.nombre}</td>
           <td>${
             ventaPorUnidadKg(producto)
-              ? (() => {
-                  const s = textoStockKgUnidad(producto);
-                  return `${s.kilos} · ${s.pollos}`;
-                })()
+              ? textoStockKgUnidad(producto).linea
               : producto.stock_actual
           }</td>
           <td>${producto.stock_minimo}</td>

@@ -9,6 +9,12 @@ from routers.deps import require_admin
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
 from services.operativa import verificar_dia_abierto
+from services.compra_merma import (
+    observaciones_con_unidades,
+    producto_compra_por_kg,
+    registrar_merma_transporte,
+    resolver_kilos_compra,
+)
 from services.validaciones import ValidacionesSistema
 from schemas import CompraCreate, CompraOut, CompraUpdate
 
@@ -25,10 +31,22 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
         if compra.cantidad <= 0:
             raise ValueError("La cantidad debe ser mayor a cero")
 
-        unidades = compra.cantidad
+        es_kg = producto_compra_por_kg(producto)
+        kilos_factura, kilos_recibidos = resolver_kilos_compra(
+            producto,
+            compra.cantidad,
+            compra.kilos_factura,
+            compra.kilos_recibidos,
+        )
+        unidades = kilos_recibidos if es_kg else compra.cantidad
+        base_costo_kg = kilos_factura if es_kg else unidades
+
+        if es_kg and compra.registrar_merma_transporte and kilos_factura <= kilos_recibidos + 0.0001:
+            raise ValueError("No hay diferencia de kilos para registrar merma por transporte")
+
         costo_oro_total = CalculosMonetarios.reales_a_oro(compra.precio_reales, db, tasa=tasa)
-        costo_unitario_oro = CalculosMonetarios.redondear_oro(costo_oro_total / unidades)
-        costo_unitario_reales = round(compra.precio_reales / unidades, 2)
+        costo_unitario_oro = CalculosMonetarios.redondear_oro(costo_oro_total / base_costo_kg)
+        costo_unitario_reales = round(compra.precio_reales / base_costo_kg, 2)
         precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
 
         stock_anterior = producto.stock_actual
@@ -47,12 +65,17 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
             producto.precio_venta_reales = CalculosMonetarios.oro_a_reales(precio_sugerido, db, tasa=tasa)
 
         tipo_pago = compra.tipo_pago_compra
+        obs = observaciones_con_unidades(compra.observaciones, compra.unidades if es_kg else None)
+        if es_kg and abs(kilos_factura - kilos_recibidos) > 0.0001:
+            nota = f"Factura: {kilos_factura} kg · Recibido: {kilos_recibidos} kg"
+            obs = f"{obs} — {nota}" if obs else nota
+
         nueva = Compra(
             proveedor=compra.proveedor,
             total_reales=round(compra.precio_reales, 2),
             total_oro=costo_oro_total,
             tasa_cambio_usada=tasa.tasa_reales,
-            observaciones=compra.observaciones,
+            observaciones=obs,
             tipo_pago_compra=tipo_pago,
             estado_credito="pendiente" if tipo_pago == "credito" else "pagada",
         )
@@ -79,6 +102,17 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
                 motivo=f"Compra registrada #{nueva.id}",
             )
         )
+
+        salida_merma = None
+        if es_kg and compra.registrar_merma_transporte:
+            diferencia = round(kilos_factura - kilos_recibidos, 3)
+            salida_merma = registrar_merma_transporte(
+                db,
+                producto=producto,
+                diferencia_kg=diferencia,
+                costo_unitario_reales=costo_unitario_reales,
+                compra_id=nueva.id,
+            )
 
         monto_caja = float(nueva.total_reales) if tipo_pago == "contado" else 0.0
         registrar_transaccion(
@@ -108,6 +142,10 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
                 "compra_id": nueva.id,
                 "producto": producto.nombre,
                 "unidades_ingresadas": unidades,
+                "kilos_factura": kilos_factura if es_kg else None,
+                "kilos_recibidos": kilos_recibidos if es_kg else None,
+                "merma_transporte_kg": round(kilos_factura - kilos_recibidos, 3) if es_kg else None,
+                "salida_merma_id": salida_merma.id if salida_merma else None,
                 "costo_unitario_oro": costo_unitario_oro,
                 "costo_promedio_reales": producto.costo_promedio_reales,
                 "precio_sugerido_venta_oro": precio_sugerido,

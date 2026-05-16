@@ -704,6 +704,28 @@ summary.accordion-cat-summary::-webkit-details-marker {
   line-height: 1.35;
 }
 
+.compra-kg-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: rgba(17, 38, 58, 0.03);
+}
+
+.compra-kg-diferencia {
+  color: var(--danger, #b42318);
+  font-weight: 600;
+}
+
+.compra-merma-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
 .pos-card-pollo {
   cursor: default;
   display: flex;

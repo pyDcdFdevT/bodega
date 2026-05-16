@@ -230,6 +230,10 @@ class CompraCreate(BaseModel):
     proveedor: str = Field(default="Proveedor", max_length=100)
     observaciones: Optional[str] = Field(default=None, max_length=500)
     tipo_pago_compra: str = Field(default="contado", max_length=20)
+    kilos_factura: float | None = Field(default=None, gt=0)
+    kilos_recibidos: float | None = Field(default=None, gt=0)
+    registrar_merma_transporte: bool = False
+    unidades: float | None = Field(default=None, ge=0)
 
     _proveedor = field_validator("proveedor")(_texto_requerido)
 
