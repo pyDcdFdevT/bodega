@@ -938,6 +938,39 @@ ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor
             )
 
 
+def _migrate_tasas_mercado_y_historicos(conn, dialect: str) -> None:
+    """Tasas operativas de mercado y correccion de ventas_pieza #2/#3 y compra_oro #6."""
+    from sqlalchemy import text
+
+    updates_tasas = [
+        ("araparita", 467.50),
+        ("uruman", 505.00),
+        ("santa_elena_minero", 430.00),
+        ("santa_elena_fundido", 655.00),
+    ]
+    for nombre, tasa in updates_tasas:
+        conn.execute(
+            text("UPDATE tasas_cambio SET tasa_reales = :tasa WHERE nombre = :nombre"),
+            {"tasa": tasa, "nombre": nombre},
+        )
+
+    conn.execute(
+        text("UPDATE ventas_pieza SET tasa_venta = 655.00, monto_total = 2751.00 WHERE id = 2")
+    )
+    conn.execute(
+        text("UPDATE ventas_pieza SET tasa_venta = 655.00, monto_total = 2076.35 WHERE id = 3")
+    )
+    conn.execute(
+        text(
+            """
+            UPDATE compras_oro
+            SET tasa_compra_reales = 467.50, total_reales = 1402.50
+            WHERE id = 6 AND tipo_oro = 'uruman'
+            """
+        )
+    )
+
+
 def _migrate_apertura_caja_inicial_cero(conn, dialect: str) -> None:
     """
     Corrige la primera apertura con caja_inicial_reales = 0:
@@ -1319,6 +1352,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_ventas_devoluciones_descuento(conn, dialect)
             _migrate_pagos_proveedores(conn, dialect)
             _migrate_apertura_caja_inicial_cero(conn, dialect)
+            _migrate_tasas_mercado_y_historicos(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -1357,4 +1391,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_ventas_devoluciones_descuento(conn, dialect)
             _migrate_pagos_proveedores(conn, dialect)
             _migrate_apertura_caja_inicial_cero(conn, dialect)
+            _migrate_tasas_mercado_y_historicos(conn, dialect)
         return

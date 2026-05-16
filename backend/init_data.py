@@ -7,10 +7,10 @@ from models import Categoria, Gasolina, Producto, TasaCambio
 
 
 TASAS_INICIALES = {
-    "araparita": 652.80,
-    "uruman": 691.20,
-    "santa_elena_minero": 614.40,
-    "santa_elena_fundido": 768.00,
+    "araparita": 467.50,
+    "uruman": 505.00,
+    "santa_elena_minero": 430.00,
+    "santa_elena_fundido": 655.00,
 }
 
 

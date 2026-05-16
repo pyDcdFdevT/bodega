@@ -12,10 +12,10 @@ class CalculosMonetarios:
     ROUND_DIGITS_ORO = 4
     TASA_REFERENCIA_COMPRAS = "araparita"
     TASAS_PREDEFINIDAS = {
-        "araparita": 652.80,
-        "uruman": 691.20,
-        "santa_elena_minero": 614.40,
-        "santa_elena_fundido": 768.00,
+        "araparita": 467.50,
+        "uruman": 505.00,
+        "santa_elena_minero": 430.00,
+        "santa_elena_fundido": 655.00,
     }
     ETIQUETAS_TASAS = {
         "araparita": "Araparita",
