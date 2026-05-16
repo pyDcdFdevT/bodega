@@ -334,10 +334,18 @@ class ActivoCreate(BaseModel):
     descripcion: str = Field(..., min_length=1, max_length=500)
     categoria: str = Field(..., min_length=3, max_length=40)
     monto_reales: float = Field(..., gt=0)
+    vida_util_anios: int = Field(default=5, ge=1, le=50)
+    valor_residual: float = Field(default=0, ge=0)
     observaciones: Optional[str] = Field(default=None, max_length=2000)
 
     _descripcion = field_validator("descripcion")(_texto_requerido)
     _categoria = field_validator("categoria")(_categoria_activo)
+
+    @model_validator(mode="after")
+    def validar_residual(self) -> "ActivoCreate":
+        if self.valor_residual >= self.monto_reales:
+            raise ValueError("El valor residual debe ser menor al monto del activo")
+        return self
 
 
 class GasolinaVenta(BaseModel):

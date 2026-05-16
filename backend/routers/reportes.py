@@ -23,6 +23,7 @@ from models import (
 from routers.productos import serializar_producto
 from services.balance import build_balance_general
 from services.cuentas_por_pagar import build_cuentas_por_pagar
+from services.depreciacion import build_reporte_depreciacion
 from services.calculos import CalculosMonetarios, ganancia_neta_dia
 from services.reporte_periodo import build_reporte_anual, build_reporte_mensual
 from services.query_operativa import compra_no_anulada, venta_no_anulada
@@ -233,6 +234,13 @@ def balance_general(db: Session = Depends(get_db)):
 def cuentas_por_pagar(db: Session = Depends(get_db)):
     """Compras a crédito vigentes, agrupadas por proveedor."""
     return build_cuentas_por_pagar(db)
+
+
+@router.get("/depreciacion")
+def reporte_depreciacion(db: Session = Depends(get_db)):
+    """Activos fijos con depreciación mensual, acumulada y valor actual."""
+    rows = db.query(Activo).order_by(Activo.fecha.desc(), Activo.id.desc()).all()
+    return build_reporte_depreciacion(rows)
 
 
 @router.get("/mensual")

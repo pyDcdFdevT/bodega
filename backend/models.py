@@ -270,6 +270,9 @@ class Activo(Base):
     __tablename__ = "activos"
     __table_args__ = (
         CheckConstraint("monto_reales >= 0", name="ck_activo_monto_reales"),
+        CheckConstraint("valor_residual >= 0", name="ck_activo_valor_residual"),
+        CheckConstraint("vida_util_anios >= 1", name="ck_activo_vida_util"),
+        CheckConstraint("depreciacion_mensual >= 0", name="ck_activo_depreciacion_mensual"),
         CheckConstraint(
             "categoria IN ('equipo','construccion','vehiculo','otro')",
             name="ck_activo_categoria",
@@ -280,6 +283,9 @@ class Activo(Base):
     descripcion = Column(String(500), nullable=False)
     categoria = Column(String(40), nullable=False, index=True)
     monto_reales = Column(Float, nullable=False)
+    vida_util_anios = Column(Integer, default=5, nullable=False)
+    valor_residual = Column(Float, default=0, nullable=False)
+    depreciacion_mensual = Column(Float, default=0, nullable=False)
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
     observaciones = Column(Text, nullable=True)
 

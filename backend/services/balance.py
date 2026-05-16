@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from models import Activo, AperturaCaja, CierreDiario, Compra, CompraOro, Configuracion, GastoOperativo, Producto
 from services.calculos import CalculosMonetarios
+from services.depreciacion import totales_depreciacion
 from services.operativa import _ganancia_mercancia_cpp_reales, construir_payload_cierre
 from services.query_operativa import compra_no_anulada
 
@@ -121,12 +122,13 @@ def build_balance_general(db: Session) -> dict:
     caja, oro_gramos = _caja_y_oro_operativo(db, hoy)
     oro_reales = round(float(CalculosMonetarios.oro_a_reales(oro_gramos, db, tasa=tasa_ref)), 2)
     inventario = _valor_inventario_cpp(db)
-    activos_fijos = round(
-        float(db.query(func.coalesce(func.sum(Activo.monto_reales), 0)).scalar() or 0),
-        2,
-    )
+    activos_rows = db.query(Activo).order_by(Activo.fecha.asc(), Activo.id.asc()).all()
+    dep = totales_depreciacion(activos_rows, hoy)
+    activos_fijos_valor_actual = dep["valor_actual"]
+    activos_fijos_monto_original = dep["monto_original"]
+    activos_fijos_dep_acum = dep["depreciacion_acumulada"]
 
-    activos_total = round(caja + oro_reales + inventario + activos_fijos, 2)
+    activos_total = round(caja + oro_reales + inventario + activos_fijos_valor_actual, 2)
     activos = {
         "caja_reales": caja,
         "oro": {
@@ -136,7 +138,9 @@ def build_balance_general(db: Session) -> dict:
             "tasa_reales": float(tasa_ref.tasa_reales),
         },
         "inventario_reales": inventario,
-        "activos_fijos_reales": activos_fijos,
+        "activos_fijos_reales": activos_fijos_valor_actual,
+        "activos_fijos_monto_original": activos_fijos_monto_original,
+        "activos_fijos_depreciacion_acumulada": activos_fijos_dep_acum,
         "total": activos_total,
     }
 

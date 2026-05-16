@@ -18,7 +18,7 @@ export async function loadActivos() {
   }
   const rows = await api.get("/activos");
   if (!rows.length) {
-    tbody.innerHTML = renderEmptyRow(5, "No hay activos registrados.");
+    tbody.innerHTML = renderEmptyRow(7, "No hay activos registrados.");
     return;
   }
   tbody.innerHTML = rows
@@ -30,6 +30,8 @@ export async function loadActivos() {
       <td>${LABEL_CATEGORIA[a.categoria] || a.categoria}</td>
       <td>${escapeHtml(a.descripcion)}</td>
       <td>${formatMoney(a.monto_reales, "reales")}</td>
+      <td>${formatMoney(a.depreciacion_mensual, "reales")}</td>
+      <td>${formatMoney(a.valor_actual, "reales")}</td>
     </tr>`
     )
     .join("");
@@ -56,12 +58,28 @@ export function initActivos() {
       descripcion: String(fd.get("descripcion") || "").trim(),
       categoria: String(fd.get("categoria") || ""),
       monto_reales: Number(fd.get("monto_reales")),
+      vida_util_anios: Number(fd.get("vida_util_anios") || 5),
+      valor_residual: Number(fd.get("valor_residual") || 0),
       observaciones: obs || null,
     };
     try {
-      await api.post("/activos", payload, adminHeaders());
+      const res = await api.post("/activos", payload, adminHeaders());
       form.reset();
-      showToast("Activo registrado", "success");
+      const vidaInput = form.querySelector('[name="vida_util_anios"]');
+      const residualInput = form.querySelector('[name="valor_residual"]');
+      if (vidaInput) {
+        vidaInput.value = "5";
+      }
+      if (residualInput) {
+        residualInput.value = "0";
+      }
+      const dep = res.depreciacion_mensual;
+      showToast(
+        dep != null
+          ? `Activo registrado · ${formatMoney(dep, "reales")}/mes`
+          : "Activo registrado",
+        "success"
+      );
       document.dispatchEvent(new CustomEvent("bodega:refresh"));
     } catch (error) {
       showToast(error.message, "error");

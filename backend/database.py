@@ -699,6 +699,56 @@ def _migrate_venta_compra_estado_anulacion(conn, dialect: str) -> None:
         return
 
 
+def _migrate_activos_depreciacion(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("activos"):
+        return
+
+    if dialect == "postgresql":
+        for stmt in (
+            "ALTER TABLE activos ADD COLUMN IF NOT EXISTS vida_util_anios INTEGER NOT NULL DEFAULT 5",
+            "ALTER TABLE activos ADD COLUMN IF NOT EXISTS valor_residual DOUBLE PRECISION NOT NULL DEFAULT 0",
+            "ALTER TABLE activos ADD COLUMN IF NOT EXISTS depreciacion_mensual DOUBLE PRECISION NOT NULL DEFAULT 0",
+        ):
+            conn.execute(text(stmt))
+        conn.execute(
+            text(
+                """
+UPDATE activos
+SET depreciacion_mensual = ROUND(
+    GREATEST(monto_reales - valor_residual, 0) / GREATEST(vida_util_anios * 12, 1),
+    2
+)
+WHERE depreciacion_mensual = 0 AND monto_reales > 0
+"""
+            )
+        )
+        return
+
+    if dialect == "sqlite":
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(activos)"))}
+        if "vida_util_anios" not in cols:
+            conn.execute(text("ALTER TABLE activos ADD COLUMN vida_util_anios INTEGER NOT NULL DEFAULT 5"))
+        if "valor_residual" not in cols:
+            conn.execute(text("ALTER TABLE activos ADD COLUMN valor_residual REAL NOT NULL DEFAULT 0"))
+        if "depreciacion_mensual" not in cols:
+            conn.execute(text("ALTER TABLE activos ADD COLUMN depreciacion_mensual REAL NOT NULL DEFAULT 0"))
+        conn.execute(
+            text(
+                """
+UPDATE activos
+SET depreciacion_mensual = ROUND(
+    MAX(monto_reales - valor_residual, 0) / MAX(vida_util_anios * 12, 1),
+    2
+)
+WHERE depreciacion_mensual = 0 AND monto_reales > 0
+"""
+            )
+        )
+
+
 def _migrate_compra_tipo_pago(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -818,6 +868,7 @@ def apply_schema_patches() -> None:
             _ensure_gastos_table(conn, dialect)
             _ensure_configuracion_table(conn, dialect)
             _ensure_activos_table(conn, dialect)
+            _migrate_activos_depreciacion(conn, dialect)
             create_reposiciones = """
 CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
     id SERIAL PRIMARY KEY,
@@ -858,6 +909,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_gastos_table(conn, dialect)
             _ensure_configuracion_table(conn, dialect)
             _ensure_activos_table(conn, dialect)
+            _migrate_activos_depreciacion(conn, dialect)
             if insp.has_table("ventas_gasolina"):
                 result = conn.execute(text("PRAGMA table_info(ventas_gasolina)"))
                 existing = {row[1] for row in result}

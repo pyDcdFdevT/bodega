@@ -426,7 +426,24 @@ function renderBalance(data) {
         formatMoney(oro.valor_reales, "reales")
       )}
       ${balanceLinea("Inventario (CPP)", formatMoney(a.inventario_reales, "reales"))}
-      ${balanceLinea("Activos fijos (inversiones)", formatMoney(a.activos_fijos_reales, "reales"))}
+      ${balanceLinea(
+        "Activos fijos (valor actual)",
+        formatMoney(a.activos_fijos_reales, "reales")
+      )}
+      ${
+        a.activos_fijos_depreciacion_acumulada != null
+          ? balanceLinea(
+              "Depreciacion acumulada (activos)",
+              formatMoney(a.activos_fijos_depreciacion_acumulada, "reales")
+            )
+          : ""
+      }
+      ${
+        a.activos_fijos_monto_original != null &&
+        a.activos_fijos_monto_original !== a.activos_fijos_reales
+          ? `<p class="muted small">Costo original activos: ${formatMoney(a.activos_fijos_monto_original, "reales")}</p>`
+          : ""
+      }
       <div class="cierre-line balance-total"><span>Total activos</span><strong>${formatMoney(a.total, "reales")}</strong></div>
     </div>
     <div class="balance-col">
@@ -731,6 +748,80 @@ function renderCuentasPorPagar(data) {
   `;
 }
 
+function renderDepreciacion(data) {
+  const root = document.getElementById("depreciacion-content");
+  const badge = document.getElementById("depreciacion-valor-badge");
+  if (!root) {
+    return;
+  }
+  if (!data) {
+    root.innerHTML = '<p class="muted">No fue posible cargar la depreciacion.</p>';
+    if (badge) {
+      badge.textContent = "—";
+    }
+    return;
+  }
+  const tot = data.totales || {};
+  const activos = data.activos || [];
+  if (badge) {
+    badge.textContent = formatMoney(tot.valor_actual, "reales");
+  }
+  if (!activos.length) {
+    root.innerHTML = '<p class="muted">No hay activos fijos registrados.</p>';
+    return;
+  }
+  root.innerHTML = `
+    <p class="report-item" style="margin:0 0 12px;">
+      Valor actual: <strong>${formatMoney(tot.valor_actual, "reales")}</strong>
+      · Dep. acumulada: <strong>${formatMoney(tot.depreciacion_acumulada, "reales")}</strong>
+      · Costo original: ${formatMoney(tot.monto_original, "reales")}
+      · ${formatMoney(tot.depreciacion_mensual_total, "reales")}/mes
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Activo</th>
+            <th>Monto</th>
+            <th>Dep./mes</th>
+            <th>Dep. acum.</th>
+            <th>Valor actual</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${activos
+            .map(
+              (a) => `
+            <tr>
+              <td>${a.descripcion || "-"}</td>
+              <td>${formatMoney(a.monto_reales, "reales")}</td>
+              <td>${formatMoney(a.depreciacion_mensual, "reales")}</td>
+              <td>${formatMoney(a.depreciacion_acumulada, "reales")}</td>
+              <td>${formatMoney(a.valor_actual, "reales")}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+export async function loadDepreciacion() {
+  const root = document.getElementById("depreciacion-content");
+  if (root) {
+    root.innerHTML = '<p class="muted">Cargando depreciacion…</p>';
+  }
+  try {
+    const data = await api.get("/reportes/depreciacion");
+    renderDepreciacion(data);
+  } catch (error) {
+    if (root) {
+      root.innerHTML = `<p class="muted">${error.message || "Error al cargar"}</p>`;
+    }
+  }
+}
+
 export async function loadCuentasPorPagar() {
   const root = document.getElementById("cuentas-pagar-content");
   if (root) {
@@ -747,7 +838,7 @@ export async function loadCuentasPorPagar() {
 }
 
 export async function loadDashboard() {
-  const [dashboard, cierreDia, ventasList, comprasList, activosList, balance, cuentasPagar] =
+  const [dashboard, cierreDia, ventasList, comprasList, activosList, balance, depreciacion, cuentasPagar] =
     await Promise.all([
       api.get("/reportes/dashboard"),
       api.get("/cierre/dia").catch(() => null),
@@ -755,10 +846,12 @@ export async function loadDashboard() {
       api.get("/compras?limit=50").catch(() => []),
       api.get("/activos").catch(() => []),
       api.get("/reportes/balance").catch(() => null),
+      api.get("/reportes/depreciacion").catch(() => null),
       api.get("/reportes/cuentas-por-pagar").catch(() => null),
     ]);
   renderDashboard(dashboard, cierreDia, ventasList, comprasList, activosList);
   renderBalance(balance);
+  renderDepreciacion(depreciacion);
   renderCuentasPorPagar(cuentasPagar);
   initReportePeriodo();
   loadReportePeriodo();

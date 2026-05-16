@@ -665,6 +665,19 @@
           </div>
         </article>
 
+        <article class="card depreciacion-card" id="depreciacion-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Activos fijos</p>
+              <h3>Depreciacion de activos</h3>
+            </div>
+            <span class="badge" id="depreciacion-valor-badge">—</span>
+          </div>
+          <div id="depreciacion-content">
+            <p class="muted">Cargando depreciacion…</p>
+          </div>
+        </article>
+
         <article class="card cuentas-pagar-card" id="cuentas-pagar-root">
           <div class="panel-header">
             <div>
@@ -1048,6 +1061,12 @@
               <label>Monto (R$)
                 <input name="monto_reales" type="number" min="0.01" step="0.01" required>
               </label>
+              <label>Vida util (años)
+                <input name="vida_util_anios" type="number" min="1" max="50" step="1" value="5" required>
+              </label>
+              <label>Valor residual (R$)
+                <input name="valor_residual" type="number" min="0" step="0.01" value="0">
+              </label>
               <label>Observaciones
                 <textarea name="observaciones" rows="2" maxlength="2000" placeholder="Opcional"></textarea>
               </label>
@@ -1065,6 +1084,8 @@
                     <th>Categoria</th>
                     <th>Descripcion</th>
                     <th>Monto R$</th>
+                    <th>Dep./mes</th>
+                    <th>Valor actual</th>
                   </tr>
                 </thead>
                 <tbody id="tabla-activos"></tbody>
