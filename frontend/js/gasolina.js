@@ -144,6 +144,14 @@ function actualizarResumenCobroGasolina() {
   actualizarGasolinaVueltoPreview();
 }
 
+function etiquetaTasaVentaGasolina(venta) {
+  const tipoPago = String(venta.tipo_pago || "").toLowerCase();
+  if (tipoPago === "reales") {
+    return "-";
+  }
+  return getRateLabel(venta.tasa_nombre || venta.tipo_oro) || "-";
+}
+
 function actualizarPreviewRepo() {
   const litros = Number(document.querySelector("#form-gasolina-reponer input[name=litros]")?.value);
   const precio = Number(document.querySelector("#form-gasolina-reponer input[name=precio_reales_litro]")?.value);
@@ -265,7 +273,7 @@ export async function loadGasolina() {
           <td>${formatMoney(venta.precio_litro_reales ?? venta.precio_litro_venta, "reales")}</td>
           <td>${formatMoney(venta.total_oro)}</td>
           <td>${formatMoney(venta.total_reales, "reales")}</td>
-          <td>${getRateLabel(venta.tasa_nombre)}</td>
+          <td>${etiquetaTasaVentaGasolina(venta)}</td>
           <td>${venta.tipo_oro ? getRateLabel(venta.tipo_oro) : "-"}</td>
           <td>${venta.tipo_pago}</td>
         </tr>
