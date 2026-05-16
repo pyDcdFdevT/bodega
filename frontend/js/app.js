@@ -43,8 +43,8 @@ import { initCierre, loadCierre } from "./cierre.js";
 import { initCobros, loadCobros } from "./cobros.js";
 import { initCompras, loadCompras } from "./compras.js";
 import { initComprasOro, loadComprasOro } from "./compras_oro.js";
-import { initEstadoResultados, loadDashboard } from "./dashboard.js";
-import { initPagosProveedores } from "./pagos_proveedores.js";
+import { loadDashboard } from "./dashboard.js";
+import { initContabilidad, loadContabilidad } from "./contabilidad.js";
 import { initFundicion, loadFundicion } from "./fundicion.js";
 import { initGasolina, loadGasolina } from "./gasolina.js";
 import { initGastos, loadGastos } from "./gastos.js";
@@ -128,6 +128,7 @@ async function refreshAll() {
       loadGasolina(),
       loadComprasOro(),
       loadDashboard(),
+      loadContabilidad(),
       loadGastos(),
       loadCierre(),
       loadFundicion(),
@@ -163,8 +164,7 @@ async function init() {
   initCobros();
   initFundicion();
   initActivos();
-  initPagosProveedores();
-  initEstadoResultados();
+  initContabilidad();
   registerServiceWorker();
   document.addEventListener("bodega:refresh", () => {
     invalidateCache("productos");

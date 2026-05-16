@@ -1,5 +1,5 @@
 import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
-import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel, RATE_ORDER } from "./tasas.js";
+import { ensureTasas, findTasaByNombre, getRateLabel, RATE_ORDER } from "./tasas.js";
 
 let gasolinaConfigCache = null;
 
@@ -40,8 +40,8 @@ function tasaParaPreviewVenta() {
   if (tipoPago === "reales") {
     return findTasaByNombre("araparita") || findTasaByNombre("uruman");
   }
-  const id = Number(document.getElementById("gasolina-tasa")?.value);
-  return findTasaById(id);
+  const nombre = document.getElementById("gasolina-tipo-oro")?.value;
+  return nombre ? findTasaByNombre(nombre) : null;
 }
 
 function datosTotalesGasolinaVenta() {
@@ -112,7 +112,7 @@ function actualizarGasolinaVueltoPreview() {
   }
 
   if (!tasa || !tasa.tasa_reales) {
-    el.textContent = "Seleccione tipo de oro y tasa para ver el vuelto";
+    el.textContent = "Seleccione tipo de oro para ver el vuelto";
     return;
   }
 
@@ -170,16 +170,12 @@ function actualizarPreviewRepo() {
 
 function actualizarVisibilidadPagoGasolina() {
   const tipoPago = document.getElementById("gasolina-tipo-pago")?.value;
-  const tasaWrap = document.getElementById("gasolina-tasa-wrap");
   const tipoOroWrap = document.getElementById("gasolina-tipo-oro-wrap");
   const wrapMontoOro = document.getElementById("gasolina-monto-oro-wrap");
   const wrapMontoReales = document.getElementById("gasolina-monto-reales-wrap");
   const tipoOroSelect = document.getElementById("gasolina-tipo-oro");
 
   const requiereConversion = tipoPago !== "reales";
-  if (tasaWrap) {
-    tasaWrap.style.display = requiereConversion ? "grid" : "none";
-  }
   if (tipoOroWrap) {
     tipoOroWrap.style.display = requiereConversion ? "grid" : "none";
   }
@@ -236,29 +232,8 @@ function actualizarPreviewVentaGasolina() {
   actualizarResumenCobroGasolina();
 }
 
-function sincronizarTasaDesdeTipoOro() {
-  const nombre = document.getElementById("gasolina-tipo-oro")?.value;
-  const tasa = findTasaByNombre(nombre);
-  const select = document.getElementById("gasolina-tasa");
-  if (tasa && select) {
-    select.value = String(tasa.id);
-  }
-  actualizarPreviewVentaGasolina();
-}
-
-function sincronizarTipoOroDesdeTasa() {
-  const id = Number(document.getElementById("gasolina-tasa")?.value);
-  const tasa = findTasaById(id);
-  const tipoOro = document.getElementById("gasolina-tipo-oro");
-  if (tasa && tipoOro) {
-    tipoOro.value = tasa.nombre;
-  }
-  actualizarPreviewVentaGasolina();
-}
-
 export async function loadGasolina() {
   await ensureTasas();
-  fillTasaSelect("gasolina-tasa");
 
   const [gasolina, ventas] = await Promise.all([api.get("/gasolina"), api.get("/gasolina/ventas")]);
   gasolinaConfigCache = gasolina;
@@ -322,7 +297,6 @@ export async function loadGasolina() {
     }
   }
 
-  sincronizarTipoOroDesdeTasa();
   actualizarPreviewRepo();
   actualizarVisibilidadPagoGasolina();
   actualizarPreviewVentaGasolina();
@@ -340,8 +314,10 @@ function resetFormVentaGasolina() {
   }
   ventaForm.querySelector("#gasolina-monto-oro").value = "0.00";
   ventaForm.querySelector("#gasolina-monto-reales").value = "0.00";
-  fillTasaSelect("gasolina-tasa");
-  sincronizarTipoOroDesdeTasa();
+  const tipoOro = ventaForm.querySelector("#gasolina-tipo-oro");
+  if (tipoOro) {
+    tipoOro.value = "";
+  }
   actualizarVisibilidadPagoGasolina();
 }
 
@@ -350,7 +326,6 @@ export function initGasolina() {
   const reponerForm = document.getElementById("form-gasolina-reponer");
   const ventaForm = document.getElementById("form-gasolina-venta");
   const tipoPagoSelect = document.getElementById("gasolina-tipo-pago");
-  const tasaSelect = document.getElementById("gasolina-tasa");
   const tipoOroSelect = document.getElementById("gasolina-tipo-oro");
 
   reponerForm?.querySelectorAll("input[name=litros], input[name=precio_reales_litro]").forEach((el) => {
@@ -395,8 +370,7 @@ export function initGasolina() {
   });
 
   tipoPagoSelect?.addEventListener("change", actualizarVisibilidadPagoGasolina);
-  tasaSelect?.addEventListener("change", sincronizarTipoOroDesdeTasa);
-  tipoOroSelect?.addEventListener("change", sincronizarTasaDesdeTipoOro);
+  tipoOroSelect?.addEventListener("change", actualizarPreviewVentaGasolina);
 
   configForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -435,7 +409,7 @@ export function initGasolina() {
     const tipoPago = document.getElementById("gasolina-tipo-pago").value;
     if (tipoPago !== "reales") {
       if (!document.getElementById("gasolina-tipo-oro").value) {
-        showToast("Seleccione tipo de oro y tasa", "error");
+        showToast("Seleccione el tipo de oro", "error");
         return;
       }
     }

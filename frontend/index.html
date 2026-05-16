@@ -80,6 +80,7 @@
       <button class="tab" data-target="panel-compras-oro">Compra de Oro</button>
       <button class="tab solo-admin" data-target="panel-gastos">Gastos</button>
       <button class="tab solo-admin" data-target="panel-dashboard">Dashboard</button>
+      <button class="tab solo-admin" data-target="panel-contabilidad">Contabilidad</button>
       <button class="tab" data-target="panel-cobros">Cobros</button>
       <button class="tab solo-admin" data-target="panel-cierre">Cierre</button>
       <button class="tab solo-admin" data-target="panel-fundicion">Fundicion</button>
@@ -378,11 +379,6 @@
                 <option value="mixto">Mixto</option>
               </select>
             </label>
-            <div id="gasolina-tasa-wrap" class="stack-form" style="display: grid;">
-              <label>Tasa (conversion / tipo de oro)
-                <select id="gasolina-tasa"></select>
-              </label>
-            </div>
             <div id="gasolina-tipo-oro-wrap" class="stack-form" style="display: grid;">
               <label>Tipo de oro
                 <select id="gasolina-tipo-oro">
@@ -623,6 +619,95 @@
 
         <div class="dashboard-summary" id="dashboard-summary-cards"></div>
 
+
+        <div class="dashboard-charts">
+          <article class="card dashboard-chart-card">
+            <h3>Oro recolectado por tipo (hoy)</h3>
+            <div class="chart-wrap"><canvas id="chart-oro-pie" aria-label="Oro por tipo"></canvas></div>
+          </article>
+          <article class="card dashboard-chart-card">
+            <h3>Ventas vs compras vs gastos (R$)</h3>
+            <div class="chart-wrap"><canvas id="chart-barras-reales" aria-label="Operaciones en reales"></canvas></div>
+          </article>
+          <article class="card dashboard-chart-card dashboard-chart-card--wide">
+            <h3>Ventas del dia por hora (R$)</h3>
+            <div class="chart-wrap"><canvas id="chart-ventas-hora" aria-label="Ventas por hora"></canvas></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <h3>Stock bajo (alertas)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Stock</th>
+                  <th>Minimo</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-dashboard-stock-bajo"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>Ultimas 5 ventas (hoy)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Cliente</th>
+                    <th>R$</th>
+                    <th>Oro</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-dashboard-ventas"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Ultimas 5 compras (hoy)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Producto</th>
+                    <th>Proveedor</th>
+                    <th>Total (R$)</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-dashboard-compras"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel solo-admin" id="panel-contabilidad">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Finanzas</p>
+            <h2>Contabilidad</h2>
+          </div>
+        </div>
+
+        <article class="card balance-general-card" id="balance-general-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Contabilidad</p>
+              <h3>Balance general</h3>
+            </div>
+            <span class="badge" id="balance-ecuacion-badge">—</span>
+          </div>
+          <div class="balance-grid" id="balance-general-content">
+            <p class="muted">Cargando balance…</p>
+          </div>
+        </article>
+
         <article class="card estado-resultados-card" id="estado-resultados-root">
           <div class="panel-header">
             <div>
@@ -676,19 +761,6 @@
           </div>
         </article>
 
-        <article class="card balance-general-card" id="balance-general-root">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Contabilidad</p>
-              <h3>Balance general</h3>
-            </div>
-            <span class="badge" id="balance-ecuacion-badge">—</span>
-          </div>
-          <div class="balance-grid" id="balance-general-content">
-            <p class="muted">Cargando balance…</p>
-          </div>
-        </article>
-
         <article class="card depreciacion-card" id="depreciacion-root">
           <div class="panel-header">
             <div>
@@ -699,20 +771,6 @@
           </div>
           <div id="depreciacion-content">
             <p class="muted">Cargando depreciacion…</p>
-          </div>
-        </article>
-
-        <article class="card pagos-proveedores-card" id="pagos-proveedores-root">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Pasivos</p>
-              <h3>Pagos a proveedores</h3>
-            </div>
-            <span class="badge" id="pagos-proveedores-badge">—</span>
-            <button type="button" class="btn-refresh" id="btn-pagos-proveedores-refresh">Actualizar</button>
-          </div>
-          <div id="pagos-proveedores-content">
-            <p class="muted">Cargando pagos a proveedores…</p>
           </div>
         </article>
 
@@ -729,89 +787,19 @@
           </div>
         </article>
 
-        <div class="dashboard-charts">
-          <article class="card dashboard-chart-card">
-            <h3>Oro recolectado por tipo (hoy)</h3>
-            <div class="chart-wrap"><canvas id="chart-oro-pie" aria-label="Oro por tipo"></canvas></div>
-          </article>
-          <article class="card dashboard-chart-card">
-            <h3>Ventas vs compras vs gastos (R$)</h3>
-            <div class="chart-wrap"><canvas id="chart-barras-reales" aria-label="Operaciones en reales"></canvas></div>
-          </article>
-          <article class="card dashboard-chart-card dashboard-chart-card--wide">
-            <h3>Ventas del dia por hora (R$)</h3>
-            <div class="chart-wrap"><canvas id="chart-ventas-hora" aria-label="Ventas por hora"></canvas></div>
-          </article>
-        </div>
-
-        <article class="card">
-          <h3>Stock bajo (alertas)</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Stock</th>
-                  <th>Minimo</th>
-                </tr>
-              </thead>
-              <tbody id="tabla-dashboard-stock-bajo"></tbody>
-            </table>
+        <article class="card pagos-proveedores-card" id="pagos-proveedores-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Pasivos</p>
+              <h3>Pagos a proveedores</h3>
+            </div>
+            <span class="badge" id="pagos-proveedores-badge">—</span>
+            <button type="button" class="btn-refresh" id="btn-pagos-proveedores-refresh">Actualizar</button>
+          </div>
+          <div id="pagos-proveedores-content">
+            <p class="muted">Cargando pagos a proveedores…</p>
           </div>
         </article>
-
-        <div class="grid two">
-          <div class="dashboard-activity-col">
-          <article class="card">
-            <h3>Ultimas 5 ventas (hoy)</h3>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hora</th>
-                    <th>Cliente</th>
-                    <th>R$</th>
-                    <th>Oro</th>
-                  </tr>
-                </thead>
-                <tbody id="tabla-dashboard-ventas"></tbody>
-              </table>
-            </div>
-          </article>
-          <article class="card">
-            <h3>Ultimas 5 compras (hoy)</h3>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hora</th>
-                    <th>Producto</th>
-                    <th>Proveedor</th>
-                    <th>Total (R$)</th>
-                  </tr>
-                </thead>
-                <tbody id="tabla-dashboard-compras"></tbody>
-              </table>
-            </div>
-          </article>
-          </div>
-          <article class="card">
-            <h3>Ultimos 5 movimientos (hoy)</h3>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hora</th>
-                    <th>Producto</th>
-                    <th>Tipo</th>
-                    <th>Cant.</th>
-                  </tr>
-                </thead>
-                <tbody id="tabla-dashboard-movimientos"></tbody>
-              </table>
-            </div>
-          </article>
-        </div>
       </section>
 
       <section class="panel solo-admin" id="panel-gastos">
