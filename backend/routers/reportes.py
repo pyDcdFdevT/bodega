@@ -22,6 +22,7 @@ from models import (
 )
 from routers.productos import serializar_producto
 from services.balance import build_balance_general
+from services.cuentas_por_pagar import build_cuentas_por_pagar
 from services.calculos import CalculosMonetarios, ganancia_neta_dia
 from services.reporte_periodo import build_reporte_anual, build_reporte_mensual
 from services.query_operativa import compra_no_anulada, venta_no_anulada
@@ -226,6 +227,12 @@ def dashboard(db: Session = Depends(get_db)):
 def balance_general(db: Session = Depends(get_db)):
     """Balance general: activos, pasivos (cuentas por pagar) y patrimonio."""
     return build_balance_general(db)
+
+
+@router.get("/cuentas-por-pagar")
+def cuentas_por_pagar(db: Session = Depends(get_db)):
+    """Compras a crédito vigentes, agrupadas por proveedor."""
+    return build_cuentas_por_pagar(db)
 
 
 @router.get("/mensual")

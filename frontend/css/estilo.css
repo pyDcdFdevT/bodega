@@ -939,6 +939,17 @@ summary.accordion-cat-summary::-webkit-details-marker {
   font-size: 0.9rem;
 }
 
+.cuentas-pagar-card {
+  margin-bottom: 18px;
+}
+
+.cuentas-pagar-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 .balance-general-card {
   margin-bottom: 18px;
 }

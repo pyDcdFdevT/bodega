@@ -1,4 +1,4 @@
-import { api, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
+import { api, formatDate, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
 import { getRateLabel } from "./tasas.js";
 
 const CHART_COLORS = ["#c9a227", "#2d6a9f", "#3d8b5a", "#8b5a9e", "#d4654a"];
@@ -669,17 +669,97 @@ export function initReportePeriodo() {
   });
 }
 
+function renderCuentasPorPagar(data) {
+  const root = document.getElementById("cuentas-pagar-content");
+  const badge = document.getElementById("cuentas-pagar-total-badge");
+  if (!root) {
+    return;
+  }
+  const total = Number(data?.total_pendiente ?? 0);
+  if (badge) {
+    badge.textContent = `Total: ${formatMoney(total, "reales")}`;
+  }
+  const compras = data?.compras || [];
+  if (!compras.length) {
+    root.innerHTML = '<p class="muted">No hay compras a crédito pendientes.</p>';
+    return;
+  }
+
+  const porProveedor = data?.por_proveedor || [];
+  const resumenProveedores =
+    porProveedor.length > 1
+      ? `
+    <div class="cuentas-pagar-resumen">
+      ${porProveedor
+        .map(
+          (p) => `
+        <span class="badge">${p.proveedor}: ${formatMoney(p.total_credito, "reales")} (${p.cantidad_compras})</span>`
+        )
+        .join("")}
+    </div>`
+      : "";
+
+  root.innerHTML = `
+    <p class="report-item" style="margin:0 0 12px;">
+      Total pendiente: <strong>${formatMoney(total, "reales")}</strong>
+      · ${data.cantidad_compras ?? compras.length} compra(s) a crédito
+    </p>
+    ${resumenProveedores}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Proveedor</th>
+            <th>Total crédito (R$)</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${compras
+            .map(
+              (c) => `
+            <tr>
+              <td>${c.proveedor || "-"}</td>
+              <td>${formatMoney(c.total_reales, "reales")}</td>
+              <td>${c.fecha ? formatDate(c.fecha) : "-"}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+export async function loadCuentasPorPagar() {
+  const root = document.getElementById("cuentas-pagar-content");
+  if (root) {
+    root.innerHTML = '<p class="muted">Cargando cuentas por pagar…</p>';
+  }
+  try {
+    const data = await api.get("/reportes/cuentas-por-pagar");
+    renderCuentasPorPagar(data);
+  } catch (error) {
+    if (root) {
+      root.innerHTML = `<p class="muted">${error.message || "Error al cargar"}</p>`;
+    }
+  }
+}
+
 export async function loadDashboard() {
-  const [dashboard, cierreDia, ventasList, comprasList, activosList, balance] = await Promise.all([
-    api.get("/reportes/dashboard"),
-    api.get("/cierre/dia").catch(() => null),
-    api.get("/ventas?limit=200").catch(() => []),
-    api.get("/compras?limit=50").catch(() => []),
-    api.get("/activos").catch(() => []),
-    api.get("/reportes/balance").catch(() => null),
-  ]);
+  const [dashboard, cierreDia, ventasList, comprasList, activosList, balance, cuentasPagar] =
+    await Promise.all([
+      api.get("/reportes/dashboard"),
+      api.get("/cierre/dia").catch(() => null),
+      api.get("/ventas?limit=200").catch(() => []),
+      api.get("/compras?limit=50").catch(() => []),
+      api.get("/activos").catch(() => []),
+      api.get("/reportes/balance").catch(() => null),
+      api.get("/reportes/cuentas-por-pagar").catch(() => null),
+    ]);
   renderDashboard(dashboard, cierreDia, ventasList, comprasList, activosList);
   renderBalance(balance);
+  renderCuentasPorPagar(cuentasPagar);
   initReportePeriodo();
   loadReportePeriodo();
 }
