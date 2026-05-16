@@ -749,6 +749,26 @@ def _migrate_activos_depreciacion(conn, dialect: str) -> None:
         _backfill_activos_depreciacion_mensual(conn)
 
 
+def _backfill_detalles_venta_subtotal_reales(conn) -> None:
+    """Calcula subtotal_reales en Python (compatible PG y SQLite)."""
+    from sqlalchemy import text
+
+    rows = conn.execute(
+        text(
+            """
+SELECT dv.id, p.precio_venta_reales, dv.cantidad
+FROM detalles_venta dv
+JOIN productos p ON p.id = dv.producto_id
+WHERE dv.subtotal_reales IS NULL OR dv.subtotal_reales = 0
+"""
+        )
+    ).fetchall()
+    upd = text("UPDATE detalles_venta SET subtotal_reales = :sub WHERE id = :id")
+    for row in rows:
+        subtotal = round(float(row[1] or 0) * float(row[2] or 0), 2)
+        conn.execute(upd, {"sub": subtotal, "id": int(row[0])})
+
+
 def _migrate_ventas_devoluciones_descuento(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -774,16 +794,7 @@ def _migrate_ventas_devoluciones_descuento(conn, dialect: str) -> None:
                     "DOUBLE PRECISION NOT NULL DEFAULT 0"
                 )
             )
-            conn.execute(
-                text(
-                    """
-UPDATE detalles_venta dv
-SET subtotal_reales = ROUND(p.precio_venta_reales * dv.cantidad, 2)
-FROM productos p
-WHERE p.id = dv.producto_id AND (dv.subtotal_reales IS NULL OR dv.subtotal_reales = 0)
-"""
-                )
-            )
+            _backfill_detalles_venta_subtotal_reales(conn)
         _migrate_transaccion_tipo_reabrir(conn, dialect)
         return
 
@@ -797,19 +808,7 @@ WHERE p.id = dv.producto_id AND (dv.subtotal_reales IS NULL OR dv.subtotal_reale
             conn.execute(text("ALTER TABLE detalles_venta ADD COLUMN cantidad_devuelta REAL NOT NULL DEFAULT 0"))
         if "subtotal_reales" not in cols:
             conn.execute(text("ALTER TABLE detalles_venta ADD COLUMN subtotal_reales REAL NOT NULL DEFAULT 0"))
-        conn.execute(
-            text(
-                """
-UPDATE detalles_venta
-SET subtotal_reales = (
-    SELECT ROUND(p.precio_venta_reales * detalles_venta.cantidad, 2)
-    FROM productos p
-    WHERE p.id = detalles_venta.producto_id
-)
-WHERE subtotal_reales IS NULL OR subtotal_reales = 0
-"""
-            )
-        )
+        _backfill_detalles_venta_subtotal_reales(conn)
 
 
 def _migrate_transaccion_tipo_reabrir(conn, dialect: str) -> None:
