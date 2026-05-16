@@ -205,8 +205,17 @@ class CompraCreate(BaseModel):
     precio_reales: float = Field(..., gt=0)
     proveedor: str = Field(default="Proveedor", max_length=100)
     observaciones: Optional[str] = Field(default=None, max_length=500)
+    tipo_pago_compra: str = Field(default="contado", max_length=20)
 
     _proveedor = field_validator("proveedor")(_texto_requerido)
+
+    @field_validator("tipo_pago_compra")
+    @classmethod
+    def validar_tipo_pago_compra(cls, valor: str) -> str:
+        s = str(valor or "contado").strip().lower()
+        if s not in ("contado", "credito"):
+            raise ValueError("tipo_pago_compra debe ser 'contado' o 'credito'")
+        return s
 
 
 class CompraUpdate(BaseModel):
@@ -214,8 +223,19 @@ class CompraUpdate(BaseModel):
     precio_reales: float = Field(..., ge=0)
     proveedor: str = Field(default="Proveedor", max_length=100)
     observaciones: Optional[str] = Field(default=None, max_length=500)
+    tipo_pago_compra: Optional[str] = Field(default=None, max_length=20)
 
     _proveedor = field_validator("proveedor")(_texto_requerido)
+
+    @field_validator("tipo_pago_compra")
+    @classmethod
+    def validar_tipo_pago_compra(cls, valor: str | None) -> str | None:
+        if valor is None:
+            return None
+        s = str(valor).strip().lower()
+        if s not in ("contado", "credito"):
+            raise ValueError("tipo_pago_compra debe ser 'contado' o 'credito'")
+        return s
 
 
 class DetalleCompraListOut(BaseModel):
@@ -232,6 +252,7 @@ class CompraOut(ORMModel):
     fecha: datetime
     proveedor: str
     total_reales: float
+    tipo_pago_compra: str = "contado"
     observaciones: Optional[str] = None
     detalles: list[DetalleCompraListOut] = []
 

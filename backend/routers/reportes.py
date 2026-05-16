@@ -21,6 +21,7 @@ from models import (
     VentaGasolina,
 )
 from routers.productos import serializar_producto
+from services.balance import build_balance_general
 from services.calculos import CalculosMonetarios, ganancia_neta_dia
 from services.query_operativa import compra_no_anulada, venta_no_anulada
 
@@ -218,6 +219,12 @@ def dashboard(db: Session = Depends(get_db)):
         "ultimas_ventas": ultimas_ventas_out,
         "ultimos_movimientos": ultimos_mov_out,
     }
+
+
+@router.get("/balance")
+def balance_general(db: Session = Depends(get_db)):
+    """Balance general: activos, pasivos (cuentas por pagar) y patrimonio."""
+    return build_balance_general(db)
 
 
 @router.get("/gasolina")

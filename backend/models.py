@@ -194,6 +194,10 @@ class Compra(Base):
         CheckConstraint("total_oro >= 0", name="ck_compra_total_oro"),
         CheckConstraint("tasa_cambio_usada > 0", name="ck_compra_tasa_cambio"),
         CheckConstraint("estado IN ('VIGENTE','ANULADA')", name="ck_compra_estado"),
+        CheckConstraint(
+            "tipo_pago_compra IN ('contado','credito')",
+            name="ck_compra_tipo_pago",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -204,6 +208,7 @@ class Compra(Base):
     tasa_cambio_usada = Column(Float, nullable=False)
     observaciones = Column(Text)
     estado = Column(String(20), default="VIGENTE", nullable=False)
+    tipo_pago_compra = Column(String(20), default="contado", nullable=False)
 
     detalles = relationship("DetalleCompra", back_populates="compra", cascade="all, delete-orphan")
 

@@ -699,6 +699,38 @@ def _migrate_venta_compra_estado_anulacion(conn, dialect: str) -> None:
         return
 
 
+def _migrate_compra_tipo_pago(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("compras"):
+        return
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                "ALTER TABLE compras ADD COLUMN IF NOT EXISTS tipo_pago_compra "
+                "VARCHAR(20) NOT NULL DEFAULT 'contado'"
+            )
+        )
+        conn.execute(
+            text(
+                """
+UPDATE compras SET tipo_pago_compra = 'contado'
+WHERE tipo_pago_compra IS NULL OR tipo_pago_compra = ''
+"""
+            )
+        )
+        return
+    if dialect == "sqlite":
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(compras)"))}
+        if "tipo_pago_compra" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE compras ADD COLUMN tipo_pago_compra VARCHAR(20) NOT NULL DEFAULT 'contado'"
+                )
+            )
+
+
 def _migrate_costo_promedio_columns(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -815,6 +847,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
             _migrate_venta_compra_estado_anulacion(conn, dialect)
             _migrate_costo_promedio_columns(conn, dialect)
+            _migrate_compra_tipo_pago(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -847,4 +880,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
             _migrate_venta_compra_estado_anulacion(conn, dialect)
             _migrate_costo_promedio_columns(conn, dialect)
+            _migrate_compra_tipo_pago(conn, dialect)
         return

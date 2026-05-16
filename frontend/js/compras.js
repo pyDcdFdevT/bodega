@@ -37,7 +37,7 @@ export async function loadCompras() {
   const tbody = document.getElementById("tabla-compras");
 
   if (!compras.length) {
-    tbody.innerHTML = renderEmptyRow(6, "No hay compras registradas.");
+    tbody.innerHTML = renderEmptyRow(7, "No hay compras registradas.");
     return;
   }
 
@@ -49,6 +49,7 @@ export async function loadCompras() {
           <td>${formatDate(compra.fecha)}</td>
           <td>${nombrePrimerProducto(compra)}</td>
           <td>${compra.proveedor}</td>
+          <td>${compra.tipo_pago_compra === "credito" ? "Crédito" : "Contado"}</td>
           <td>${formatMoney(compra.total_reales, "reales")}</td>
           <td><button type="button" class="btn-icon" data-edit-compra="${compra.id}" title="Editar">✏️</button></td>
         </tr>
@@ -96,6 +97,9 @@ export function initCompras() {
     form.cantidad.value = String(detalle.cantidad);
     form.precio_reales.value = String(detalle.precio_reales_total ?? compra.total_reales);
     form.proveedor.value = compra.proveedor || "Proveedor";
+    if (form.tipo_pago_compra) {
+      form.tipo_pago_compra.value = compra.tipo_pago_compra === "credito" ? "credito" : "contado";
+    }
     form.observaciones.value = compra.observaciones || "";
     form.scrollIntoView({ behavior: "smooth", block: "nearest" });
     actualizarPrecioUnitarioCompra();
@@ -113,6 +117,7 @@ export function initCompras() {
         precio_reales: Number(formData.get("precio_reales")),
         proveedor: formData.get("proveedor"),
         observaciones: formData.get("observaciones") || null,
+        tipo_pago_compra: formData.get("tipo_pago_compra") || "contado",
       };
       if (btn) {
         btn.disabled = true;
@@ -140,6 +145,7 @@ export function initCompras() {
       precio_reales: Number(formData.get("precio_reales")),
       proveedor: formData.get("proveedor"),
       observaciones: formData.get("observaciones") || null,
+      tipo_pago_compra: formData.get("tipo_pago_compra") || "contado",
     };
 
     if (btn) {

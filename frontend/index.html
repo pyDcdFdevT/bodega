@@ -269,6 +269,12 @@
               <label>Proveedor
                 <input name="proveedor" value="Proveedor">
               </label>
+              <label>Tipo de pago
+                <select name="tipo_pago_compra" id="compra-tipo-pago">
+                  <option value="contado" selected>Contado</option>
+                  <option value="credito">Crédito (cuenta por pagar)</option>
+                </select>
+              </label>
               <label>Observaciones
                 <textarea name="observaciones" rows="2"></textarea>
               </label>
@@ -286,6 +292,7 @@
                     <th>Fecha</th>
                     <th>Producto</th>
                     <th>Proveedor</th>
+                    <th>Pago</th>
                     <th>Total reales</th>
                     <th></th>
                   </tr>
@@ -614,6 +621,19 @@
         </div>
 
         <div class="dashboard-summary" id="dashboard-summary-cards"></div>
+
+        <article class="card balance-general-card" id="balance-general-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Contabilidad</p>
+              <h3>Balance general</h3>
+            </div>
+            <span class="badge" id="balance-ecuacion-badge">—</span>
+          </div>
+          <div class="balance-grid" id="balance-general-content">
+            <p class="muted">Cargando balance…</p>
+          </div>
+        </article>
 
         <div class="dashboard-charts">
           <article class="card dashboard-chart-card">

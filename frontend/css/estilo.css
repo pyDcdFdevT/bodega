@@ -909,6 +909,53 @@ summary.accordion-cat-summary::-webkit-details-marker {
   color: #e0e0e0;
 }
 
+.balance-general-card {
+  margin-bottom: 18px;
+}
+
+.balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.balance-col h4 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.balance-col .balance-total {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 2px solid var(--line);
+  font-weight: 700;
+}
+
+.balance-ecuacion {
+  grid-column: 1 / -1;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(23, 50, 77, 0.05);
+  border: 1px dashed var(--line);
+}
+
+[data-theme="dark"] .balance-ecuacion {
+  background: rgba(15, 52, 96, 0.35);
+}
+
+#balance-ecuacion-badge.estado.ok {
+  background: rgba(45, 122, 96, 0.2);
+  color: var(--ok);
+}
+
+#balance-ecuacion-badge.insuficiente {
+  background: rgba(179, 71, 71, 0.15);
+  color: var(--danger);
+}
+
 @media (max-width: 960px) {
   .hero,
   .grid.two {

@@ -387,6 +387,68 @@ function renderUltimosMovimientos(um) {
   }
 }
 
+function balanceLinea(label, valor) {
+  return `<div class="cierre-line"><span>${label}</span><strong>${valor}</strong></div>`;
+}
+
+function renderBalance(data) {
+  const root = document.getElementById("balance-general-content");
+  const badge = document.getElementById("balance-ecuacion-badge");
+  if (!root) {
+    return;
+  }
+  if (!data) {
+    root.innerHTML = '<p class="muted">No fue posible cargar el balance.</p>';
+    if (badge) {
+      badge.textContent = "—";
+    }
+    return;
+  }
+  const a = data.activos || {};
+  const p = data.pasivos || {};
+  const pat = data.patrimonio || {};
+  const eq = data.ecuacion || {};
+  const oro = a.oro || {};
+
+  if (badge) {
+    badge.textContent = eq.cuadra ? "Cuadra ✓" : `Dif. ${formatMoney(eq.diferencia, "reales")}`;
+    badge.classList.toggle("estado", true);
+    badge.classList.toggle("ok", Boolean(eq.cuadra));
+    badge.classList.toggle("insuficiente", !eq.cuadra);
+  }
+
+  root.innerHTML = `
+    <div class="balance-col">
+      <h4>Activos</h4>
+      ${balanceLinea("Caja", formatMoney(a.caja_reales, "reales"))}
+      ${balanceLinea(
+        `Oro (${formatMoney(oro.gramos)} g @ ${oro.tasa_referencia || "tasa ref."})`,
+        formatMoney(oro.valor_reales, "reales")
+      )}
+      ${balanceLinea("Inventario (CPP)", formatMoney(a.inventario_reales, "reales"))}
+      ${balanceLinea("Activos fijos (inversiones)", formatMoney(a.activos_fijos_reales, "reales"))}
+      <div class="cierre-line balance-total"><span>Total activos</span><strong>${formatMoney(a.total, "reales")}</strong></div>
+    </div>
+    <div class="balance-col">
+      <h4>Pasivos</h4>
+      ${balanceLinea("Cuentas por pagar (compras a crédito)", formatMoney(p.cuentas_por_pagar, "reales"))}
+      <div class="cierre-line balance-total"><span>Total pasivos</span><strong>${formatMoney(p.total, "reales")}</strong></div>
+    </div>
+    <div class="balance-col">
+      <h4>Patrimonio</h4>
+      ${balanceLinea("Capital inicial", formatMoney(pat.capital_inicial, "reales"))}
+      ${balanceLinea("Ganancia acumulada", formatMoney(pat.ganancia_acumulada, "reales"))}
+      <div class="cierre-line balance-total"><span>Total patrimonio</span><strong>${formatMoney(pat.total, "reales")}</strong></div>
+    </div>
+    <div class="balance-col balance-ecuacion">
+      <h4>Ecuación contable</h4>
+      ${balanceLinea("Activos", formatMoney(eq.activos, "reales"))}
+      ${balanceLinea("Pasivos + Patrimonio", formatMoney(eq.pasivos_mas_patrimonio, "reales"))}
+      <p class="muted small">${eq.cuadra ? "La ecuación contable cuadra." : `Diferencia: ${formatMoney(eq.diferencia, "reales")}`}</p>
+    </div>
+  `;
+}
+
 function renderDashboard(data, cierreDia, ventasList, comprasList, activosList) {
   if (!data) {
     return;
@@ -407,12 +469,16 @@ function renderDashboard(data, cierreDia, ventasList, comprasList, activosList) 
 }
 
 export async function loadDashboard() {
-  const [dashboard, cierreDia, ventasList, comprasList, activosList] = await Promise.all([
+  const [dashboard, cierreDia, ventasList, comprasList, activosList, balance] = await Promise.all([
     api.get("/reportes/dashboard"),
     api.get("/cierre/dia").catch(() => null),
     api.get("/ventas?limit=200").catch(() => []),
     api.get("/compras?limit=50").catch(() => []),
     api.get("/activos").catch(() => []),
+    api.get("/reportes/balance").catch(() => null),
   ]);
   renderDashboard(dashboard, cierreDia, ventasList, comprasList, activosList);
+  renderBalance(balance);
 }
+
+export { renderBalance };

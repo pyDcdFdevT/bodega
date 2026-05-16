@@ -80,17 +80,19 @@ def _venta_oro_recibido_por_tipo(db: Session, inicio: datetime) -> dict[str, flo
     return {(tipo or ""): float(total) for tipo, total in rows}
 
 
-def _ganancia_mercancia_cpp_reales(db: Session, inicio: datetime) -> tuple[float, float]:
-    """Ingresos y costo (CPP) de mercancía vendida hoy en R$."""
+def _ganancia_mercancia_cpp_reales(db: Session, inicio: datetime | None = None) -> tuple[float, float]:
+    """Ingresos y costo (CPP) de mercancía vendida en R$ (día o acumulado si inicio es None)."""
     tasa_ref = CalculosMonetarios.obtener_tasa_referencia(db)
-    filas = (
+    q = (
         db.query(DetalleVenta, Venta, Producto)
         .join(Venta, DetalleVenta.venta_id == Venta.id)
         .join(Producto, DetalleVenta.producto_id == Producto.id)
         .options(joinedload(Venta.tasa_cambio))
-        .filter(Venta.fecha >= inicio, venta_no_anulada())
-        .all()
+        .filter(venta_no_anulada())
     )
+    if inicio is not None:
+        q = q.filter(Venta.fecha >= inicio)
+    filas = q.all()
     ingresos = 0.0
     costo_vendido = 0.0
     for det, venta, producto in filas:

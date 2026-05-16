@@ -44,12 +44,14 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
             producto.precio_venta_oro = precio_sugerido
             producto.precio_venta_reales = CalculosMonetarios.oro_a_reales(precio_sugerido, db, tasa=tasa)
 
+        tipo_pago = compra.tipo_pago_compra
         nueva = Compra(
             proveedor=compra.proveedor,
             total_reales=round(compra.precio_reales, 2),
             total_oro=costo_oro_total,
             tasa_cambio_usada=tasa.tasa_reales,
             observaciones=compra.observaciones,
+            tipo_pago_compra=tipo_pago,
         )
         db.add(nueva)
         db.flush()
@@ -75,17 +77,22 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
             )
         )
 
+        monto_caja = float(nueva.total_reales) if tipo_pago == "contado" else 0.0
         registrar_transaccion(
             db,
             tipo="compra",
             modulo_origen="bodega",
             referencia_id=nueva.id,
             moneda="mixto",
-            monto_reales=float(nueva.total_reales),
+            monto_reales=monto_caja,
             gramos_oro=float(nueva.total_oro),
             tipo_oro=None,
             tasa_usada=float(tasa.tasa_reales),
-            descripcion=f"Compra #{nueva.id} {compra.proveedor}",
+            descripcion=(
+                f"Compra #{nueva.id} {compra.proveedor}"
+                if tipo_pago == "contado"
+                else f"Compra a credito #{nueva.id} {compra.proveedor} (cuenta por pagar)"
+            ),
         )
 
         db.commit()
@@ -203,6 +210,7 @@ def listar_compras(
             "fecha": c.fecha,
             "proveedor": c.proveedor,
             "total_reales": c.total_reales,
+            "tipo_pago_compra": c.tipo_pago_compra or "contado",
             "observaciones": c.observaciones,
             "detalles": [
                 {
@@ -281,6 +289,8 @@ def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depen
 
         compra.proveedor = payload.proveedor.strip()
         compra.observaciones = payload.observaciones
+        if payload.tipo_pago_compra is not None:
+            compra.tipo_pago_compra = payload.tipo_pago_compra
         compra.total_reales = precio_reales
         compra.total_oro = costo_oro_total
 
