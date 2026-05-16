@@ -622,6 +622,36 @@
 
         <div class="dashboard-summary" id="dashboard-summary-cards"></div>
 
+        <article class="card reporte-periodo-card" id="reporte-periodo-root">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Historico</p>
+              <h3>Cierre mensual / anual</h3>
+            </div>
+            <div class="reporte-periodo-filters">
+              <label class="reporte-filter-label">
+                <span class="muted small">Vista</span>
+                <select id="reporte-periodo-tipo">
+                  <option value="mensual" selected>Mensual</option>
+                  <option value="anual">Anual</option>
+                </select>
+              </label>
+              <label class="reporte-filter-label" id="reporte-mes-wrap">
+                <span class="muted small">Mes</span>
+                <select id="reporte-mes"></select>
+              </label>
+              <label class="reporte-filter-label">
+                <span class="muted small">Año</span>
+                <select id="reporte-anio"></select>
+              </label>
+              <button type="button" class="btn-refresh" id="btn-reporte-periodo">Actualizar</button>
+            </div>
+          </div>
+          <div id="reporte-periodo-content">
+            <p class="muted">Seleccione periodo y pulse Actualizar.</p>
+          </div>
+        </article>
+
         <article class="card balance-general-card" id="balance-general-root">
           <div class="panel-header">
             <div>

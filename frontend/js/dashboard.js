@@ -1,4 +1,4 @@
-import { api, formatMoney, formatTimeOnly, renderEmptyRow } from "./api.js";
+import { api, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
 import { getRateLabel } from "./tasas.js";
 
 const CHART_COLORS = ["#c9a227", "#2d6a9f", "#3d8b5a", "#8b5a9e", "#d4654a"];
@@ -468,6 +468,207 @@ function renderDashboard(data, cierreDia, ventasList, comprasList, activosList) 
   renderUltimosMovimientos(data.ultimos_movimientos || []);
 }
 
+const MESES_ES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
+function reporteLinea(label, valor) {
+  return `<div class="cierre-line"><span>${label}</span><strong>${valor}</strong></div>`;
+}
+
+function renderReportePeriodo(data) {
+  const root = document.getElementById("reporte-periodo-content");
+  if (!root) {
+    return;
+  }
+  if (!data?.totales) {
+    root.innerHTML = '<p class="muted">Sin datos para el periodo seleccionado.</p>';
+    return;
+  }
+  const t = data.totales;
+  const b = t.bodega || {};
+  const g = t.gasolina || {};
+  const co = t.compra_oro || {};
+  const oro = t.oro_recolectado_detalle || {};
+  const titulo =
+    data.periodo === "anual"
+      ? `Resumen anual ${data.anio}`
+      : `${data.mes_nombre || MESES_ES[(data.mes || 1) - 1]} ${data.anio}`;
+
+  let mesesHtml = "";
+  if (data.periodo === "anual" && Array.isArray(data.meses) && data.meses.length) {
+    mesesHtml = `
+      <div class="table-wrap" style="margin-top:16px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Mes</th>
+              <th>Días</th>
+              <th>Ventas R$</th>
+              <th>Compras R$</th>
+              <th>Gastos R$</th>
+              <th>Oro (g)</th>
+              <th>Ganancia R$</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.meses
+              .map(
+                (m) => `
+              <tr>
+                <td>${m.mes_nombre}</td>
+                <td>${m.dias_con_cierre}</td>
+                <td>${formatMoney(m.ventas_reales, "reales")}</td>
+                <td>${formatMoney(m.compras_reales, "reales")}</td>
+                <td>${formatMoney(m.gastos_reales, "reales")}</td>
+                <td>${formatMoney(m.oro_recolectado)}</td>
+                <td>${formatMoney(m.ganancia_neta_reales, "reales")}</td>
+              </tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  root.innerHTML = `
+    <p class="muted small" style="margin:0 0 12px;">${titulo} · ${t.dias_con_cierre} día(s) con cierre registrado</p>
+    <div class="dashboard-summary reporte-periodo-kpis">
+      <article class="metric-pill dashboard-kpi">
+        <span>Ventas (R$)</span>
+        <strong>${formatMoney(t.ventas_reales, "reales")}</strong>
+      </article>
+      <article class="metric-pill dashboard-kpi">
+        <span>Compras (R$)</span>
+        <strong>${formatMoney(t.compras_reales, "reales")}</strong>
+      </article>
+      <article class="metric-pill dashboard-kpi">
+        <span>Gastos (R$)</span>
+        <strong>${formatMoney(t.gastos_reales, "reales")}</strong>
+      </article>
+      <article class="metric-pill dashboard-kpi">
+        <span>Oro recolectado (g)</span>
+        <strong>${formatMoney(t.oro_recolectado)}</strong>
+      </article>
+      <article class="metric-pill dashboard-kpi">
+        <span>Ganancia neta (R$)</span>
+        <strong>${formatMoney(t.ganancia_neta_reales, "reales")}</strong>
+      </article>
+    </div>
+    <div class="grid two reporte-periodo-detalle">
+      <article class="card cierre-bloque" style="padding:16px;box-shadow:none;">
+        <h4 style="margin:0 0 10px;">Bodega</h4>
+        ${reporteLinea("Ventas reales", formatMoney(b.ventas_reales, "reales"))}
+        ${reporteLinea("Compras mercancía", formatMoney(b.compras_mercancia_reales, "reales"))}
+        ${reporteLinea("Salidas", formatMoney(b.salidas_reales, "reales"))}
+      </article>
+      <article class="card cierre-bloque" style="padding:16px;box-shadow:none;">
+        <h4 style="margin:0 0 10px;">Gasolina</h4>
+        ${reporteLinea("Ventas reales", formatMoney(g.ventas_reales, "reales"))}
+        ${reporteLinea("Reposición", formatMoney(g.reposicion_reales, "reales"))}
+      </article>
+      <article class="card cierre-bloque" style="padding:16px;box-shadow:none;">
+        <h4 style="margin:0 0 10px;">Compra de oro</h4>
+        ${reporteLinea("Gramos", `${formatMoney(co.gramos)} g`)}
+        ${reporteLinea("Reales usados", formatMoney(co.reales_usados, "reales"))}
+      </article>
+      <article class="card cierre-bloque" style="padding:16px;box-shadow:none;">
+        <h4 style="margin:0 0 10px;">Oro recolectado</h4>
+        ${reporteLinea("Bruto total", `${formatMoney(oro.bruto_total_gramos)} g`)}
+        ${reporteLinea("Araparita", `${formatMoney(oro.araparita)} g`)}
+        ${reporteLinea("Uruman", `${formatMoney(oro.uruman)} g`)}
+        ${t.ganancia_neta_oro ? reporteLinea("Ganancia neta (oro ref.)", `${formatMoney(t.ganancia_neta_oro)} g equiv.`) : ""}
+      </article>
+    </div>
+    ${mesesHtml}
+  `;
+}
+
+function poblarSelectoresReporte() {
+  const selMes = document.getElementById("reporte-mes");
+  const selAnio = document.getElementById("reporte-anio");
+  if (!selMes || !selAnio) {
+    return;
+  }
+  const ahora = new Date();
+  const anioActual = ahora.getFullYear();
+  if (!selMes.options.length) {
+    selMes.innerHTML = MESES_ES.map(
+      (nombre, i) => `<option value="${i + 1}">${nombre}</option>`
+    ).join("");
+    selMes.value = String(ahora.getMonth() + 1);
+  }
+  if (!selAnio.options.length) {
+    for (let y = anioActual; y >= anioActual - 5; y -= 1) {
+      const opt = document.createElement("option");
+      opt.value = String(y);
+      opt.textContent = String(y);
+      selAnio.appendChild(opt);
+    }
+    selAnio.value = String(anioActual);
+  }
+}
+
+function actualizarVisibilidadMes() {
+  const tipo = document.getElementById("reporte-periodo-tipo")?.value || "mensual";
+  const wrap = document.getElementById("reporte-mes-wrap");
+  if (wrap) {
+    wrap.style.display = tipo === "anual" ? "none" : "";
+  }
+}
+
+export async function loadReportePeriodo() {
+  poblarSelectoresReporte();
+  actualizarVisibilidadMes();
+  const tipo = document.getElementById("reporte-periodo-tipo")?.value || "mensual";
+  const anio = Number(document.getElementById("reporte-anio")?.value || new Date().getFullYear());
+  const root = document.getElementById("reporte-periodo-content");
+  if (root) {
+    root.innerHTML = '<p class="muted">Cargando resumen…</p>';
+  }
+  try {
+    let data;
+    if (tipo === "anual") {
+      data = await api.get(`/reportes/anual?anio=${anio}`);
+    } else {
+      const mes = Number(document.getElementById("reporte-mes")?.value || new Date().getMonth() + 1);
+      data = await api.get(`/reportes/mensual?mes=${mes}&anio=${anio}`);
+    }
+    renderReportePeriodo(data);
+  } catch (error) {
+    if (root) {
+      root.innerHTML = `<p class="muted">${error.message || "Error al cargar el reporte"}</p>`;
+    }
+    showToast(error.message || "Error al cargar el reporte", "error");
+  }
+}
+
+let reportePeriodoInicializado = false;
+
+export function initReportePeriodo() {
+  poblarSelectoresReporte();
+  actualizarVisibilidadMes();
+  if (reportePeriodoInicializado) {
+    return;
+  }
+  reportePeriodoInicializado = true;
+  document.getElementById("reporte-periodo-tipo")?.addEventListener("change", actualizarVisibilidadMes);
+  document.getElementById("btn-reporte-periodo")?.addEventListener("click", () => {
+    loadReportePeriodo();
+  });
+}
+
 export async function loadDashboard() {
   const [dashboard, cierreDia, ventasList, comprasList, activosList, balance] = await Promise.all([
     api.get("/reportes/dashboard"),
@@ -479,6 +680,8 @@ export async function loadDashboard() {
   ]);
   renderDashboard(dashboard, cierreDia, ventasList, comprasList, activosList);
   renderBalance(balance);
+  initReportePeriodo();
+  loadReportePeriodo();
 }
 
 export { renderBalance };

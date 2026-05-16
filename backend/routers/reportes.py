@@ -23,6 +23,7 @@ from models import (
 from routers.productos import serializar_producto
 from services.balance import build_balance_general
 from services.calculos import CalculosMonetarios, ganancia_neta_dia
+from services.reporte_periodo import build_reporte_anual, build_reporte_mensual
 from services.query_operativa import compra_no_anulada, venta_no_anulada
 
 
@@ -225,6 +226,25 @@ def dashboard(db: Session = Depends(get_db)):
 def balance_general(db: Session = Depends(get_db)):
     """Balance general: activos, pasivos (cuentas por pagar) y patrimonio."""
     return build_balance_general(db)
+
+
+@router.get("/mensual")
+def reporte_mensual(
+    mes: int = Query(..., ge=1, le=12),
+    anio: int = Query(..., ge=2000, le=2100),
+    db: Session = Depends(get_db),
+):
+    """Suma cierres diarios del mes: ventas, compras, gastos, oro y ganancia neta."""
+    return build_reporte_mensual(db, mes, anio)
+
+
+@router.get("/anual")
+def reporte_anual(
+    anio: int = Query(..., ge=2000, le=2100),
+    db: Session = Depends(get_db),
+):
+    """Suma cierres diarios del año, con desglose por mes."""
+    return build_reporte_anual(db, anio)
 
 
 @router.get("/gasolina")
