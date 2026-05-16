@@ -4,6 +4,25 @@ import { RATE_ORDER, getRateLabel, getTasasCache } from "./tasas.js";
 
 let productosCache = [];
 
+/** Venta por unidad con peso en kg (ej. pollo: 1 unidad = X kg). */
+export function ventaPorUnidadKg(producto) {
+  return (
+    producto?.unidad_venta === "kg" &&
+    producto?.presentacion === "kg" &&
+    Number(producto?.kg_por_unidad) > 0
+  );
+}
+
+export function textoStockKgUnidad(producto) {
+  const kg = Number(producto?.stock_actual || 0);
+  const kpu = Number(producto?.kg_por_unidad);
+  const est = kpu > 0 ? Math.floor(kg / kpu) : 0;
+  return {
+    kilos: `${kg.toFixed(2)} kg`,
+    pollos: `~${est} unidades`,
+  };
+}
+
 function agruparPorCategoria(items) {
   const map = new Map();
   items.forEach((p) => {
@@ -57,7 +76,11 @@ function tablaProductosHtml(productos) {
               <td>${producto.nombre}</td>
               <td>${producto.presentacion}</td>
               <td>${producto.unidad_venta}</td>
-              <td>${producto.stock_actual}</td>
+              <td>${
+                ventaPorUnidadKg(producto)
+                  ? `<div class="stock-kg-unidad"><div>Kilos: ${textoStockKgUnidad(producto).kilos}</div><div class="muted small">Pollos est.: ${textoStockKgUnidad(producto).pollos}</div></div>`
+                  : producto.stock_actual
+              }</td>
               <td>${formatMoney(producto.costo_promedio_reales ?? producto.precio_costo_reales, "reales")}</td>
               <td>${formatMoney(producto.precio_venta_reales, "reales")}</td>
               <td>${renderEquivalenteOro(producto)}</td>
@@ -113,7 +136,14 @@ function renderStockBajo(items) {
       (producto) => `
         <tr>
           <td>${producto.nombre}</td>
-          <td>${producto.stock_actual}</td>
+          <td>${
+            ventaPorUnidadKg(producto)
+              ? (() => {
+                  const s = textoStockKgUnidad(producto);
+                  return `${s.kilos} · ${s.pollos}`;
+                })()
+              : producto.stock_actual
+          }</td>
           <td>${producto.stock_minimo}</td>
         </tr>
       `
@@ -155,6 +185,22 @@ export function getProductosCache() {
   return productosCache;
 }
 
+function actualizarCampoKgPorUnidad() {
+  const wrap = document.getElementById("producto-kg-por-unidad-wrap");
+  const sel = document.getElementById("producto-unidad-venta");
+  if (!wrap || !sel) {
+    return;
+  }
+  const esKg = sel.value === "kg";
+  wrap.classList.toggle("hidden", !esKg);
+  if (!esKg) {
+    const inp = document.getElementById("producto-kg-por-unidad");
+    if (inp) {
+      inp.value = "";
+    }
+  }
+}
+
 function restaurarFormularioProducto() {
   const form = document.getElementById("form-producto");
   const submitButton = form.querySelector('button[type="submit"]');
@@ -165,6 +211,11 @@ function restaurarFormularioProducto() {
   form.stock_actual.value = "0";
   form.stock_minimo.value = "5";
   form.precio_venta_reales.value = "0.00";
+  const kgInp = document.getElementById("producto-kg-por-unidad");
+  if (kgInp) {
+    kgInp.value = "";
+  }
+  actualizarCampoKgPorUnidad();
   submitButton.textContent = "Guardar producto";
 }
 
@@ -206,6 +257,14 @@ function editarProducto(id) {
   form.stock_actual.value = producto.stock_actual;
   form.stock_minimo.value = producto.stock_minimo;
   form.precio_venta_reales.value = producto.precio_venta_reales;
+  const kgInp = document.getElementById("producto-kg-por-unidad");
+  if (kgInp) {
+    kgInp.value =
+      producto.kg_por_unidad != null && Number(producto.kg_por_unidad) > 0
+        ? String(producto.kg_por_unidad)
+        : "";
+  }
+  actualizarCampoKgPorUnidad();
   form.dataset.id = String(producto.id);
   submitButton.textContent = "Actualizar producto";
   form.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -263,6 +322,12 @@ export function initInventario() {
     payload.stock_actual = Number(payload.stock_actual);
     payload.stock_minimo = Number(payload.stock_minimo);
     payload.precio_venta_reales = Number(payload.precio_venta_reales);
+    const kgRaw = String(payload.kg_por_unidad || "").trim();
+    if (payload.unidad_venta === "kg" && kgRaw) {
+      payload.kg_por_unidad = Number(kgRaw);
+    } else {
+      delete payload.kg_por_unidad;
+    }
     try {
       if (form.dataset.id) {
         await api.put(`/productos/${form.dataset.id}`, payload);
@@ -284,4 +349,7 @@ export function initInventario() {
     const filtered = productosCache.filter((producto) => producto.nombre.toLowerCase().includes(term));
     renderProductosAccordiones(filtered);
   });
+
+  document.getElementById("producto-unidad-venta")?.addEventListener("change", actualizarCampoKgPorUnidad);
+  actualizarCampoKgPorUnidad();
 }

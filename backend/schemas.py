@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from services.calculos import CalculosMonetarios
 
@@ -89,6 +89,7 @@ class ProductoCreate(BaseModel):
     categoria_nombre: str = Field(..., min_length=2, max_length=100)
     presentacion: str = Field(default="unidad", min_length=2, max_length=20)
     unidad_venta: str = Field(default="unidad", min_length=2, max_length=20)
+    kg_por_unidad: float | None = Field(default=None, ge=0)
     stock_actual: float = Field(default=0, ge=0)
     stock_minimo: float = Field(default=5, ge=0)
     precio_venta_reales: float = Field(..., ge=0)
@@ -98,12 +99,25 @@ class ProductoCreate(BaseModel):
     _presentacion = field_validator("presentacion")(_unidad_medida)
     _unidad_venta = field_validator("unidad_venta")(_unidad_medida)
 
+    @field_validator("kg_por_unidad")
+    @classmethod
+    def validar_kg_por_unidad(cls, valor: float | None, info: ValidationInfo) -> float | None:
+        if valor is None or valor == 0:
+            return None
+        if valor <= 0:
+            raise ValueError("kg_por_unidad debe ser mayor que cero")
+        unidad = info.data.get("unidad_venta")
+        if unidad and unidad != "kg":
+            raise ValueError("kg_por_unidad solo aplica si la unidad de venta es kg")
+        return round(float(valor), 3)
+
 
 class ProductoUpdate(BaseModel):
     nombre: Optional[str] = Field(default=None, min_length=2, max_length=100)
     categoria_nombre: Optional[str] = Field(default=None, min_length=2, max_length=100)
     presentacion: Optional[str] = Field(default=None, min_length=2, max_length=20)
     unidad_venta: Optional[str] = Field(default=None, min_length=2, max_length=20)
+    kg_por_unidad: Optional[float] = Field(default=None, ge=0)
     stock_actual: Optional[float] = Field(default=None, ge=0)
     stock_minimo: Optional[float] = Field(default=None, ge=0)
     precio_venta_reales: Optional[float] = Field(default=None, ge=0)
@@ -122,6 +136,15 @@ class ProductoUpdate(BaseModel):
         if valor is None:
             return valor
         return _unidad_medida(valor)
+
+    @field_validator("kg_por_unidad")
+    @classmethod
+    def validar_kg_por_unidad_update(cls, valor: Optional[float]) -> Optional[float]:
+        if valor is None or valor == 0:
+            return None
+        if valor <= 0:
+            raise ValueError("kg_por_unidad debe ser mayor que cero")
+        return round(float(valor), 3)
 
 
 class ItemVenta(BaseModel):

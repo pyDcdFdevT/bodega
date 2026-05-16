@@ -136,11 +136,15 @@
               </select>
             </label>
             <label>Unidad de venta (como se cobra)
-              <select name="unidad_venta" required>
+              <select name="unidad_venta" id="producto-unidad-venta" required>
                 <option value="unidad" selected>Unidad</option>
                 <option value="kg">Kilogramo (kg)</option>
                 <option value="litro">Litro</option>
               </select>
+            </label>
+            <label id="producto-kg-por-unidad-wrap" class="hidden">
+              Kg por unidad (ej. peso promedio de 1 pollo)
+              <input name="kg_por_unidad" id="producto-kg-por-unidad" type="number" min="0.01" step="0.01" placeholder="2.5">
             </label>
             <label>Stock inicial
               <input name="stock_actual" type="number" min="0" step="0.001" value="0" required>

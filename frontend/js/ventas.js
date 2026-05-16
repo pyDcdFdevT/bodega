@@ -1,6 +1,11 @@
 import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
 import { getRol } from "./auth.js";
-import { getProductosCache, loadProductoOptions } from "./inventario.js";
+import {
+  getProductosCache,
+  loadProductoOptions,
+  textoStockKgUnidad,
+  ventaPorUnidadKg,
+} from "./inventario.js";
 import { ensureTasas, findTasaByNombre, getRateLabel } from "./tasas.js";
 
 const FAVORITOS_KEY = "__favoritos__";
@@ -291,12 +296,56 @@ function calcularTotales() {
   return { ...base, totalReales };
 }
 
+function agregarAlCarritoKg(productoId, cantidadKg) {
+  const qty = Number(cantidadKg);
+  if (!qty || qty <= 0) {
+    return;
+  }
+  const producto = getProductosCache().find((p) => p.id === productoId);
+  if (!producto) {
+    return;
+  }
+  if (qty > Number(producto.stock_actual) + 0.0001) {
+    showToast(`Stock insuficiente (${Number(producto.stock_actual).toFixed(2)} kg)`, "error");
+    return;
+  }
+  const existente = carrito.find((item) => item.producto_id === productoId);
+  const add = Number(qty.toFixed(3));
+  if (existente) {
+    existente.cantidad = Number((existente.cantidad + add).toFixed(3));
+  } else {
+    carrito.push({ producto_id: productoId, cantidad: add });
+  }
+  renderCarrito();
+}
+
 function htmlTarjetaProducto(p) {
   const esAdmin = getRol() === "admin";
   const fav = esFavorito(p.id);
   const star = esAdmin
     ? `<button type="button" class="pos-fav-btn${fav ? " is-fav" : ""}" data-fav-toggle="${p.id}" title="${fav ? "Quitar de favoritos" : "Agregar a favoritos"}">⭐</button>`
     : "";
+  if (ventaPorUnidadKg(p)) {
+    const stock = textoStockKgUnidad(p);
+    return `
+    <div class="pos-card-wrap pos-card-wrap--pollo">
+      ${star}
+      <div class="pos-card pos-card-pollo">
+        <strong>${p.nombre}</strong>
+        <span class="pos-card-meta">${formatMoney(p.precio_venta_reales, "reales")}/kg</span>
+        <span class="pos-card-stock">Kilos: ${stock.kilos}</span>
+        <span class="pos-card-stock muted small">Pollos est.: ${stock.pollos}</span>
+        <div class="pos-pollo-actions">
+          <button type="button" class="btn-secondary pos-pollo-uno" data-pollo-uno="${p.id}">1 Pollo</button>
+          <label class="pos-pollo-kg">
+            <span class="pos-pollo-kg-label">X kg</span>
+            <input type="number" min="0.01" step="0.01" placeholder="kg" class="pos-pollo-kg-input" data-pollo-kg-input="${p.id}">
+          </label>
+          <button type="button" class="pos-pollo-kg-add" data-pollo-kg-add="${p.id}" title="Agregar kilos">+</button>
+        </div>
+      </div>
+    </div>`;
+  }
   return `
     <div class="pos-card-wrap">
       ${star}
@@ -371,6 +420,47 @@ function renderGridProductos() {
       renderCarrito();
     });
   });
+
+  grid.querySelectorAll("[data-pollo-uno]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.polloUno);
+      const p = getProductosCache().find((x) => x.id === id);
+      if (p) {
+        agregarAlCarritoKg(id, Number(p.kg_por_unidad));
+      }
+    });
+  });
+
+  grid.querySelectorAll("[data-pollo-kg-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.polloKgAdd);
+      const input = grid.querySelector(`[data-pollo-kg-input="${id}"]`);
+      const kg = Number(input?.value);
+      if (!kg || kg <= 0) {
+        showToast("Indique los kilos a vender", "error");
+        input?.focus();
+        return;
+      }
+      agregarAlCarritoKg(id, kg);
+      if (input) {
+        input.value = "";
+      }
+    });
+  });
+
+  grid.querySelectorAll(".pos-pollo-kg-input").forEach((input) => {
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        const id = Number(input.dataset.polloKgInput);
+        const kg = Number(input.value);
+        if (kg > 0) {
+          agregarAlCarritoKg(id, kg);
+          input.value = "";
+        }
+      }
+    });
+  });
 }
 
 function renderCarrito() {
@@ -384,16 +474,20 @@ function renderCarrito() {
     tbody.innerHTML = renderEmptyRow(4, "Carrito vacio. Pulse un producto.");
   } else {
     tbody.innerHTML = totals.items
-      .map(
-        (item) => `
+      .map((item) => {
+        const esKg = ventaPorUnidadKg(item.producto);
+        return `
           <tr>
             <td>${item.producto.nombre}</td>
-            <td><input type="number" min="0.01" step="0.01" class="pos-qty" data-pid="${item.producto_id}" value="${item.cantidad}"></td>
+            <td class="pos-qty-cell">
+              <input type="number" min="0.01" step="0.01" class="pos-qty" data-pid="${item.producto_id}" value="${item.cantidad}">
+              ${esKg ? '<span class="muted small">kg</span>' : ""}
+            </td>
             <td>${formatMoney(item.subtotal)}</td>
             <td><button type="button" data-remove="${item.producto_id}">Quitar</button></td>
           </tr>
-        `
-      )
+        `;
+      })
       .join("");
     tbody.querySelectorAll(".pos-qty").forEach((input) => {
       input.addEventListener("change", () => {

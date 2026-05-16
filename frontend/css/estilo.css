@@ -695,6 +695,70 @@ summary.accordion-cat-summary::-webkit-details-marker {
   gap: 12px;
 }
 
+.hidden {
+  display: none !important;
+}
+
+.stock-kg-unidad {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.pos-card-pollo {
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: stretch;
+  text-align: left;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(17, 38, 58, 0.06);
+}
+
+.pos-pollo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: flex-end;
+  margin-top: 0.35rem;
+}
+
+.pos-pollo-uno {
+  flex: 1 1 auto;
+  min-width: 5.5rem;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.pos-pollo-kg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 4.5rem;
+  font-size: 0.75rem;
+}
+
+.pos-pollo-kg-input {
+  width: 100%;
+  min-width: 3.5rem;
+  padding: 0.35rem 0.4rem;
+}
+
+.pos-pollo-kg-add {
+  padding: 0.4rem 0.65rem;
+  min-width: 2.25rem;
+}
+
+.pos-qty-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .pos-card {
   border: 1px solid var(--line);
   border-radius: 16px;

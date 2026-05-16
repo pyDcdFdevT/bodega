@@ -28,6 +28,7 @@ def serializar_producto(producto: Producto) -> dict:
         "categoria_nombre": producto.categoria_rel.nombre if producto.categoria_rel else None,
         "presentacion": producto.presentacion,
         "unidad_venta": producto.unidad_venta,
+        "kg_por_unidad": float(producto.kg_por_unidad) if producto.kg_por_unidad else None,
         "stock_actual": producto.stock_actual,
         "stock_minimo": producto.stock_minimo,
         "precio_costo_oro": producto.precio_costo_oro,
@@ -162,6 +163,7 @@ def crear_producto(producto: ProductoCreate, db: Session = Depends(get_db)):
             categoria_id=categoria.id,
             presentacion=producto.presentacion,
             unidad_venta=producto.unidad_venta,
+            kg_por_unidad=producto.kg_por_unidad,
             stock_actual=producto.stock_actual,
             stock_minimo=producto.stock_minimo,
             precio_venta_reales=producto.precio_venta_reales,
@@ -215,6 +217,12 @@ def actualizar_producto(producto_id: int, data: ProductoUpdate, db: Session = De
             producto.presentacion = data.presentacion
         if data.unidad_venta is not None:
             producto.unidad_venta = data.unidad_venta
+            if data.unidad_venta != "kg":
+                producto.kg_por_unidad = None
+        if data.kg_por_unidad is not None:
+            if data.kg_por_unidad > 0 and producto.unidad_venta != "kg":
+                raise ValueError("kg_por_unidad solo aplica si la unidad de venta es kg")
+            producto.kg_por_unidad = data.kg_por_unidad if data.kg_por_unidad > 0 else None
         if data.stock_minimo is not None:
             producto.stock_minimo = data.stock_minimo
         if data.precio_venta_reales is not None:

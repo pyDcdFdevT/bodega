@@ -1313,6 +1313,37 @@ def _migrate_gasolina_costo_promedio(conn, dialect: str) -> None:
     _backfill_gasolina_costo_promedio(conn)
 
 
+def _migrate_kg_por_unidad_column(conn, dialect: str) -> None:
+    """Venta por unidad (ej. pollo): peso promedio en kg por unidad."""
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if not insp.has_table("productos"):
+        return
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                "ALTER TABLE productos ADD COLUMN IF NOT EXISTS kg_por_unidad DOUBLE PRECISION"
+            )
+        )
+    elif dialect == "sqlite":
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(productos)"))}
+        if "kg_por_unidad" not in cols:
+            conn.execute(text("ALTER TABLE productos ADD COLUMN kg_por_unidad REAL"))
+    conn.execute(
+        text(
+            """
+            UPDATE productos
+            SET kg_por_unidad = 2.5
+            WHERE LOWER(TRIM(nombre)) = 'pollo'
+              AND presentacion = 'kg'
+              AND unidad_venta = 'kg'
+              AND (kg_por_unidad IS NULL OR kg_por_unidad <= 0)
+            """
+        )
+    )
+
+
 def _migrate_costo_promedio_columns(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -1431,6 +1462,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
             _migrate_venta_compra_estado_anulacion(conn, dialect)
             _migrate_costo_promedio_columns(conn, dialect)
+            _migrate_kg_por_unidad_column(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
             _migrate_ventas_devoluciones_descuento(conn, dialect)
@@ -1472,6 +1504,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
             _migrate_venta_compra_estado_anulacion(conn, dialect)
             _migrate_costo_promedio_columns(conn, dialect)
+            _migrate_kg_por_unidad_column(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
             _migrate_ventas_devoluciones_descuento(conn, dialect)

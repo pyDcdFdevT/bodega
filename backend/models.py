@@ -55,6 +55,10 @@ class Producto(Base):
         CheckConstraint("costo_promedio_reales >= 0", name="ck_producto_costo_promedio_reales"),
         CheckConstraint("precio_venta_reales >= 0", name="ck_producto_precio_venta_reales"),
         CheckConstraint("precio_venta_oro >= 0", name="ck_producto_precio_venta_oro"),
+        CheckConstraint(
+            "kg_por_unidad IS NULL OR kg_por_unidad > 0",
+            name="ck_producto_kg_por_unidad",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -62,6 +66,7 @@ class Producto(Base):
     categoria_id = Column(Integer, ForeignKey("categorias.id"), nullable=False, index=True)
     presentacion = Column(String(20), default="unidad", nullable=False)
     unidad_venta = Column(String(20), default="unidad", nullable=False)
+    kg_por_unidad = Column(Float, nullable=True)
     stock_actual = Column(Float, default=0, nullable=False)
     stock_minimo = Column(Float, default=5, nullable=False)
     precio_costo_oro = Column(Float, default=0, nullable=False)
