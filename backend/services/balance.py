@@ -229,13 +229,10 @@ def _caja_y_oro_operativo(db: Session, hoy: date) -> tuple[float, float]:
 
 
 def _cuentas_por_pagar(db: Session) -> float:
-    total = (
-        db.query(func.coalesce(func.sum(Compra.total_reales), 0))
-        .filter(compra_no_anulada(), Compra.tipo_pago_compra == "credito")
-        .scalar()
-        or 0
-    )
-    return round(float(total), 2)
+    from services.pagos_proveedores import build_deudas_proveedores
+
+    data = build_deudas_proveedores(db)
+    return round(float(data.get("total_pendiente") or 0), 2)
 
 
 def _ganancia_acumulada_reales(db: Session) -> float:

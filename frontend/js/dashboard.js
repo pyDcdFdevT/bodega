@@ -1,4 +1,5 @@
 import { api, formatDate, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
+import { loadPagosProveedores } from "./pagos_proveedores.js";
 import { getRateLabel } from "./tasas.js";
 
 const CHART_COLORS = ["#c9a227", "#2d6a9f", "#3d8b5a", "#8b5a9e", "#d4654a"];
@@ -876,6 +877,7 @@ export async function loadDashboard() {
   renderBalance(balance);
   renderDepreciacion(depreciacion);
   renderCuentasPorPagar(cuentasPagar);
+  await loadPagosProveedores();
   initReportePeriodo();
   loadReportePeriodo();
 }

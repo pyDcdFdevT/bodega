@@ -54,6 +54,7 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
             tasa_cambio_usada=tasa.tasa_reales,
             observaciones=compra.observaciones,
             tipo_pago_compra=tipo_pago,
+            estado_credito="pendiente" if tipo_pago == "credito" else "pagada",
         )
         db.add(nueva)
         db.flush()
@@ -293,6 +294,12 @@ def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depen
         compra.observaciones = payload.observaciones
         if payload.tipo_pago_compra is not None:
             compra.tipo_pago_compra = payload.tipo_pago_compra
+            if payload.tipo_pago_compra == "credito" and compra.estado_credito == "pagada":
+                pagado = sum(float(p.monto) for p in compra.pagos_proveedor)
+                if pagado < float(compra.total_reales) - 0.009:
+                    compra.estado_credito = "pendiente"
+            elif payload.tipo_pago_compra == "contado":
+                compra.estado_credito = "pagada"
         compra.total_reales = precio_reales
         compra.total_oro = costo_oro_total
 

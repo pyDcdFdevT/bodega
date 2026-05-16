@@ -245,6 +245,11 @@ class DetalleCompraListOut(BaseModel):
     producto_nombre: Optional[str] = None
 
 
+class PagoProveedorCreate(BaseModel):
+    compra_id: int = Field(..., gt=0)
+    monto: float = Field(..., gt=0)
+
+
 class CompraOut(ORMModel):
     """Listado compras.js: id, fecha, proveedor, producto, total_reales."""
 

@@ -699,6 +699,28 @@ def _migrate_venta_compra_estado_anulacion(conn, dialect: str) -> None:
         return
 
 
+def _backfill_activos_depreciacion_mensual(conn) -> None:
+    """Calcula depreciacion_mensual en Python (compatible PG y SQLite)."""
+    from sqlalchemy import text
+
+    rows = conn.execute(
+        text(
+            """
+SELECT id, monto_reales, valor_residual, vida_util_anios
+FROM activos
+WHERE depreciacion_mensual = 0 AND monto_reales > 0
+"""
+        )
+    ).fetchall()
+    upd = text("UPDATE activos SET depreciacion_mensual = :dep WHERE id = :id")
+    for row in rows:
+        vida = int(row[3] or 5)
+        meses = max(vida * 12, 1)
+        base = max(float(row[1]) - float(row[2] or 0), 0.0)
+        dep = round(base / meses, 2)
+        conn.execute(upd, {"dep": dep, "id": int(row[0])})
+
+
 def _migrate_activos_depreciacion(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -713,18 +735,7 @@ def _migrate_activos_depreciacion(conn, dialect: str) -> None:
             "ALTER TABLE activos ADD COLUMN IF NOT EXISTS depreciacion_mensual DOUBLE PRECISION NOT NULL DEFAULT 0",
         ):
             conn.execute(text(stmt))
-        conn.execute(
-            text(
-                """
-UPDATE activos
-SET depreciacion_mensual = ROUND(
-    GREATEST(monto_reales - valor_residual, 0) / GREATEST(vida_util_anios * 12, 1),
-    2
-)
-WHERE depreciacion_mensual = 0 AND monto_reales > 0
-"""
-            )
-        )
+        _backfill_activos_depreciacion_mensual(conn)
         return
 
     if dialect == "sqlite":
@@ -735,18 +746,7 @@ WHERE depreciacion_mensual = 0 AND monto_reales > 0
             conn.execute(text("ALTER TABLE activos ADD COLUMN valor_residual REAL NOT NULL DEFAULT 0"))
         if "depreciacion_mensual" not in cols:
             conn.execute(text("ALTER TABLE activos ADD COLUMN depreciacion_mensual REAL NOT NULL DEFAULT 0"))
-        conn.execute(
-            text(
-                """
-UPDATE activos
-SET depreciacion_mensual = ROUND(
-    MAX(monto_reales - valor_residual, 0) / MAX(vida_util_anios * 12, 1),
-    2
-)
-WHERE depreciacion_mensual = 0 AND monto_reales > 0
-"""
-            )
-        )
+        _backfill_activos_depreciacion_mensual(conn)
 
 
 def _migrate_transaccion_tipo_reabrir(conn, dialect: str) -> None:
@@ -764,11 +764,97 @@ def _migrate_transaccion_tipo_reabrir(conn, dialect: str) -> None:
 ALTER TABLE transacciones ADD CONSTRAINT ck_transaccion_tipo
 CHECK (tipo IN (
     'venta','compra','salida','gasto','compra_oro','venta_gasolina',
-    'reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia'
+    'reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia','pago_proveedor'
 ))
 """
         )
     )
+
+
+def _migrate_pagos_proveedores(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+CREATE TABLE IF NOT EXISTS pagos_proveedores (
+    id SERIAL PRIMARY KEY,
+    compra_id INTEGER NOT NULL REFERENCES compras(id),
+    monto DOUBLE PRECISION NOT NULL,
+    fecha TIMESTAMP NOT NULL DEFAULT NOW(),
+    proveedor VARCHAR(100) NOT NULL,
+    CONSTRAINT ck_pago_proveedor_monto CHECK (monto > 0)
+)
+"""
+            )
+        )
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_pagos_proveedores_compra ON pagos_proveedores (compra_id)")
+        )
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_pagos_proveedores_fecha ON pagos_proveedores (fecha)")
+        )
+        if insp.has_table("compras"):
+            conn.execute(
+                text(
+                    "ALTER TABLE compras ADD COLUMN IF NOT EXISTS estado_credito "
+                    "VARCHAR(20) NOT NULL DEFAULT 'pagada'"
+                )
+            )
+            conn.execute(
+                text(
+                    """
+UPDATE compras SET estado_credito = 'pendiente'
+WHERE tipo_pago_compra = 'credito' AND (estado_credito IS NULL OR estado_credito = 'pagada')
+"""
+                )
+            )
+            conn.execute(
+                text(
+                    """
+UPDATE compras SET estado_credito = 'pagada'
+WHERE tipo_pago_compra = 'contado' OR tipo_pago_compra IS NULL
+"""
+                )
+            )
+        return
+
+    if dialect == "sqlite":
+        if not insp.has_table("pagos_proveedores"):
+            conn.execute(
+                text(
+                    """
+CREATE TABLE pagos_proveedores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    compra_id INTEGER NOT NULL REFERENCES compras(id),
+    monto REAL NOT NULL,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    proveedor VARCHAR(100) NOT NULL,
+    CHECK (monto > 0)
+)
+"""
+                )
+            )
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_proveedores_compra ON pagos_proveedores (compra_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pagos_proveedores_fecha ON pagos_proveedores (fecha)"))
+        if insp.has_table("compras"):
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(compras)"))}
+            if "estado_credito" not in cols:
+                conn.execute(
+                    text("ALTER TABLE compras ADD COLUMN estado_credito VARCHAR(20) NOT NULL DEFAULT 'pagada'")
+                )
+            conn.execute(
+                text(
+                    "UPDATE compras SET estado_credito = 'pendiente' WHERE tipo_pago_compra = 'credito'"
+                )
+            )
+            conn.execute(
+                text(
+                    "UPDATE compras SET estado_credito = 'pagada' WHERE tipo_pago_compra = 'contado'"
+                )
+            )
 
 
 def _migrate_compra_tipo_pago(conn, dialect: str) -> None:
@@ -922,6 +1008,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_costo_promedio_columns(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
+            _migrate_pagos_proveedores(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -957,4 +1044,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_costo_promedio_columns(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
+            _migrate_pagos_proveedores(conn, dialect)
         return

@@ -939,6 +939,15 @@ summary.accordion-cat-summary::-webkit-details-marker {
   font-size: 0.9rem;
 }
 
+.pagos-proveedores-card {
+  margin-bottom: 1rem;
+}
+
+.pagos-proveedores-sub {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.95rem;
+}
+
 .cuentas-pagar-card {
   margin-bottom: 18px;
 }

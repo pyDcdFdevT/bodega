@@ -198,6 +198,10 @@ class Compra(Base):
             "tipo_pago_compra IN ('contado','credito')",
             name="ck_compra_tipo_pago",
         ),
+        CheckConstraint(
+            "estado_credito IN ('pendiente','pagada')",
+            name="ck_compra_estado_credito",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -209,8 +213,25 @@ class Compra(Base):
     observaciones = Column(Text)
     estado = Column(String(20), default="VIGENTE", nullable=False)
     tipo_pago_compra = Column(String(20), default="contado", nullable=False)
+    estado_credito = Column(String(20), default="pagada", nullable=False)
 
     detalles = relationship("DetalleCompra", back_populates="compra", cascade="all, delete-orphan")
+    pagos_proveedor = relationship(
+        "PagoProveedor", back_populates="compra", cascade="all, delete-orphan"
+    )
+
+
+class PagoProveedor(Base):
+    __tablename__ = "pagos_proveedores"
+    __table_args__ = (CheckConstraint("monto > 0", name="ck_pago_proveedor_monto"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    compra_id = Column(Integer, ForeignKey("compras.id"), nullable=False, index=True)
+    monto = Column(Float, nullable=False)
+    fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
+    proveedor = Column(String(100), nullable=False)
+
+    compra = relationship("Compra", back_populates="pagos_proveedor")
 
 
 class DetalleCompra(Base):
@@ -519,7 +540,7 @@ class Transaccion(Base):
     __tablename__ = "transacciones"
     __table_args__ = (
         CheckConstraint(
-            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia')",
+            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia','pago_proveedor')",
             name="ck_transaccion_tipo",
         ),
         CheckConstraint(

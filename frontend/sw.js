@@ -13,6 +13,8 @@ const ASSETS = [
   "/js/compras_oro.js",
   "/js/gasolina.js",
   "/js/gastos.js",
+  "/js/pagos_proveedores.js",
+  "/js/dashboard.js",
   "/js/inventario.js",
   "/js/reportes.js",
   "/js/salidas.js",
