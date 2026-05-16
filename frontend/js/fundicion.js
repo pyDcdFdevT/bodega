@@ -1,4 +1,13 @@
-import { api, formatDate, formatMoney, showToast } from "./api.js";
+import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
+
+const TIPO_DISTRIB_LABEL = {
+  reposicion_bodega: "Reposicion bodega",
+  reposicion_gasolina: "Reposicion gasolina",
+  gastos_operativos: "Gastos operativos",
+  pago_socio: "Pago socio",
+  ganancia_dueno: "Ganancia dueno",
+  se_deja_caja: "Se deja en caja",
+};
 
 function adminHeaders() {
   return { headers: { "X-Bodega-Rol": "admin" } };
@@ -12,6 +21,104 @@ function setSelectOptions(select, items, valueKey, labelFn, emptyLabel) {
     .concat(items.map((it) => `<option value="${it[valueKey]}">${labelFn(it)}</option>`))
     .join("");
   select.innerHTML = opts;
+}
+
+function renderTablaLotes(lotes) {
+  const tbody = document.getElementById("tabla-fund-lotes");
+  if (!tbody) {
+    return;
+  }
+  if (!lotes.length) {
+    tbody.innerHTML = renderEmptyRow(5, "No hay lotes registrados.");
+    return;
+  }
+  tbody.innerHTML = lotes
+    .map(
+      (l) => `
+    <tr>
+      <td>${l.id}</td>
+      <td>${formatDate(l.fecha)}</td>
+      <td>${Number(l.gramos_brutos).toFixed(4)}</td>
+      <td>${l.origen || "—"}</td>
+      <td>${l.estado}</td>
+    </tr>`
+    )
+    .join("");
+}
+
+function renderTablaFundiciones(fundiciones) {
+  const tbody = document.getElementById("tabla-fund-fundiciones");
+  if (!tbody) {
+    return;
+  }
+  if (!fundiciones.length) {
+    tbody.innerHTML = renderEmptyRow(7, "No hay fundiciones registradas.");
+    return;
+  }
+  tbody.innerHTML = fundiciones
+    .map(
+      (f) => `
+    <tr>
+      <td>${f.id}</td>
+      <td>${formatDate(f.fecha)}</td>
+      <td>#${f.lote_oro_id}</td>
+      <td>${Number(f.gramos_brutos).toFixed(4)}</td>
+      <td>${Number(f.ley).toFixed(4)}</td>
+      <td>${Number(f.gramos_finos).toFixed(4)}</td>
+      <td>${f.casa_fundicion || "—"}</td>
+    </tr>`
+    )
+    .join("");
+}
+
+function renderTablaVentasPieza(ventas) {
+  const tbody = document.getElementById("tabla-fund-ventas-pieza");
+  if (!tbody) {
+    return;
+  }
+  if (!ventas.length) {
+    tbody.innerHTML = renderEmptyRow(8, "No hay ventas de pieza registradas.");
+    return;
+  }
+  tbody.innerHTML = ventas
+    .map((v) => {
+      const mon = v.moneda === "USD" ? "USD" : "reales";
+      return `
+    <tr>
+      <td>${v.id}</td>
+      <td>${formatDate(v.fecha)}</td>
+      <td>#${v.fundicion_id}</td>
+      <td>${Number(v.gramos_vendidos).toFixed(4)}</td>
+      <td>${Number(v.tasa_venta).toFixed(2)}</td>
+      <td>${formatMoney(v.monto_total, mon)}</td>
+      <td>${v.moneda}</td>
+      <td>${v.comprador || "—"}</td>
+    </tr>`;
+    })
+    .join("");
+}
+
+function renderTablaDistribuciones(distribuciones) {
+  const tbody = document.getElementById("tabla-fund-distribuciones");
+  if (!tbody) {
+    return;
+  }
+  if (!distribuciones.length) {
+    tbody.innerHTML = renderEmptyRow(5, "No hay distribuciones registradas.");
+    return;
+  }
+  tbody.innerHTML = distribuciones
+    .map(
+      (d) => `
+    <tr>
+      <td>${d.id}</td>
+      <td>${formatDate(d.fecha)}</td>
+      <td>#${d.venta_pieza_id}</td>
+      <td>${TIPO_DISTRIB_LABEL[d.tipo] || d.tipo}</td>
+      <td>${formatMoney(d.monto, "reales")}</td>
+    </tr>`
+    )
+    .join("");
 }
 
 function actualizarTotalVentaPieza() {
@@ -42,14 +149,20 @@ function actualizarDistribResto() {
 
 export async function loadFundicion() {
   try {
-    const [sug, lotes, fundiciones, dispVenta, ventas, sinDist] = await Promise.all([
+    const [sug, lotes, fundiciones, dispVenta, ventas, sinDist, distribuciones] = await Promise.all([
       api.get("/fundicion/sugerencia-oro-bruto"),
       api.get("/fundicion/lotes"),
       api.get("/fundicion/fundiciones"),
       api.get("/fundicion/fundiciones/disponibles-venta"),
       api.get("/fundicion/ventas-pieza"),
       api.get("/fundicion/ventas-pieza/sin-distribuir"),
+      api.get("/fundicion/distribuciones"),
     ]);
+
+    renderTablaLotes(lotes);
+    renderTablaFundiciones(fundiciones);
+    renderTablaVentasPieza(ventas);
+    renderTablaDistribuciones(distribuciones);
 
     const br = document.getElementById("fund-lote-brutos");
     if (br && sug?.gramos_brutos_sugeridos != null) {

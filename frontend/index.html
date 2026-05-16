@@ -981,6 +981,21 @@
             </label>
             <button type="button" class="btn-cobrar" id="btn-fund-lote-registrar">Registrar lote</button>
           </div>
+          <h4 class="fund-historial-titulo">Lotes registrados</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Brutos (g)</th>
+                  <th>Origen</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-fund-lotes"></tbody>
+            </table>
+          </div>
         </article>
 
         <article class="card">
@@ -1002,6 +1017,23 @@
               <input type="text" id="fund-fund-casa" maxlength="200" required>
             </label>
             <button type="button" class="btn-cobrar" id="btn-fund-registrar">Registrar fundicion</button>
+          </div>
+          <h4 class="fund-historial-titulo">Fundiciones realizadas</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Lote</th>
+                  <th>Brutos (g)</th>
+                  <th>Ley</th>
+                  <th>Finos (g)</th>
+                  <th>Casa</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-fund-fundiciones"></tbody>
+            </table>
           </div>
         </article>
 
@@ -1029,6 +1061,24 @@
             </label>
             <p class="report-item">Total: <strong id="fund-vp-total">R$ 0.00</strong></p>
             <button type="button" class="btn-cobrar" id="btn-fund-vp-registrar">Registrar venta</button>
+          </div>
+          <h4 class="fund-historial-titulo">Ventas de pieza</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Fundicion</th>
+                  <th>Gramos</th>
+                  <th>Tasa</th>
+                  <th>Total</th>
+                  <th>Moneda</th>
+                  <th>Comprador</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-fund-ventas-pieza"></tbody>
+            </table>
           </div>
         </article>
 
@@ -1060,6 +1110,21 @@
             </label>
             <p class="report-item">Resto (debe ser 0): <strong id="fund-dist-resto">R$ 0.00</strong></p>
             <button type="button" class="btn-cobrar" id="btn-fund-dist-registrar">Registrar distribucion</button>
+          </div>
+          <h4 class="fund-historial-titulo">Distribuciones</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Venta</th>
+                  <th>Tipo</th>
+                  <th>Monto</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-fund-distribuciones"></tbody>
+            </table>
           </div>
         </article>
       </section>

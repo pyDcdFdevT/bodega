@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -199,22 +199,31 @@ def ventas_pieza_sin_distribuir(db: Session = Depends(get_db)):
 
 
 @router.get("/distribuciones")
-def listar_distribuciones(venta_pieza_id: int, db: Session = Depends(get_db)):
+def listar_distribuciones(
+    venta_pieza_id: int | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    q = db.query(DistribucionFondos, VentaPieza).join(
+        VentaPieza, DistribucionFondos.venta_pieza_id == VentaPieza.id
+    )
+    if venta_pieza_id is not None:
+        q = q.filter(DistribucionFondos.venta_pieza_id == venta_pieza_id)
     rows = (
-        db.query(DistribucionFondos)
-        .filter(DistribucionFondos.venta_pieza_id == venta_pieza_id)
-        .order_by(DistribucionFondos.id.asc())
+        q.order_by(VentaPieza.fecha.desc(), DistribucionFondos.id.desc())
+        .limit(limit)
         .all()
     )
     return [
         {
-            "id": r.id,
-            "venta_pieza_id": r.venta_pieza_id,
-            "tipo": r.tipo,
-            "monto": float(r.monto),
-            "descripcion": r.descripcion,
+            "id": dist.id,
+            "venta_pieza_id": dist.venta_pieza_id,
+            "tipo": dist.tipo,
+            "monto": float(dist.monto),
+            "descripcion": dist.descripcion,
+            "fecha": vp.fecha.isoformat() if vp.fecha else None,
         }
-        for r in rows
+        for dist, vp in rows
     ]
 
 

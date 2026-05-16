@@ -124,6 +124,13 @@ textarea {
   letter-spacing: 0.02em;
 }
 
+.card .fund-historial-titulo {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .hero h1 {
   font-size: clamp(2rem, 3vw, 3.1rem);
 }
