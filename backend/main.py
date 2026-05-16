@@ -23,6 +23,7 @@ from routers import (
     fundicion,
     gasolina,
     gastos,
+    historial,
     pagos_proveedores,
     productos,
     reportes,
@@ -94,6 +95,7 @@ app.include_router(activos.router, prefix="/api")
 app.include_router(cierre.router, prefix="/api")
 app.include_router(apertura.router, prefix="/api")
 app.include_router(fundicion.router, prefix="/api")
+app.include_router(historial.router, prefix="/api")
 app.include_router(reportes.router, prefix="/api")
 app.include_router(tasas.router, prefix="/api")
 app.include_router(transacciones.router, prefix="/api")

@@ -211,8 +211,8 @@
               </table>
             </div>
             <div class="totals">
-              <p>Total oro: <strong id="venta-total-oro">0.00</strong></p>
-              <p>Total reales: <strong id="venta-total-reales">0.00</strong></p>
+              <p class="totals-oro">Total oro: <strong id="venta-total-oro">0.00</strong> g</p>
+              <p class="totals-reales">Total reales: <strong id="venta-total-reales">—</strong></p>
             </div>
             <button type="button" class="btn-cobrar" id="btn-pos-cobrar">Cobrar</button>
           </aside>
@@ -285,7 +285,7 @@
           </article>
 
           <article class="card">
-            <h3>Ultimas compras</h3>
+            <h3>Ultimas compras (dia operativo)</h3>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -301,6 +301,61 @@
                 </thead>
                 <tbody id="tabla-compras"></tbody>
               </table>
+            </div>
+            <button type="button" class="btn-secondary btn-historial-toggle" id="btn-compras-ver-historial">
+              Ver historial
+            </button>
+            <div id="historial-acordeon" class="historial-acordeon" hidden>
+              <details class="historial-seccion" id="historial-seccion-compras">
+                <summary>Compras</summary>
+                <div class="historial-filtros">
+                  <label>Año <select id="hist-compras-anio"></select></label>
+                  <label>Mes <select id="hist-compras-mes"></select></label>
+                  <label>Día <select id="hist-compras-dia"></select></label>
+                  <button type="button" class="btn-refresh" id="hist-compras-buscar">Buscar</button>
+                </div>
+                <div id="historial-body-compras" class="historial-body"></div>
+              </details>
+              <details class="historial-seccion" id="historial-seccion-ventas">
+                <summary>Ventas</summary>
+                <div class="historial-filtros">
+                  <label>Año <select id="hist-ventas-anio"></select></label>
+                  <label>Mes <select id="hist-ventas-mes"></select></label>
+                  <label>Día <select id="hist-ventas-dia"></select></label>
+                  <button type="button" class="btn-refresh" id="hist-ventas-buscar">Buscar</button>
+                </div>
+                <div id="historial-body-ventas" class="historial-body"></div>
+              </details>
+              <details class="historial-seccion" id="historial-seccion-cobros">
+                <summary>Cobros / Pagos</summary>
+                <div class="historial-filtros">
+                  <label>Año <select id="hist-cobros-anio"></select></label>
+                  <label>Mes <select id="hist-cobros-mes"></select></label>
+                  <label>Día <select id="hist-cobros-dia"></select></label>
+                  <button type="button" class="btn-refresh" id="hist-cobros-buscar">Buscar</button>
+                </div>
+                <div id="historial-body-cobros" class="historial-body"></div>
+              </details>
+              <details class="historial-seccion" id="historial-seccion-salidas">
+                <summary>Salidas</summary>
+                <div class="historial-filtros">
+                  <label>Año <select id="hist-salidas-anio"></select></label>
+                  <label>Mes <select id="hist-salidas-mes"></select></label>
+                  <label>Día <select id="hist-salidas-dia"></select></label>
+                  <button type="button" class="btn-refresh" id="hist-salidas-buscar">Buscar</button>
+                </div>
+                <div id="historial-body-salidas" class="historial-body"></div>
+              </details>
+              <details class="historial-seccion" id="historial-seccion-gasolina">
+                <summary>Gasolina (ventas + reposiciones)</summary>
+                <div class="historial-filtros">
+                  <label>Año <select id="hist-gasolina-anio"></select></label>
+                  <label>Mes <select id="hist-gasolina-mes"></select></label>
+                  <label>Día <select id="hist-gasolina-dia"></select></label>
+                  <button type="button" class="btn-refresh" id="hist-gasolina-buscar">Buscar</button>
+                </div>
+                <div id="historial-body-gasolina" class="historial-body"></div>
+              </details>
             </div>
           </article>
         </div>
@@ -1221,9 +1276,6 @@
       </div>
       <label id="venta-label-cliente-contado">Cliente
         <input name="cliente" value="Mostrador">
-      </label>
-      <label id="venta-tasa-wrap">Tasa de conversion
-        <select name="tasa_cambio_id" id="venta-tasa"></select>
       </label>
       <label>Tipo de pago
         <select name="tipo_pago" id="venta-tipo-pago">

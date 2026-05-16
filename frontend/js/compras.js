@@ -1,4 +1,4 @@
-import { api, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
+import { api, fechaOperativaUtc, formatDate, formatMoney, renderEmptyRow, showToast } from "./api.js";
 import { loadProductoOptions } from "./inventario.js";
 
 let comprasCache = [];
@@ -32,16 +32,23 @@ function resetFormularioCompra(form) {
 
 export async function loadCompras() {
   await loadProductoOptions(["compra-producto"]);
-  const compras = await api.get("/compras");
-  comprasCache = compras;
+  const [compras, dia] = await Promise.all([
+    api.get("/compras?limit=200"),
+    api.get("/cierre/dia").catch(() => ({ fecha: null })),
+  ]);
+  const fechaDia = dia?.fecha || null;
+  const comprasHoy = (compras || []).filter(
+    (c) => !fechaDia || fechaOperativaUtc(c.fecha) === fechaDia
+  );
+  comprasCache = comprasHoy;
   const tbody = document.getElementById("tabla-compras");
 
-  if (!compras.length) {
-    tbody.innerHTML = renderEmptyRow(7, "No hay compras registradas.");
+  if (!comprasHoy.length) {
+    tbody.innerHTML = renderEmptyRow(7, "No hay compras registradas hoy.");
     return;
   }
 
-  tbody.innerHTML = compras
+  tbody.innerHTML = comprasHoy
     .map(
       (compra) => `
         <tr>

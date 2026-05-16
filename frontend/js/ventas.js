@@ -1,11 +1,53 @@
 import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
 import { getRol } from "./auth.js";
 import { getProductosCache, loadProductoOptions } from "./inventario.js";
-import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel } from "./tasas.js";
+import { ensureTasas, findTasaByNombre, getRateLabel } from "./tasas.js";
+
+const FAVORITOS_KEY = "__favoritos__";
+const LS_FAVORITOS = "bodega-ventas-favoritos";
 
 const carrito = [];
-let categoriaFiltro = "";
+let categoriaFiltro = FAVORITOS_KEY;
 let ventaDevolucionActual = null;
+
+function getFavoritosIds() {
+  try {
+    const raw = localStorage.getItem(LS_FAVORITOS);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(Number).filter((id) => id > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setFavoritosIds(ids) {
+  localStorage.setItem(LS_FAVORITOS, JSON.stringify([...new Set(ids.map(Number))]));
+}
+
+function esFavorito(productoId) {
+  return getFavoritosIds().includes(Number(productoId));
+}
+
+function toggleFavorito(productoId) {
+  const id = Number(productoId);
+  const ids = getFavoritosIds();
+  if (ids.includes(id)) {
+    setFavoritosIds(ids.filter((x) => x !== id));
+  } else {
+    setFavoritosIds([...ids, id]);
+  }
+}
+
+function productosFavoritos() {
+  const ids = new Set(getFavoritosIds());
+  return getProductosCache().filter((p) => p.activo && ids.has(p.id));
+}
+
+function productosDeCategoria(nombreCategoria) {
+  return getProductosCache().filter(
+    (p) => p.activo && (p.categoria_nombre || "Sin categoria") === nombreCategoria
+  );
+}
 
 function adminHeaders() {
   return { headers: { "X-Bodega-Rol": "admin" } };
@@ -15,20 +57,12 @@ function obtenerDescuentoCobro() {
   return Math.max(0, Number(document.getElementById("venta-descuento-reales")?.value || 0));
 }
 
-function productosFiltrados() {
-  const productos = getProductosCache().filter((p) => p.activo);
-  if (!categoriaFiltro) {
-    return productos;
-  }
-  return productos.filter((p) => (p.categoria_nombre || "Sin categoria") === categoriaFiltro);
-}
-
 function obtenerTasaSeleccionada() {
-  const tasaId = Number(document.getElementById("venta-tasa")?.value);
-  if (!tasaId) {
-    return null;
+  const tipoOro = document.getElementById("venta-tipo-oro")?.value?.trim();
+  if (tipoOro) {
+    return findTasaByNombre(tipoOro) || null;
   }
-  return findTasaById(tasaId) || null;
+  return null;
 }
 
 function textoVuelto(data) {
@@ -69,20 +103,17 @@ function actualizarVistaTipoVenta() {
 
 function actualizarVisibilidadCamposPago() {
   const tipoPago = document.getElementById("venta-tipo-pago")?.value;
-  const tasaWrap = document.getElementById("venta-tasa-wrap");
   const tipoOroWrap = document.getElementById("venta-tipo-oro-wrap");
-  const tasaSelect = document.getElementById("venta-tasa");
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
   const wrapMontoOro = document.getElementById("venta-monto-oro-wrap");
   const wrapMontoReales = document.getElementById("venta-monto-reales-wrap");
-  if (!tasaWrap || !tipoOroWrap || !tasaSelect || !tipoOroSelect) {
+  if (!tipoOroWrap || !tipoOroSelect) {
     return;
   }
   const fiado = esVentaFiada();
-  const requiereConversion = !fiado && tipoPago !== "reales";
-  tasaWrap.style.display = requiereConversion ? "grid" : "none";
-  tipoOroWrap.style.display = requiereConversion ? "grid" : "none";
-  tipoOroSelect.required = requiereConversion;
+  const requiereOro = !fiado && tipoPago !== "reales";
+  tipoOroWrap.style.display = requiereOro ? "grid" : "none";
+  tipoOroSelect.required = requiereOro;
   if (wrapMontoOro && wrapMontoReales) {
     if (fiado) {
       wrapMontoOro.style.display = "none";
@@ -98,9 +129,8 @@ function actualizarVisibilidadCamposPago() {
       wrapMontoReales.style.display = "grid";
     }
   }
-  if (!requiereConversion && !fiado) {
+  if (!requiereOro && !fiado) {
     tipoOroSelect.value = "";
-    tasaSelect.value = "";
   }
   sincronizarModalCobro();
 }
@@ -261,26 +291,74 @@ function calcularTotales() {
   return { ...base, totalReales };
 }
 
+function htmlTarjetaProducto(p) {
+  const esAdmin = getRol() === "admin";
+  const fav = esFavorito(p.id);
+  const star = esAdmin
+    ? `<button type="button" class="pos-fav-btn${fav ? " is-fav" : ""}" data-fav-toggle="${p.id}" title="${fav ? "Quitar de favoritos" : "Agregar a favoritos"}">⭐</button>`
+    : "";
+  return `
+    <div class="pos-card-wrap">
+      ${star}
+      <button type="button" class="pos-card" data-pos-add="${p.id}">
+        <strong>${p.nombre}</strong>
+        <span class="pos-card-meta">${formatMoney(p.precio_venta_reales, "reales")}</span>
+        <span class="pos-card-stock">Stock: ${p.stock_actual}</span>
+      </button>
+    </div>`;
+}
+
 function renderGridProductos() {
   const grid = document.getElementById("pos-grid-productos");
   if (!grid) {
     return;
   }
-  const lista = productosFiltrados();
-  if (!lista.length) {
+  const favoritos = productosFavoritos();
+  const favIds = new Set(favoritos.map((p) => p.id));
+  const soloFavoritos = categoriaFiltro === FAVORITOS_KEY;
+  const categoriaLista =
+    soloFavoritos || !categoriaFiltro
+      ? []
+      : productosDeCategoria(categoriaFiltro).filter((p) => !favIds.has(p.id));
+
+  if (soloFavoritos && !favoritos.length) {
+    grid.innerHTML =
+      '<p class="muted">No hay favoritos. El administrador puede marcar productos con ⭐ en otras categorias.</p>';
+    return;
+  }
+  if (!soloFavoritos && !favoritos.length && !categoriaLista.length) {
     grid.innerHTML = '<p class="muted">No hay productos en esta categoria.</p>';
     return;
   }
-  grid.innerHTML = lista
-    .map(
-      (p) => `
-      <button type="button" class="pos-card" data-pos-add="${p.id}">
-        <strong>${p.nombre}</strong>
-        <span class="pos-card-meta">${formatMoney(p.precio_venta_reales, "reales")}</span>
-        <span class="pos-card-stock">Stock: ${p.stock_actual}</span>
-      </button>`
-    )
-    .join("");
+
+  const partes = [];
+  const mostrarFavoritos = favoritos.length > 0;
+  if (mostrarFavoritos) {
+    if (!soloFavoritos) {
+      partes.push('<p class="pos-section-label">Favoritos</p>');
+    }
+    partes.push('<div class="pos-grid-section">');
+    favoritos.forEach((p) => partes.push(htmlTarjetaProducto(p)));
+    partes.push("</div>");
+  }
+  if (categoriaLista.length) {
+    partes.push('<p class="pos-section-label">Categoria</p>');
+    partes.push('<div class="pos-grid-section">');
+    categoriaLista.forEach((p) => partes.push(htmlTarjetaProducto(p)));
+    partes.push("</div>");
+  }
+
+  grid.innerHTML = partes.join("");
+
+  grid.querySelectorAll("[data-fav-toggle]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      toggleFavorito(Number(btn.dataset.favToggle));
+      renderGridProductos();
+    });
+  });
+
   grid.querySelectorAll("[data-pos-add]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = Number(btn.dataset.posAdd);
@@ -301,8 +379,6 @@ function renderCarrito() {
     return;
   }
   const totals = calcularTotales();
-  const tasa = obtenerTasaSeleccionada();
-  const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
 
   if (!totals.items.length) {
     tbody.innerHTML = renderEmptyRow(4, "Carrito vacio. Pulse un producto.");
@@ -334,13 +410,8 @@ function renderCarrito() {
   const elOro = document.getElementById("venta-total-oro");
   const elReales = document.getElementById("venta-total-reales");
   if (elOro && elReales) {
-    if (tipoPago === "reales") {
-      elOro.textContent = "0.00";
-      elReales.textContent = totals.totalReales.toFixed(2);
-    } else {
-      elOro.textContent = totals.totalOro.toFixed(4);
-      elReales.textContent = tasa ? (totals.totalOro * tasa.tasa_reales).toFixed(2) : "0.00";
-    }
+    elOro.textContent = totals.totalOro.toFixed(4);
+    elReales.textContent = formatMoney(totals.subtotalReales, "reales");
   }
 
   tbody.querySelectorAll("[data-remove]").forEach((button) => {
@@ -367,13 +438,17 @@ function llenarFiltroCategorias() {
     .filter((p) => p.activo)
     .forEach((p) => cats.add(p.categoria_nombre || "Sin categoria"));
   const ordenados = [...cats].sort((a, b) => a.localeCompare(b));
-  sel.innerHTML = `<option value="">Todas las categorias</option>${ordenados.map((c) => `<option value="${c}">${c}</option>`).join("")}`;
+  sel.innerHTML = `<option value="${FAVORITOS_KEY}">Favoritos</option>${ordenados
+    .map((c) => `<option value="${c}">${c}</option>`)
+    .join("")}`;
+  if (!categoriaFiltro) {
+    categoriaFiltro = FAVORITOS_KEY;
+  }
   sel.value = categoriaFiltro;
 }
 
 export async function loadVentas() {
   await ensureTasas();
-  fillTasaSelect("venta-tasa");
   llenarFiltroCategorias();
   renderGridProductos();
 
@@ -443,7 +518,6 @@ function abrirCobro() {
     mensajeVuelto.textContent = "";
   }
   actualizarVisibilidadCamposPago();
-  fillTasaSelect("venta-tasa");
   actualizarVistaTipoVenta();
   dlg.showModal();
   sincronizarModalCobro();
@@ -520,7 +594,6 @@ export function initVentas() {
   const filtro = document.getElementById("venta-filtro-categoria");
   const btnCobrar = document.getElementById("btn-pos-cobrar");
   const formVenta = document.getElementById("form-venta");
-  const tasaSelect = document.getElementById("venta-tasa");
   const tipoPagoSelect = document.getElementById("venta-tipo-pago");
   const tipoOroSelect = document.getElementById("venta-tipo-oro");
   const mensajeVuelto = document.getElementById("venta-mensaje-vuelto");
@@ -547,20 +620,13 @@ export function initVentas() {
   });
   btnCerrarModal?.addEventListener("click", cerrarCobro);
 
-  tasaSelect?.addEventListener("change", renderCarrito);
   tipoPagoSelect?.addEventListener("change", () => {
     actualizarVisibilidadCamposPago();
     renderCarrito();
   });
   tipoOroSelect?.addEventListener("change", () => {
-    if (tipoPagoSelect?.value === "reales") {
-      return;
-    }
-    const tasa = findTasaByNombre(tipoOroSelect.value);
-    if (tasa && tasaSelect) {
-      tasaSelect.value = String(tasa.id);
-      renderCarrito();
-    }
+    renderCarrito();
+    sincronizarModalCobro();
   });
   inputMontoOro?.addEventListener("input", sincronizarModalCobro);
   inputMontoReales?.addEventListener("input", sincronizarModalCobro);
@@ -626,22 +692,27 @@ export function initVentas() {
       showToast("Agrega al menos un producto al carrito", "error");
       return;
     }
+    const formData = new FormData(formVenta);
     const tipoVenta = tipoVentaSel?.value || "contado";
     const tipoPago = tipoPagoSelect.value;
-    const tasaId = Number(tasaSelect.value);
+    const tipoOroVal = String(formData.get("tipo_oro") || "").trim();
+    let tasaId = null;
+    if (tipoVenta !== "fiado" && tipoPago !== "reales") {
+      const tasa = findTasaByNombre(tipoOroVal);
+      if (!tasa) {
+        showToast("Selecciona el tipo de oro (tasa operativa)", "error");
+        return;
+      }
+      tasaId = tasa.id;
+    }
 
     if (tipoVenta === "fiado") {
-      const cliFiado = String(formVenta.querySelector('[name="cliente_fiado"]')?.value || "").trim();
+      const cliFiado = String(formData.get("cliente_fiado") || "").trim();
       if (!cliFiado) {
         showToast("Indique el cliente para la venta fiada", "error");
         return;
       }
-    } else if (tipoPago !== "reales" && !tasaId) {
-      showToast("Selecciona una tasa para calcular la venta", "error");
-      return;
     }
-
-    const formData = new FormData(formVenta);
     let montoOro = Number(formData.get("monto_recibido_oro"));
     let montoReales = Number(formData.get("monto_recibido_reales"));
     if (tipoVenta === "fiado") {
@@ -714,7 +785,6 @@ export function initVentas() {
       }
       actualizarVistaTipoVenta();
       actualizarVisibilidadCamposPago();
-      fillTasaSelect("venta-tasa");
       renderCarrito();
       cerrarCobro();
       const baseMsg = `Venta #${response.data.venta_id} registrada`;

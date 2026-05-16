@@ -169,6 +169,24 @@ export function formatTimeOnly(value) {
   return partes.hora;
 }
 
+/** Fecha operativa ISO (YYYY-MM-DD) en Venezuela (UTC−4), coherente con cierre/dashboard. */
+export function fechaOperativaUtc(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const ms = Date.UTC(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    d.getUTCHours() - 4,
+    d.getUTCMinutes(),
+    d.getUTCSeconds(),
+    d.getUTCMilliseconds()
+  );
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
 export function showToast(message, type = "info") {
   const container = document.getElementById("toast-container");
   const toast = document.createElement("div");
