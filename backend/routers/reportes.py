@@ -39,7 +39,15 @@ def dashboard(db: Session = Depends(get_db)):
         or 0
     )
     valor_stock_reales = (
-        db.query(func.coalesce(func.sum(Producto.stock_actual * Producto.precio_costo_reales), 0))
+        db.query(
+            func.coalesce(
+                func.sum(
+                    Producto.stock_actual
+                    * func.coalesce(Producto.costo_promedio_reales, Producto.precio_costo_reales, 0)
+                ),
+                0,
+            )
+        )
         .filter(Producto.activo.is_(True))
         .scalar()
         or 0

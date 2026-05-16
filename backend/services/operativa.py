@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from models import (
     Compra,
     CompraOro,
+    DetalleVenta,
     GastoOperativo,
     GasolinaReposicion,
     PagoVenta,
@@ -77,6 +78,33 @@ def _venta_oro_recibido_por_tipo(db: Session, inicio: datetime) -> dict[str, flo
         .all()
     )
     return {(tipo or ""): float(total) for tipo, total in rows}
+
+
+def _ganancia_mercancia_cpp_reales(db: Session, inicio: datetime) -> tuple[float, float]:
+    """Ingresos y costo (CPP) de mercancía vendida hoy en R$."""
+    tasa_ref = CalculosMonetarios.obtener_tasa_referencia(db)
+    filas = (
+        db.query(DetalleVenta, Venta, Producto)
+        .join(Venta, DetalleVenta.venta_id == Venta.id)
+        .join(Producto, DetalleVenta.producto_id == Producto.id)
+        .options(joinedload(Venta.tasa_cambio))
+        .filter(Venta.fecha >= inicio, venta_no_anulada())
+        .all()
+    )
+    ingresos = 0.0
+    costo_vendido = 0.0
+    for det, venta, producto in filas:
+        cantidad = float(det.cantidad)
+        costo_u = float(det.costo_unitario_reales or 0)
+        if costo_u <= 0:
+            costo_u = float(producto.costo_promedio_reales or producto.precio_costo_reales or 0)
+        costo_vendido += costo_u * cantidad
+        if venta.tipo_pago == "reales":
+            ingresos += float(producto.precio_venta_reales) * cantidad
+        else:
+            tasa = venta.tasa_cambio if venta.tasa_cambio_id else tasa_ref
+            ingresos += float(CalculosMonetarios.oro_a_reales(float(det.subtotal_oro), db, tasa=tasa))
+    return round(ingresos, 2), round(costo_vendido, 2)
 
 
 def _compra_oro_gramos_por_tipo(db: Session, inicio: datetime) -> tuple[dict[str, float], float, float]:
@@ -225,6 +253,9 @@ def construir_payload_cierre(
     gastos_oro_equiv = (
         float(CalculosMonetarios.reales_a_oro(gastos_total, db, tasa=tasa_ref)) if gastos_total > 0 else 0.0
     )
+    ingresos_mercancia_cpp, costo_ventas_cpp = _ganancia_mercancia_cpp_reales(db, inicio)
+    ganancia_bruta_cpp = round(ingresos_mercancia_cpp - costo_ventas_cpp, 2)
+    ganancia_neta_cpp_reales = round(ganancia_bruta_cpp - gastos_total - salidas_reales, 2)
 
     return {
         "fecha": inicio.date().isoformat(),
@@ -274,6 +305,10 @@ def construir_payload_cierre(
             "oro_recolectado_gramos": bruto_total_gramos,
         },
         "ganancia_neta_dia": ganancia_neta_dia(ventas_oro, compras_oro, 0.0, gas_ventas_oro, gastos_oro_equiv),
+        "ganancia_mercancia_cpp_reales": ganancia_bruta_cpp,
+        "costo_ventas_cpp_reales": costo_ventas_cpp,
+        "ingresos_mercancia_cpp_reales": ingresos_mercancia_cpp,
+        "ganancia_neta_cpp_reales": ganancia_neta_cpp_reales,
         "cuentas_por_cobrar": round(cuentas_por_cobrar, 2),
         "cobros_del_dia": round(cobros_del_dia, 2),
     }

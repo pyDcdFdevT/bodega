@@ -52,6 +52,7 @@ class Producto(Base):
         CheckConstraint("stock_minimo >= 0", name="ck_producto_stock_minimo"),
         CheckConstraint("precio_costo_oro >= 0", name="ck_producto_precio_costo_oro"),
         CheckConstraint("precio_costo_reales >= 0", name="ck_producto_precio_costo_reales"),
+        CheckConstraint("costo_promedio_reales >= 0", name="ck_producto_costo_promedio_reales"),
         CheckConstraint("precio_venta_reales >= 0", name="ck_producto_precio_venta_reales"),
         CheckConstraint("precio_venta_oro >= 0", name="ck_producto_precio_venta_oro"),
     )
@@ -65,6 +66,7 @@ class Producto(Base):
     stock_minimo = Column(Float, default=5, nullable=False)
     precio_costo_oro = Column(Float, default=0, nullable=False)
     precio_costo_reales = Column(Float, default=0, nullable=False)
+    costo_promedio_reales = Column(Float, default=0, nullable=False)
     precio_venta_reales = Column(Float, default=0, nullable=False)
     precio_venta_oro = Column(Float, default=0, nullable=False)
     activo = Column(Boolean, default=True, nullable=False)
@@ -170,6 +172,7 @@ class DetalleVenta(Base):
         CheckConstraint("cantidad > 0", name="ck_detalle_venta_cantidad"),
         CheckConstraint("precio_unitario_oro >= 0", name="ck_detalle_venta_precio_unitario"),
         CheckConstraint("subtotal_oro >= 0", name="ck_detalle_venta_subtotal"),
+        CheckConstraint("costo_unitario_reales >= 0", name="ck_detalle_venta_costo_unitario_reales"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -178,6 +181,7 @@ class DetalleVenta(Base):
     cantidad = Column(Float, nullable=False)
     precio_unitario_oro = Column(Float, nullable=False)
     subtotal_oro = Column(Float, nullable=False)
+    costo_unitario_reales = Column(Float, default=0, nullable=False)
 
     venta = relationship("Venta", back_populates="detalles")
     producto = relationship("Producto", back_populates="detalles_venta")

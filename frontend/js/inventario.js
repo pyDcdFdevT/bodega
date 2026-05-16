@@ -42,7 +42,7 @@ function tablaProductosHtml(productos) {
             <th>Inventario</th>
             <th>Venta</th>
             <th>Stock</th>
-            <th>Costo R$</th>
+            <th>Costo prom. R$</th>
             <th>Venta R$</th>
             <th>Equiv. oro</th>
             <th>Estado</th>
@@ -58,7 +58,7 @@ function tablaProductosHtml(productos) {
               <td>${producto.presentacion}</td>
               <td>${producto.unidad_venta}</td>
               <td>${producto.stock_actual}</td>
-              <td>${formatMoney(producto.precio_costo_reales, "reales")}</td>
+              <td>${formatMoney(producto.costo_promedio_reales ?? producto.precio_costo_reales, "reales")}</td>
               <td>${formatMoney(producto.precio_venta_reales, "reales")}</td>
               <td>${renderEquivalenteOro(producto)}</td>
               <td><span class="estado ${producto.estado_stock}">${producto.estado_stock}</span></td>

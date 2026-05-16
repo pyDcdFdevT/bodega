@@ -30,7 +30,14 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
         precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
 
         stock_anterior = producto.stock_actual
+        cpp_anterior = float(producto.costo_promedio_reales or producto.precio_costo_reales or 0)
         producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual + unidades)
+        producto.costo_promedio_reales = CalculosMonetarios.costo_promedio_ponderado(
+            stock_anterior,
+            cpp_anterior,
+            unidades,
+            costo_unitario_reales,
+        )
         producto.precio_costo_oro = costo_unitario_oro
         producto.precio_costo_reales = costo_unitario_reales
         if producto.precio_venta_oro <= 0:
@@ -92,6 +99,7 @@ def registrar_compra(compra: CompraCreate, db: Session = Depends(get_db)):
                 "producto": producto.nombre,
                 "unidades_ingresadas": unidades,
                 "costo_unitario_oro": costo_unitario_oro,
+                "costo_promedio_reales": producto.costo_promedio_reales,
                 "precio_sugerido_venta_oro": precio_sugerido,
                 "stock_actual": producto.stock_actual,
                 "tasa_referencia": tasa.nombre,
@@ -245,6 +253,7 @@ def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depen
         if stock_tras_revertir < 0:
             raise ValueError("No se puede revertir el stock de esta compra (stock insuficiente)")
 
+        stock_tras_revertir_f = float(stock_tras_revertir)
         producto.stock_actual = CalculosMonetarios.redondear(stock_tras_revertir + unidades)
 
         tasa_usada = compra.tasa_cambio_usada
@@ -256,6 +265,13 @@ def actualizar_compra(compra_id: int, payload: CompraUpdate, db: Session = Depen
         costo_unitario_reales = round(precio_reales / unidades, 2)
         precio_sugerido = CalculosMonetarios.sugerir_precio_venta(costo_unitario_oro)
 
+        cpp_anterior = float(producto.costo_promedio_reales or producto.precio_costo_reales or 0)
+        producto.costo_promedio_reales = CalculosMonetarios.costo_promedio_ponderado(
+            stock_tras_revertir_f,
+            cpp_anterior,
+            unidades,
+            costo_unitario_reales,
+        )
         producto.precio_costo_oro = costo_unitario_oro
         producto.precio_costo_reales = costo_unitario_reales
         if producto.precio_venta_oro <= 0:

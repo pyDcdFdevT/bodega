@@ -699,6 +699,65 @@ def _migrate_venta_compra_estado_anulacion(conn, dialect: str) -> None:
         return
 
 
+def _migrate_costo_promedio_columns(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if dialect == "postgresql":
+        if insp.has_table("productos"):
+            conn.execute(
+                text(
+                    "ALTER TABLE productos ADD COLUMN IF NOT EXISTS costo_promedio_reales "
+                    "DOUBLE PRECISION NOT NULL DEFAULT 0"
+                )
+            )
+            conn.execute(
+                text(
+                    """
+UPDATE productos
+SET costo_promedio_reales = precio_costo_reales
+WHERE costo_promedio_reales = 0 AND precio_costo_reales > 0
+"""
+                )
+            )
+        if insp.has_table("detalles_venta"):
+            conn.execute(
+                text(
+                    "ALTER TABLE detalles_venta ADD COLUMN IF NOT EXISTS costo_unitario_reales "
+                    "DOUBLE PRECISION NOT NULL DEFAULT 0"
+                )
+            )
+        return
+
+    if dialect == "sqlite":
+        if insp.has_table("productos"):
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(productos)"))}
+            if "costo_promedio_reales" not in cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE productos ADD COLUMN costo_promedio_reales REAL NOT NULL DEFAULT 0"
+                    )
+                )
+            conn.execute(
+                text(
+                    """
+UPDATE productos
+SET costo_promedio_reales = precio_costo_reales
+WHERE costo_promedio_reales = 0 AND precio_costo_reales > 0
+"""
+                )
+            )
+        if insp.has_table("detalles_venta"):
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(detalles_venta)"))}
+            if "costo_unitario_reales" not in cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE detalles_venta ADD COLUMN costo_unitario_reales REAL NOT NULL DEFAULT 0"
+                    )
+                )
+        return
+
+
 def _migrate_pagos_venta_tipo_oro_column(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -755,6 +814,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_fundicion_tables(conn, dialect)
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
             _migrate_venta_compra_estado_anulacion(conn, dialect)
+            _migrate_costo_promedio_columns(conn, dialect)
         return
 
     if dialect == "sqlite":
@@ -786,4 +846,5 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _ensure_fundicion_tables(conn, dialect)
             _migrate_ventas_fiado_y_pagos_venta(conn, dialect)
             _migrate_venta_compra_estado_anulacion(conn, dialect)
+            _migrate_costo_promedio_columns(conn, dialect)
         return

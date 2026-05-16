@@ -20,6 +20,13 @@ from services.validaciones import ValidacionesSistema
 router = APIRouter(prefix="/ventas", tags=["Ventas"])
 
 
+def _costo_unitario_venta(producto: Producto) -> float:
+    cpp = float(producto.costo_promedio_reales or 0)
+    if cpp > 0:
+        return cpp
+    return float(producto.precio_costo_reales or 0)
+
+
 def _validar_invariante_venta_balanceada(
     *,
     tipo_pago: str,
@@ -195,12 +202,14 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             stock_anterior = producto.stock_actual
             producto.stock_actual = CalculosMonetarios.redondear(producto.stock_actual - cantidad)
 
+            costo_unitario_reales = _costo_unitario_venta(producto)
             detalle = DetalleVenta(
                 venta_id=nueva.id,
                 producto_id=producto.id,
                 cantidad=cantidad,
                 precio_unitario_oro=producto.precio_venta_oro,
                 subtotal_oro=subtotal_oro,
+                costo_unitario_reales=costo_unitario_reales,
             )
             db.add(detalle)
             db.add(

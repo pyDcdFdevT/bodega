@@ -32,6 +32,7 @@ def serializar_producto(producto: Producto) -> dict:
         "stock_minimo": producto.stock_minimo,
         "precio_costo_oro": producto.precio_costo_oro,
         "precio_costo_reales": producto.precio_costo_reales,
+        "costo_promedio_reales": float(producto.costo_promedio_reales or producto.precio_costo_reales or 0),
         "precio_venta_reales": producto.precio_venta_reales,
         "precio_venta_oro": producto.precio_venta_oro,
         "activo": producto.activo,

@@ -116,6 +116,23 @@ class CalculosMonetarios:
         return CalculosMonetarios.redondear(oro * tasa_obj.tasa_reales, 2)
 
     @staticmethod
+    def costo_promedio_ponderado(
+        stock_anterior: float,
+        costo_promedio_anterior: float,
+        cantidad_comprada: float,
+        costo_unitario_compra: float,
+    ) -> float:
+        """CPP en R$: ((stock × CPP anterior) + (cantidad × costo compra)) / (stock + cantidad)."""
+        if cantidad_comprada <= 0:
+            raise ValueError("La cantidad comprada debe ser mayor a cero")
+        nuevo_stock = stock_anterior + cantidad_comprada
+        if nuevo_stock <= 0:
+            return CalculosMonetarios.redondear(costo_unitario_compra, 2)
+        valor_anterior = max(stock_anterior, 0.0) * max(costo_promedio_anterior, 0.0)
+        valor_compra = cantidad_comprada * costo_unitario_compra
+        return CalculosMonetarios.redondear((valor_anterior + valor_compra) / nuevo_stock, 2)
+
+    @staticmethod
     def calcular_costo_unitario(precio_reales_total: float, unidades: float, db: Session) -> float:
         if unidades <= 0:
             raise ValueError("Las unidades deben ser mayores a cero")
