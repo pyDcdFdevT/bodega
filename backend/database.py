@@ -749,6 +749,69 @@ def _migrate_activos_depreciacion(conn, dialect: str) -> None:
         _backfill_activos_depreciacion_mensual(conn)
 
 
+def _migrate_ventas_devoluciones_descuento(conn, dialect: str) -> None:
+    from sqlalchemy import inspect, text
+
+    insp = inspect(conn)
+    if dialect == "postgresql":
+        if insp.has_table("ventas"):
+            conn.execute(
+                text(
+                    "ALTER TABLE ventas ADD COLUMN IF NOT EXISTS descuento_reales "
+                    "DOUBLE PRECISION NOT NULL DEFAULT 0"
+                )
+            )
+        if insp.has_table("detalles_venta"):
+            conn.execute(
+                text(
+                    "ALTER TABLE detalles_venta ADD COLUMN IF NOT EXISTS cantidad_devuelta "
+                    "DOUBLE PRECISION NOT NULL DEFAULT 0"
+                )
+            )
+            conn.execute(
+                text(
+                    "ALTER TABLE detalles_venta ADD COLUMN IF NOT EXISTS subtotal_reales "
+                    "DOUBLE PRECISION NOT NULL DEFAULT 0"
+                )
+            )
+            conn.execute(
+                text(
+                    """
+UPDATE detalles_venta dv
+SET subtotal_reales = ROUND(p.precio_venta_reales * dv.cantidad, 2)
+FROM productos p
+WHERE p.id = dv.producto_id AND (dv.subtotal_reales IS NULL OR dv.subtotal_reales = 0)
+"""
+                )
+            )
+        _migrate_transaccion_tipo_reabrir(conn, dialect)
+        return
+
+    if insp.has_table("ventas"):
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(ventas)"))}
+        if "descuento_reales" not in cols:
+            conn.execute(text("ALTER TABLE ventas ADD COLUMN descuento_reales REAL NOT NULL DEFAULT 0"))
+    if insp.has_table("detalles_venta"):
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(detalles_venta)"))}
+        if "cantidad_devuelta" not in cols:
+            conn.execute(text("ALTER TABLE detalles_venta ADD COLUMN cantidad_devuelta REAL NOT NULL DEFAULT 0"))
+        if "subtotal_reales" not in cols:
+            conn.execute(text("ALTER TABLE detalles_venta ADD COLUMN subtotal_reales REAL NOT NULL DEFAULT 0"))
+        conn.execute(
+            text(
+                """
+UPDATE detalles_venta
+SET subtotal_reales = (
+    SELECT ROUND(p.precio_venta_reales * detalles_venta.cantidad, 2)
+    FROM productos p
+    WHERE p.id = detalles_venta.producto_id
+)
+WHERE subtotal_reales IS NULL OR subtotal_reales = 0
+"""
+            )
+        )
+
+
 def _migrate_transaccion_tipo_reabrir(conn, dialect: str) -> None:
     from sqlalchemy import inspect, text
 
@@ -764,7 +827,7 @@ def _migrate_transaccion_tipo_reabrir(conn, dialect: str) -> None:
 ALTER TABLE transacciones ADD CONSTRAINT ck_transaccion_tipo
 CHECK (tipo IN (
     'venta','compra','salida','gasto','compra_oro','venta_gasolina',
-    'reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia','pago_proveedor'
+    'reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia','pago_proveedor','devolucion'
 ))
 """
         )
@@ -1202,6 +1265,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_costo_promedio_columns(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
+            _migrate_ventas_devoluciones_descuento(conn, dialect)
             _migrate_pagos_proveedores(conn, dialect)
             _migrate_apertura_caja_inicial_cero(conn, dialect)
         return
@@ -1239,6 +1303,7 @@ CREATE TABLE IF NOT EXISTS gasolina_reposiciones (
             _migrate_costo_promedio_columns(conn, dialect)
             _migrate_compra_tipo_pago(conn, dialect)
             _migrate_transaccion_tipo_reabrir(conn, dialect)
+            _migrate_ventas_devoluciones_descuento(conn, dialect)
             _migrate_pagos_proveedores(conn, dialect)
             _migrate_apertura_caja_inicial_cero(conn, dialect)
         return

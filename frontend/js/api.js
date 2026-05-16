@@ -61,10 +61,11 @@ export const api = {
       body: JSON.stringify(body),
       ...fetchOptions,
     }),
-  put: (path, body) =>
+  put: (path, body, fetchOptions = {}) =>
     request(path, {
       method: "PUT",
       body: JSON.stringify(body),
+      ...fetchOptions,
     }),
   delete: (path) =>
     request(path, {

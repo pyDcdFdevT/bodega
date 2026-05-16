@@ -114,6 +114,7 @@ class Venta(Base):
     __table_args__ = (
         CheckConstraint("total_oro >= 0", name="ck_venta_total_oro"),
         CheckConstraint("total_reales >= 0", name="ck_venta_total_reales"),
+        CheckConstraint("descuento_reales >= 0", name="ck_venta_descuento_reales"),
         CheckConstraint("monto_recibido_oro >= 0", name="ck_venta_monto_recibido_oro"),
         CheckConstraint("monto_recibido_reales >= 0", name="ck_venta_monto_recibido_reales"),
         CheckConstraint("vuelto_oro >= 0", name="ck_venta_vuelto_oro"),
@@ -126,6 +127,7 @@ class Venta(Base):
     fecha = Column(DateTime, default=utc_now, nullable=False, index=True)
     total_oro = Column(Float, nullable=False)
     total_reales = Column(Float, nullable=False)
+    descuento_reales = Column(Float, default=0, nullable=False)
     tipo_pago = Column(String(20), nullable=False)
     monto_recibido_oro = Column(Float, default=0, nullable=False)
     monto_recibido_reales = Column(Float, default=0, nullable=False)
@@ -179,8 +181,10 @@ class DetalleVenta(Base):
     venta_id = Column(Integer, ForeignKey("ventas.id"), nullable=False)
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
     cantidad = Column(Float, nullable=False)
+    cantidad_devuelta = Column(Float, default=0, nullable=False)
     precio_unitario_oro = Column(Float, nullable=False)
     subtotal_oro = Column(Float, nullable=False)
+    subtotal_reales = Column(Float, default=0, nullable=False)
     costo_unitario_reales = Column(Float, default=0, nullable=False)
 
     venta = relationship("Venta", back_populates="detalles")
@@ -540,7 +544,7 @@ class Transaccion(Base):
     __tablename__ = "transacciones"
     __table_args__ = (
         CheckConstraint(
-            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia','pago_proveedor')",
+            "tipo IN ('venta','compra','salida','gasto','compra_oro','venta_gasolina','reposicion_gasolina','ajuste','correccion','cobro_fiado','reabrir_dia','pago_proveedor','devolucion')",
             name="ck_transaccion_tipo",
         ),
         CheckConstraint(

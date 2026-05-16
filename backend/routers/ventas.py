@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import DetalleVenta, MovimientoInventario, PagoVenta, Producto, TasaCambio, Venta
 from routers.deps import require_admin
-from schemas import VentaCreate, VentaListadoOut
+from schemas import DevolucionVentaCreate, VentaCreate, VentaDetalleOut, VentaListadoOut
 from services.apertura_context import exigir_apertura_del_dia
+from services.devoluciones import procesar_devolucion_venta
 from services.operativa import verificar_dia_abierto
 from services.calculos import CalculosMonetarios
 from services.ledger import registrar_transaccion
@@ -38,12 +39,14 @@ def _validar_invariante_venta_balanceada(
     total_reales_directo: float,
     tasa,
     db: Session,
+    descuento_reales: float = 0.0,
 ) -> None:
     suma_det_oro = CalculosMonetarios.redondear_oro(sum(subtotales_oro[pid] for pid in consolidados))
     if tipo_pago == "reales":
         if abs(total_oro) > 1e-5:
             raise ValueError("Invariante venta balanceada: con pago en reales total_oro debe ser cero")
-        if abs(total_reales - total_reales_directo) > 0.05:
+        esperado_reales = CalculosMonetarios.redondear(total_reales_directo - descuento_reales, 2)
+        if abs(total_reales - esperado_reales) > 0.05:
             raise ValueError("Invariante venta balanceada: total_reales no coincide con la suma de lineas")
         return
     if not tasa:
@@ -55,6 +58,38 @@ def _validar_invariante_venta_balanceada(
         raise ValueError(
             "Invariante venta balanceada: total_reales no coincide con total_oro valorizado a la tasa del cobro"
         )
+
+
+def _aplicar_descuento_venta(
+    *,
+    descuento: float,
+    es_fiado: bool,
+    tipo_pago: str,
+    total_oro: float,
+    total_reales_directo: float,
+    total_reales_convertido: float,
+    tasa,
+    db: Session,
+) -> tuple[float, float]:
+    descuento = CalculosMonetarios.redondear(float(descuento or 0), 2)
+    if descuento <= 1e-6:
+        if es_fiado or tipo_pago == "reales":
+            return (0.0, total_reales_directo)
+        return (total_oro, total_reales_convertido)
+
+    if es_fiado or tipo_pago == "reales":
+        if descuento >= total_reales_directo - 1e-6:
+            raise ValueError("El descuento no puede ser mayor o igual al subtotal")
+        return (0.0, CalculosMonetarios.redondear(total_reales_directo - descuento, 2))
+
+    base_reales = float(total_reales_convertido)
+    if descuento >= base_reales - 1e-6:
+        raise ValueError("El descuento no puede ser mayor o igual al subtotal")
+    total_reales = CalculosMonetarios.redondear(base_reales - descuento, 2)
+    if not tasa:
+        raise ValueError("Falta tasa para aplicar descuento en venta con pago en oro")
+    total_oro_ajustado = CalculosMonetarios.reales_a_oro(total_reales, db, tasa=tasa)
+    return (total_oro_ajustado, total_reales)
 
 
 @router.post("")
@@ -93,11 +128,20 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             CalculosMonetarios.oro_a_reales(total_oro, db, tasa=tasa) if tasa else 0.0
         )
         total_reales_directo = CalculosMonetarios.redondear(sum(subtotales_reales.values()), 2)
+        descuento_reales = CalculosMonetarios.redondear(float(venta.descuento_reales or 0), 2)
 
         monto_inicial_registrado = 0.0
         if es_fiado:
-            total_oro = 0.0
-            total_reales = total_reales_directo
+            total_oro, total_reales = _aplicar_descuento_venta(
+                descuento=descuento_reales,
+                es_fiado=True,
+                tipo_pago="reales",
+                total_oro=0.0,
+                total_reales_directo=total_reales_directo,
+                total_reales_convertido=0.0,
+                tasa=None,
+                db=db,
+            )
             monto_inicial = CalculosMonetarios.redondear(float(venta.monto_inicial), 2)
             if monto_inicial < 0:
                 monto_inicial = 0.0
@@ -130,10 +174,19 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 total_reales_directo=total_reales_directo,
                 tasa=None,
                 db=db,
+                descuento_reales=descuento_reales,
             )
         elif tipo_pago == "reales":
-            total_oro = 0.0
-            total_reales = total_reales_directo
+            total_oro, total_reales = _aplicar_descuento_venta(
+                descuento=descuento_reales,
+                es_fiado=False,
+                tipo_pago="reales",
+                total_oro=total_oro,
+                total_reales_directo=total_reales_directo,
+                total_reales_convertido=0.0,
+                tasa=None,
+                db=db,
+            )
             if venta.monto_recibido_reales <= 0:
                 raise ValueError("Debe indicar monto recibido en reales")
             if venta.monto_recibido_reales + 1e-9 < total_reales:
@@ -146,7 +199,16 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             monto_pagado = total_reales
             saldo_pendiente = 0.0
         else:
-            total_reales = total_reales_convertido
+            total_oro, total_reales = _aplicar_descuento_venta(
+                descuento=descuento_reales,
+                es_fiado=False,
+                tipo_pago=tipo_pago,
+                total_oro=total_oro,
+                total_reales_directo=total_reales_directo,
+                total_reales_convertido=total_reales_convertido,
+                tasa=tasa,
+                db=db,
+            )
             vuelto_oro, vuelto_reales = ValidacionesSistema.validar_pago(
                 tipo_pago=tipo_pago,
                 total_oro=total_oro,
@@ -170,6 +232,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 total_reales_directo=total_reales_directo,
                 tasa=tasa,
                 db=db,
+                descuento_reales=descuento_reales,
             )
 
         tel_f = (venta.telefono_fiado or "").strip() or None
@@ -179,6 +242,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
             cliente=cliente_nombre,
             total_oro=total_oro,
             total_reales=total_reales,
+            descuento_reales=descuento_reales,
             tipo_pago=tipo_pago,
             tipo_oro=tipo_oro,
             monto_recibido_oro=monto_rec_oro,
@@ -211,6 +275,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 cantidad=cantidad,
                 precio_unitario_oro=producto.precio_venta_oro,
                 subtotal_oro=subtotal_oro,
+                subtotal_reales=subtotales_reales[producto_id],
                 costo_unitario_reales=costo_unitario_reales,
             )
             db.add(detalle)
@@ -285,6 +350,7 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
                 "cliente": nueva.cliente,
                 "total_oro": total_oro,
                 "total_reales": total_reales,
+                "descuento_reales": descuento_reales,
                 "tipo_pago": tipo_pago,
                 "tipo_oro": tipo_oro,
                 "tasa_nombre": tasa.nombre if tasa else None,
@@ -307,6 +373,95 @@ def registrar_venta(venta: VentaCreate, db: Session = Depends(get_db)):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail="No fue posible registrar la venta") from exc
+
+
+def _venta_a_detalle_out(venta: Venta) -> dict:
+    detalles_out = []
+    for det in venta.detalles or []:
+        devuelta = float(det.cantidad_devuelta or 0)
+        cantidad = float(det.cantidad)
+        nombre = det.producto.nombre if det.producto else f"Producto #{det.producto_id}"
+        detalles_out.append(
+            {
+                "id": det.id,
+                "producto_id": det.producto_id,
+                "producto_nombre": nombre,
+                "cantidad": cantidad,
+                "cantidad_devuelta": devuelta,
+                "cantidad_disponible": CalculosMonetarios.redondear(max(0.0, cantidad - devuelta), 2),
+                "precio_unitario_oro": float(det.precio_unitario_oro),
+                "subtotal_oro": float(det.subtotal_oro),
+                "subtotal_reales": float(det.subtotal_reales or 0),
+            }
+        )
+    return {
+        "id": venta.id,
+        "fecha": venta.fecha,
+        "cliente": venta.cliente,
+        "total_oro": float(venta.total_oro),
+        "total_reales": float(venta.total_reales),
+        "descuento_reales": float(venta.descuento_reales or 0),
+        "tipo_pago": venta.tipo_pago,
+        "tipo_oro": venta.tipo_oro,
+        "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,
+        "tasa_reales": venta.tasa_cambio.tasa_reales if venta.tasa_cambio else None,
+        "tipo_venta": venta.tipo_venta,
+        "estado_pago": venta.estado_pago,
+        "saldo_pendiente": float(venta.saldo_pendiente or 0),
+        "estado": venta.estado or "VIGENTE",
+        "monto_recibido_oro": float(venta.monto_recibido_oro or 0),
+        "monto_recibido_reales": float(venta.monto_recibido_reales or 0),
+        "vuelto_oro": float(venta.vuelto_oro or 0),
+        "vuelto_reales": float(venta.vuelto_reales or 0),
+        "detalles": detalles_out,
+    }
+
+
+@router.get("/{venta_id}", response_model=VentaDetalleOut)
+def obtener_venta(venta_id: int, db: Session = Depends(get_db)):
+    venta = (
+        db.query(Venta)
+        .options(
+            joinedload(Venta.detalles).joinedload(DetalleVenta.producto),
+            joinedload(Venta.tasa_cambio),
+        )
+        .filter(Venta.id == venta_id)
+        .first()
+    )
+    if not venta:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    return _venta_a_detalle_out(venta)
+
+
+@router.put("/{venta_id}/devolver")
+def devolver_venta(
+    venta_id: int,
+    body: DevolucionVentaCreate,
+    _rol: str = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        venta = (
+            db.query(Venta)
+            .options(joinedload(Venta.detalles).joinedload(DetalleVenta.producto))
+            .filter(Venta.id == venta_id)
+            .first()
+        )
+        if not venta:
+            raise HTTPException(status_code=404, detail="Venta no encontrada")
+        resultado = procesar_devolucion_venta(db, venta, body)
+        db.commit()
+        db.refresh(venta)
+        return {"status": "success", "data": resultado}
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="No fue posible registrar la devolucion") from exc
 
 
 @router.put("/{venta_id}/anular")
@@ -402,6 +557,7 @@ def listar_ventas(
             "cliente": venta.cliente,
             "total_oro": venta.total_oro,
             "total_reales": venta.total_reales,
+            "descuento_reales": float(venta.descuento_reales or 0),
             "tipo_pago": venta.tipo_pago,
             "tipo_oro": venta.tipo_oro,
             "tasa_nombre": venta.tasa_cambio.nombre if venta.tasa_cambio else None,

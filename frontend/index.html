@@ -235,6 +235,7 @@
                   <th>Tipo</th>
                   <th>Estado</th>
                   <th>Saldo R$</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody id="tabla-ventas"></tbody>
@@ -1181,6 +1182,9 @@
         </select>
       </label>
       <div id="venta-cobro-total-resumen" class="cobro-resumen-block" aria-live="polite"></div>
+      <label>Descuento (R$, opcional)
+        <input type="number" id="venta-descuento-reales" name="descuento_reales" min="0" step="0.01" value="0">
+      </label>
       <label id="venta-monto-oro-wrap">Monto recibido (oro)
         <input id="venta-input-monto-oro" name="monto_recibido_oro" type="number" min="0" step="0.01" value="0.00">
       </label>
@@ -1192,6 +1196,32 @@
       <div class="modal-actions">
         <button type="button" id="btn-cerrar-cobro">Cancelar</button>
         <button type="submit">Confirmar cobro</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialog-devolucion-venta" class="modal-cobro">
+    <form id="form-devolucion-venta" class="modal-cobro-inner">
+      <h3>Devolucion de venta</h3>
+      <p class="muted small" id="devolucion-venta-resumen"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Vendido</th>
+              <th>Ya devuelto</th>
+              <th>Disponible</th>
+              <th>Devolver</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-devolucion-items"></tbody>
+        </table>
+      </div>
+      <p class="muted small" id="devolucion-venta-totales" aria-live="polite"></p>
+      <div class="modal-actions">
+        <button type="button" id="btn-cerrar-devolucion">Cancelar</button>
+        <button type="submit">Confirmar devolucion</button>
       </div>
     </form>
   </dialog>

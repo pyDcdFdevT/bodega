@@ -1,9 +1,19 @@
 import { api, formatDateOnly, formatMoney, formatTimeOnly, renderEmptyRow, showToast } from "./api.js";
+import { getRol } from "./auth.js";
 import { getProductosCache, loadProductoOptions } from "./inventario.js";
 import { ensureTasas, fillTasaSelect, findTasaById, findTasaByNombre, getRateLabel } from "./tasas.js";
 
 const carrito = [];
 let categoriaFiltro = "";
+let ventaDevolucionActual = null;
+
+function adminHeaders() {
+  return { headers: { "X-Bodega-Rol": "admin" } };
+}
+
+function obtenerDescuentoCobro() {
+  return Math.max(0, Number(document.getElementById("venta-descuento-reales")?.value || 0));
+}
 
 function productosFiltrados() {
   const productos = getProductosCache().filter((p) => p.activo);
@@ -96,13 +106,31 @@ function actualizarVisibilidadCamposPago() {
 }
 
 function datosTotalesCobro() {
-  const { totalOro, totalReales } = calcularTotales();
+  const { totalOro, totalReales, subtotalReales } = calcularTotales();
   const tasa = obtenerTasaSeleccionada();
-  const tr = Number(totalReales.toFixed(2));
+  const descuento = obtenerDescuentoCobro();
   const to = Number(totalOro.toFixed(4));
+  const trBruto = Number(subtotalReales.toFixed(2));
+  const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
+  let tr = trBruto;
+  if (tipoPago === "reales" || esVentaFiada()) {
+    tr = Math.max(0, Number((trBruto - descuento).toFixed(2)));
+  }
   const equivRealesDesdeOro =
     tasa && tasa.tasa_reales > 0 ? Number((to * tasa.tasa_reales).toFixed(2)) : 0;
-  return { totalOro: to, totalReales: tr, equivRealesDesdeOro, tasa };
+  let totalCobrarReales = tr;
+  if (!esVentaFiada() && tipoPago !== "reales") {
+    totalCobrarReales = Math.max(0, Number((equivRealesDesdeOro - descuento).toFixed(2)));
+  }
+  return {
+    totalOro: to,
+    totalReales: tr,
+    subtotalReales: trBruto,
+    descuento,
+    totalCobrarReales,
+    equivRealesDesdeOro,
+    tasa,
+  };
 }
 
 function actualizarModalTotalesACobrar() {
@@ -111,19 +139,28 @@ function actualizarModalTotalesACobrar() {
     return;
   }
   const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
-  const { totalOro, totalReales, equivRealesDesdeOro } = datosTotalesCobro();
+  const { totalOro, subtotalReales, descuento, totalCobrarReales, tasa } = datosTotalesCobro();
   if (!carrito.length) {
     el.innerHTML = "";
     return;
   }
-  if (tipoPago === "reales") {
-    el.innerHTML = `<strong>Total a cobrar:</strong> ${formatMoney(totalReales, "reales")}`;
+  const lineaDesc =
+    descuento > 0
+      ? `<div class="muted small">Subtotal: ${formatMoney(subtotalReales, "reales")} · Descuento: −${formatMoney(descuento, "reales")}</div>`
+      : "";
+  if (tipoPago === "reales" || esVentaFiada()) {
+    el.innerHTML = `${lineaDesc}<strong>Total a cobrar:</strong> ${formatMoney(totalCobrarReales, "reales")}`;
   } else if (tipoPago === "oro") {
-    el.innerHTML = `<strong>Total a cobrar:</strong> ${totalOro.toFixed(4)}g (${formatMoney(equivRealesDesdeOro, "reales")})`;
+    const oroCobrar =
+      tasa && tasa.tasa_reales > 0
+        ? Number((totalCobrarReales / tasa.tasa_reales).toFixed(4))
+        : totalOro;
+    el.innerHTML = `${lineaDesc}<strong>Total a cobrar:</strong> ${oroCobrar.toFixed(4)}g (${formatMoney(totalCobrarReales, "reales")})`;
   } else {
     el.innerHTML = `
-      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(4)}g (${formatMoney(equivRealesDesdeOro, "reales")})</div>
-      <div><strong>Total a cobrar (reales en precios):</strong> ${formatMoney(totalReales, "reales")}</div>
+      ${lineaDesc}
+      <div><strong>Total a cobrar (oro):</strong> ${totalOro.toFixed(4)}g (${formatMoney(totalCobrarReales, "reales")})</div>
+      <div><strong>Total en precios de lista:</strong> ${formatMoney(subtotalReales, "reales")}</div>
     `;
   }
 }
@@ -141,7 +178,7 @@ function actualizarModalVueltoPreview() {
   const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
   const mOro = Number(document.getElementById("venta-input-monto-oro")?.value || 0);
   const mReales = Number(document.getElementById("venta-input-monto-reales")?.value || 0);
-  const { totalOro, totalReales, tasa } = datosTotalesCobro();
+  const { totalOro, totalCobrarReales, tasa } = datosTotalesCobro();
 
   if (!carrito.length) {
     el.textContent = "";
@@ -149,7 +186,7 @@ function actualizarModalVueltoPreview() {
   }
 
   if (tipoPago === "reales") {
-    const diff = Number((mReales - totalReales).toFixed(2));
+    const diff = Number((mReales - totalCobrarReales).toFixed(2));
     if (diff >= 0) {
       el.textContent = `Vuelto: ${formatMoney(diff, "reales")}`;
     } else {
@@ -164,8 +201,10 @@ function actualizarModalVueltoPreview() {
     return;
   }
 
+  const oroACobrar =
+    tasa.tasa_reales > 0 ? Number((totalCobrarReales / tasa.tasa_reales).toFixed(4)) : totalOro;
   const recibidoEquivOro = Number((mOro + mReales / tasa.tasa_reales).toFixed(4));
-  const diffOro = Number((recibidoEquivOro - totalOro).toFixed(4));
+  const diffOro = Number((recibidoEquivOro - oroACobrar).toFixed(4));
 
   if (tipoPago === "oro") {
     if (diffOro >= 0) {
@@ -198,7 +237,7 @@ function sincronizarModalCobro() {
 
 function calcularTotales() {
   const productos = getProductosCache();
-  return carrito.reduce(
+  const base = carrito.reduce(
     (acc, item) => {
       const producto = productos.find((candidate) => candidate.id === item.producto_id);
       if (!producto) {
@@ -207,12 +246,19 @@ function calcularTotales() {
       const subtotalOro = Number((producto.precio_venta_oro * item.cantidad).toFixed(4));
       const subtotalReales = Number((producto.precio_venta_reales * item.cantidad).toFixed(2));
       acc.totalOro += subtotalOro;
-      acc.totalReales += subtotalReales;
+      acc.subtotalReales += subtotalReales;
       acc.items.push({ ...item, producto, subtotal: subtotalOro });
       return acc;
     },
-    { totalOro: 0, totalReales: 0, items: [] }
+    { totalOro: 0, subtotalReales: 0, items: [] }
   );
+  const descuento = obtenerDescuentoCobro();
+  const tipoPago = document.getElementById("venta-tipo-pago")?.value || "oro";
+  let totalReales = base.subtotalReales;
+  if ((tipoPago === "reales" || esVentaFiada()) && descuento > 0) {
+    totalReales = Math.max(0, Number((base.subtotalReales - descuento).toFixed(2)));
+  }
+  return { ...base, totalReales };
 }
 
 function renderGridProductos() {
@@ -342,31 +388,45 @@ export async function loadVentas() {
     heroV.textContent = String(resumen.ventas);
   }
 
+  const esAdmin = getRol() === "admin";
   const tbody = document.getElementById("tabla-ventas");
   if (tbody) {
     if (!ventas.length) {
-      tbody.innerHTML = renderEmptyRow(12, "No hay ventas registradas.");
+      tbody.innerHTML = renderEmptyRow(13, "No hay ventas registradas.");
     } else {
       tbody.innerHTML = ventas
-        .map(
-          (venta) => `
+        .map((venta) => {
+          const anulada = (venta.estado || "VIGENTE") === "ANULADA";
+          const btnDevolver =
+            esAdmin && !anulada
+              ? `<button type="button" class="btn-secondary btn-devolver-venta" data-venta-id="${venta.id}">Devolver</button>`
+              : "-";
+          const desc =
+            Number(venta.descuento_reales || 0) > 0
+              ? `<br><span class="muted small">Desc. ${formatMoney(venta.descuento_reales, "reales")}</span>`
+              : "";
+          return `
           <tr>
             <td>#${venta.id}</td>
             <td>${formatDateOnly(venta.fecha)}</td>
             <td>${formatTimeOnly(venta.fecha)}</td>
             <td>${venta.cliente}</td>
             <td>${formatMoney(venta.total_oro)}</td>
-            <td>${formatMoney(venta.total_reales, "reales")}</td>
+            <td>${formatMoney(venta.total_reales, "reales")}${desc}</td>
             <td>${getRateLabel(venta.tasa_nombre)}</td>
             <td>${venta.tipo_oro ? getRateLabel(venta.tipo_oro) : "-"}</td>
             <td>${venta.tipo_pago}</td>
             <td>${venta.tipo_venta || "contado"}</td>
-            <td>${venta.estado_pago || "PAGADO"}</td>
+            <td>${venta.estado_pago || "PAGADO"}${anulada ? " (anulada)" : ""}</td>
             <td>${formatMoney(Number(venta.saldo_pendiente || 0), "reales")}</td>
+            <td>${btnDevolver}</td>
           </tr>
-        `
-        )
+        `;
+        })
         .join("");
+      tbody.querySelectorAll(".btn-devolver-venta").forEach((btn) => {
+        btn.addEventListener("click", () => abrirDevolucion(Number(btn.dataset.ventaId)));
+      });
     }
   }
   renderCarrito();
@@ -391,6 +451,69 @@ function abrirCobro() {
 
 function cerrarCobro() {
   document.getElementById("dialog-cobro-venta")?.close();
+}
+
+async function abrirDevolucion(ventaId) {
+  if (getRol() !== "admin") {
+    showToast("Solo administradores pueden registrar devoluciones", "error");
+    return;
+  }
+  try {
+    const venta = await api.get(`/ventas/${ventaId}`);
+    if ((venta.estado || "VIGENTE") === "ANULADA") {
+      showToast("No se puede devolver una venta anulada", "error");
+      return;
+    }
+    ventaDevolucionActual = venta;
+    const resumen = document.getElementById("devolucion-venta-resumen");
+    if (resumen) {
+      resumen.textContent = `Venta #${venta.id} · ${venta.cliente} · Total actual ${formatMoney(venta.total_reales, "reales")}`;
+    }
+    renderTablaDevolucion();
+    document.getElementById("dialog-devolucion-venta")?.showModal();
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+function renderTablaDevolucion() {
+  const tbody = document.getElementById("tabla-devolucion-items");
+  if (!tbody || !ventaDevolucionActual) {
+    return;
+  }
+  const detalles = ventaDevolucionActual.detalles || [];
+  const conStock = detalles.filter((d) => Number(d.cantidad_disponible) > 0);
+  if (!conStock.length) {
+    tbody.innerHTML = renderEmptyRow(5, "No hay unidades disponibles para devolver.");
+    return;
+  }
+  tbody.innerHTML = conStock
+    .map(
+      (d) => `
+      <tr>
+        <td>${d.producto_nombre}</td>
+        <td>${d.cantidad}</td>
+        <td>${d.cantidad_devuelta}</td>
+        <td>${d.cantidad_disponible}</td>
+        <td>
+          <input
+            type="number"
+            class="devolucion-qty"
+            min="0"
+            max="${d.cantidad_disponible}"
+            step="0.01"
+            value="0"
+            data-producto-id="${d.producto_id}"
+          >
+        </td>
+      </tr>`
+    )
+    .join("");
+}
+
+function cerrarDevolucion() {
+  ventaDevolucionActual = null;
+  document.getElementById("dialog-devolucion-venta")?.close();
 }
 
 export function initVentas() {
@@ -442,6 +565,54 @@ export function initVentas() {
   inputMontoOro?.addEventListener("input", sincronizarModalCobro);
   inputMontoReales?.addEventListener("input", sincronizarModalCobro);
   montoInicial?.addEventListener("input", sincronizarModalCobro);
+  document.getElementById("venta-descuento-reales")?.addEventListener("input", () => {
+    renderCarrito();
+    sincronizarModalCobro();
+  });
+  document.getElementById("btn-cerrar-devolucion")?.addEventListener("click", cerrarDevolucion);
+  document.getElementById("form-devolucion-venta")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!ventaDevolucionActual) {
+      return;
+    }
+    const items = [];
+    document.querySelectorAll(".devolucion-qty").forEach((input) => {
+      const cantidad = Number(input.value || 0);
+      if (cantidad > 0) {
+        items.push({ producto_id: Number(input.dataset.productoId), cantidad });
+      }
+    });
+    if (!items.length) {
+      showToast("Indique cantidades a devolver", "error");
+      return;
+    }
+    const btn = event.target.querySelector('button[type="submit"]');
+    const txt = btn?.textContent ?? "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Procesando...";
+    }
+    try {
+      const res = await api.put(
+        `/ventas/${ventaDevolucionActual.id}/devolver`,
+        { items },
+        adminHeaders()
+      );
+      showToast(
+        `Devolucion registrada: ${formatMoney(res.data.devolucion_reales, "reales")}`,
+        "success"
+      );
+      cerrarDevolucion();
+      document.dispatchEvent(new CustomEvent("bodega:refresh"));
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = txt;
+      }
+    }
+  });
   actualizarVisibilidadCamposPago();
 
   formVenta?.addEventListener("submit", async (event) => {
@@ -496,6 +667,7 @@ export function initVentas() {
       cliente_fiado: tipoVenta === "fiado" ? String(formData.get("cliente_fiado") || "").trim() : null,
       telefono_fiado: tipoVenta === "fiado" ? String(formData.get("telefono_fiado") || "").trim() || null : null,
       monto_inicial: tipoVenta === "fiado" ? Number(formData.get("monto_inicial") || 0) : 0,
+      descuento_reales: Number(formData.get("descuento_reales") || 0),
     };
     if (tipoVenta !== "fiado" && payload.tipo_pago !== "reales" && !payload.tipo_oro) {
       showToast("Selecciona el tipo de oro para el cobro", "error");
@@ -521,6 +693,10 @@ export function initVentas() {
       formVenta.tipo_oro.value = "";
       formVenta.monto_recibido_oro.value = "0.00";
       formVenta.monto_recibido_reales.value = "0.00";
+      const descIn = document.getElementById("venta-descuento-reales");
+      if (descIn) {
+        descIn.value = "0";
+      }
       if (tipoVentaSel) {
         tipoVentaSel.value = "contado";
       }

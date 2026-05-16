@@ -137,6 +137,7 @@ class VentaCreate(BaseModel):
     cliente: str = Field(default="Mostrador", max_length=100)
     monto_recibido_oro: float = Field(default=0, ge=0)
     monto_recibido_reales: float = Field(default=0, ge=0)
+    descuento_reales: float = Field(default=0, ge=0)
     tipo_venta: str = Field(default="contado", max_length=20)
     cliente_fiado: Optional[str] = Field(default=None, max_length=100)
     telefono_fiado: Optional[str] = Field(default=None, max_length=20)
@@ -262,6 +263,49 @@ class CompraOut(ORMModel):
     detalles: list[DetalleCompraListOut] = []
 
 
+class ItemDevolucionVenta(BaseModel):
+    producto_id: int = Field(..., gt=0)
+    cantidad: float = Field(..., gt=0)
+
+
+class DevolucionVentaCreate(BaseModel):
+    items: List[ItemDevolucionVenta] = Field(..., min_length=1)
+
+
+class DetalleVentaOut(BaseModel):
+    id: int
+    producto_id: int
+    producto_nombre: str
+    cantidad: float
+    cantidad_devuelta: float
+    cantidad_disponible: float
+    precio_unitario_oro: float
+    subtotal_oro: float
+    subtotal_reales: float
+
+
+class VentaDetalleOut(BaseModel):
+    id: int
+    fecha: datetime
+    cliente: str
+    total_oro: float
+    total_reales: float
+    descuento_reales: float = 0
+    tipo_pago: str
+    tipo_oro: Optional[str] = None
+    tasa_nombre: Optional[str] = None
+    tasa_reales: Optional[float] = None
+    tipo_venta: str = "contado"
+    estado_pago: str = "PAGADO"
+    saldo_pendiente: float = 0
+    estado: str = "VIGENTE"
+    monto_recibido_oro: float = 0
+    monto_recibido_reales: float = 0
+    vuelto_oro: float = 0
+    vuelto_reales: float = 0
+    detalles: list[DetalleVentaOut] = []
+
+
 class VentaListadoOut(BaseModel):
     """Listado ventas.js (tabla-ventas)."""
 
@@ -270,6 +314,7 @@ class VentaListadoOut(BaseModel):
     cliente: str
     total_oro: float
     total_reales: float
+    descuento_reales: float = 0
     tipo_pago: str
     tipo_oro: Optional[str] = None
     tasa_nombre: Optional[str] = None

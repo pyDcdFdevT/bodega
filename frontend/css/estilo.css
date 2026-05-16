@@ -1002,6 +1002,21 @@ summary.accordion-cat-summary::-webkit-details-marker {
   border-color: rgba(255, 255, 255, 0.12);
 }
 
+[data-theme="dark"] .er-ingresos,
+[data-theme="dark"] .er-costos,
+[data-theme="dark"] .er-gastos,
+[data-theme="dark"] .er-utilidad,
+[data-theme="dark"] .er-linea,
+[data-theme="dark"] .er-line,
+[data-theme="dark"] .er-total,
+[data-theme="dark"] .er-utilidad-neta,
+[data-theme="dark"] .er-line span,
+[data-theme="dark"] .er-titulo,
+[data-theme="dark"] .er-subtotal,
+[data-theme="dark"] .er-utilidad-neta strong {
+  color: #e0e0e0;
+}
+
 .reporte-periodo-card {
   margin-bottom: 18px;
 }
