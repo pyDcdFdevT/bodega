@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 ADMIN_HEADERS = {"X-Bodega-Rol": "admin"}
 
 
@@ -116,6 +118,75 @@ def test_generar_cierre_retiro_fundicion_crea_lote(client):
     assert lote["estado"] == "ACUMULANDO"
     assert float(lote["gramos_brutos"]) == bruto
     assert "Cierre del" in lote["origen"]
+
+
+def test_cierre_retiro_ignora_lotes_de_dias_anteriores(client):
+    from database import SessionLocal
+    from models import LoteOro
+    from services.operativa import _inicio_dia_hoy
+
+    assert _abrir_caja(client).status_code == 200
+    if client.get("/api/cierre/dia").json().get("cierre_guardado"):
+        client.post("/api/cierre/reabrir", headers=ADMIN_HEADERS)
+
+    ayer = _inicio_dia_hoy() - timedelta(days=1)
+    db = SessionLocal()
+    try:
+        db.add(
+            LoteOro(
+                gramos_brutos=5.49,
+                origen="Lote dia anterior",
+                estado="ACUMULANDO",
+                fecha=ayer,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    dia = client.get("/api/cierre/dia").json()
+    bruto = float(dia["oro_recolectado"]["bruto_total_gramos"])
+    if bruto <= 0:
+        return
+    conc = dia["conciliacion"]
+    r = client.post(
+        "/api/cierre/generar",
+        headers=ADMIN_HEADERS,
+        json={
+            "cerrado_por": "Tester lotes viejos",
+            "reales_contados": float(conc["reales_esperados"]),
+            "oro_contado": float(conc["oro_esperado"]),
+            "retirar_oro_para_fundicion": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_oro_disponible_recolectado_solo_resta_lotes_hoy():
+    from datetime import date, datetime
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from database import Base
+    from models import LoteOro
+    from services.oro_lotes import gramos_oro_en_lotes, oro_disponible_recolectado
+
+    engine = create_engine("sqlite:///:memory:", future=True)
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    hoy = date(2026, 5, 15)
+    ayer_dt = datetime(2026, 5, 14, 12, 0, 0)
+    hoy_dt = datetime(2026, 5, 15, 10, 0, 0)
+    db.add(LoteOro(gramos_brutos=5.49, origen="viejo", estado="ACUMULANDO", fecha=ayer_dt))
+    db.add(LoteOro(gramos_brutos=1.0, origen="hoy", estado="ACUMULANDO", fecha=hoy_dt))
+    db.commit()
+    assert gramos_oro_en_lotes(db, hoy) == 1.0
+    assert gramos_oro_en_lotes(db) == round(6.49, 4)
+    assert oro_disponible_recolectado(db, hoy, 3.55) == 2.55
+    db.close()
+    engine.dispose()
 
 
 def test_balance_excluye_oro_en_lotes(client):

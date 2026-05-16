@@ -14,8 +14,8 @@ from services.ledger import registrar_transaccion
 from services.operativa import _inicio_dia_hoy, construir_payload_cierre
 from services.oro_lotes import (
     eliminar_lote_cierre_si_posible,
-    gramos_oro_en_lotes,
     lote_cierre_del_dia,
+    oro_disponible_recolectado,
     origen_lote_desde_cierre,
 )
 
@@ -127,14 +127,13 @@ def generar_cierre_diario(
                 status_code=400,
                 detail="Ya existe un lote de cierre para fundicion en este dia",
             )
-        en_lotes = gramos_oro_en_lotes(db)
-        disponible = round(oro_esperado - en_lotes, 4)
+        disponible = oro_disponible_recolectado(db, fe, bruto)
         if bruto > disponible + 0.02:
             raise HTTPException(
                 status_code=400,
                 detail=(
                     f"Oro disponible ({disponible} g) insuficiente para retiro "
-                    f"({bruto} g); revise lotes previos"
+                    f"({bruto} g); revise lotes creados hoy"
                 ),
             )
         lote = LoteOro(

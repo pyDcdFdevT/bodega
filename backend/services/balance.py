@@ -278,7 +278,7 @@ def build_balance_general(db: Session) -> dict:
     hoy = datetime.now(UTC).date()
 
     caja, oro_gramos = _caja_y_oro_operativo(db, hoy)
-    gramos_en_lotes = gramos_oro_en_lotes(db)
+    gramos_en_lotes = gramos_oro_en_lotes(db, hoy)
     oro_disponible = max(0.0, round(float(oro_gramos) - gramos_en_lotes, 4))
     oro_por_tipo = _oro_operativo_por_tipo(db, hoy, oro_gramos)
     oro_por_tipo = _reconciliar_oro_por_tipo(oro_por_tipo, oro_disponible)
